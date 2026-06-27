@@ -4,5 +4,4 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@supabase/supabase-js']
   }
 }
-
 module.exports = nextConfig
