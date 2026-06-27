@@ -65,8 +65,8 @@ export default function AgendaView({ events, clients, profiles, year: initYear, 
   const feriadosMoveis = getFeriadosMoveis(year)
   const allFeriados = { ...FERIADOS_FIXOS, ...feriadosMoveis }
 
-  function prevMonth() { if (month === 0) { setMonth(11); setYear(y => y - 1) } else setMonth(m => m - 1) }
-  function nextMonth() { if (month === 11) { setMonth(0); setYear(y => y + 1) } else setMonth(m => m + 1) }
+  function prevMonth() { if (month === 0) { setMonth(11); setYear((y: number) => y - 1) } else setMonth((m: number) => m - 1) }
+  function nextMonth() { if (month === 11) { setMonth(0); setYear((y: number) => y + 1) } else setMonth((m: number) => m + 1) }
 
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
