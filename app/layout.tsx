@@ -1,20 +1,31 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import Sidebar from '@/components/ui/Sidebar'
-import Toaster from '@/components/ui/Toaster'
+import type { Metadata, Viewport } from 'next'
+import './globals.css'
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export const metadata: Metadata = {
+  title: 'Ampy Digital — Gerenciador Operacional',
+  description: 'Central operacional da Ampy Digital',
+  manifest: '/manifest.json',
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Ampy' },
+}
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+export const viewport: Viewport = {
+  themeColor: '#0C0C0C',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
 
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="app">
-      <Sidebar profile={profile} />
-      <div className="main">{children}</div>
-      <Toaster />
-    </div>
+    <html lang="pt-BR">
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+        <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
+      <body>{children}</body>
+    </html>
   )
 }
