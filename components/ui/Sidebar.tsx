@@ -5,10 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 
 const nav = [
-  { group: 'Visão geral', items: [
+  { group: 'Dashboards', items: [
     { href: '/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
-    { href: '/dashboard/minha-semana', icon: 'ti-calendar-week', label: 'Minha semana' },
-    { href: '/dashboard/alertas', icon: 'ti-bell', label: 'Alertas', badge: true },
+    { href: '/dashboard/meu-dia', icon: 'ti-sun', label: 'Meu dia' },
+    { href: '/dashboard/semana-equipe', icon: 'ti-calendar-week', label: 'Semana equipe' },
+    { href: '/dashboard/avisos', icon: 'ti-bell', label: 'Avisos', badge: true },
   ]},
   { group: 'Operação', items: [
     { href: '/dashboard/clientes', icon: 'ti-users', label: 'Clientes' },
@@ -17,14 +18,12 @@ const nav = [
     { href: '/dashboard/projetos', icon: 'ti-folder', label: 'Projetos' },
     { href: '/dashboard/agenda', icon: 'ti-calendar', label: 'Agenda' },
   ]},
-  { group: 'Serviços', items: [
-    { href: '/dashboard/trafego', icon: 'ti-speakerphone', label: 'Tráfego' },
-    { href: '/dashboard/social', icon: 'ti-photo', label: 'Social media' },
-    { href: '/dashboard/relatorios', icon: 'ti-chart-bar', label: 'Relatórios' },
-  ]},
   { group: 'Equipe', items: [
     { href: '/dashboard/chat', icon: 'ti-message-circle', label: 'Comunicação' },
     { href: '/dashboard/equipe', icon: 'ti-users-group', label: 'Equipe' },
+    { href: '/dashboard/relatorios', icon: 'ti-chart-bar', label: 'Relatórios' },
+  ]},
+  { group: 'Sistema', items: [
     { href: '/dashboard/configuracoes', icon: 'ti-settings', label: 'Configurações' },
   ]},
 ]
@@ -43,7 +42,10 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
     <div className="sb">
       <div className="sb-brand">
         <div className="brand-ico">A</div>
-        <div><div className="brand-name">Ampy</div><div className="brand-sub">Digital</div></div>
+        <div>
+          <div className="brand-name">Ampy</div>
+          <div className="brand-sub">Digital</div>
+        </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {nav.map(g => (
@@ -65,7 +67,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         </div>
         <div>
           <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--t2)' }}>{profile?.full_name || 'Usuário'}</div>
-          <div style={{ fontSize: '10px', color: 'var(--t4)' }}>{profile?.role || 'Ampy Digital'}</div>
+          <div style={{ fontSize: '10px', color: 'var(--t4)' }}>Sair</div>
         </div>
       </div>
     </div>

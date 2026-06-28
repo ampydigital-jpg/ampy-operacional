@@ -2,38 +2,48 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+// Gera título padrão: PLAN CLIENTE - DD/MM A DD/MM
+export function generateTitle(clientName: string, startDate: string, endDate: string): string {
+  if (!clientName) return ''
+  const formatDate = (d: string) => {
+    if (!d) return ''
+    const [y, m, day] = d.split('-')
+    return `${day}/${m}`
+  }
+  const name = clientName.toUpperCase().split(' ').slice(0, 3).join(' ')
+  if (startDate && endDate) return `PLAN ${name} - ${formatDate(startDate)} A ${formatDate(endDate)}`
+  if (startDate) return `PLAN ${name} - ${formatDate(startDate)}`
+  return `PLAN ${name}`
+}
+
 export async function createClientAction(formData: FormData) {
   const supabase = createClient()
   const name = formData.get('name') as string
-  const segment = formData.get('segment') as string
-  const status = formData.get('status') as string
-  const responsible_id = formData.get('responsible_id') as string
-  const main_contact_email = formData.get('main_contact_email') as string
-  const main_contact_phone = formData.get('main_contact_phone') as string
-  const main_contact_name = formData.get('main_contact_name') as string
-  const drive_folder_url = formData.get('drive_folder_url') as string
-  const briefing_url = formData.get('briefing_url') as string
-  const instagram = formData.get('instagram') as string
-  const notes = formData.get('notes') as string
-
   const initials = name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
   const colors = [
-    { color: '#CC8800', bg: '#1A1200' }, { color: '#4CAF50', bg: '#0A1A10' },
-    { color: '#9575CD', bg: '#0D0A1A' }, { color: '#42A5F5', bg: '#0A1520' },
-    { color: '#E91E63', bg: '#1A0A14' }, { color: '#66BB6A', bg: '#0A1A0A' },
-    { color: '#FF7043', bg: '#1A0C0A' }, { color: '#26C6DA', bg: '#0A1A1A' },
+    { color: '#F59E0B', bg: '#1C1200' }, { color: '#22C55E', bg: '#052E16' },
+    { color: '#8B5CF6', bg: '#0D0A1F' }, { color: '#3B82F6', bg: '#0A1628' },
+    { color: '#EC4899', bg: '#1A0514' }, { color: '#10B981', bg: '#052019' },
+    { color: '#F97316', bg: '#1C0E05' }, { color: '#06B6D4', bg: '#051A1F' },
   ]
   const c = colors[Math.floor(Math.random() * colors.length)]
-
   const { error } = await supabase.from('clients').insert({
-    name, segment, status: status || 'active',
-    responsible_id: responsible_id || null,
-    main_contact_name, main_contact_email, main_contact_phone,
-    drive_folder_url, briefing_url, instagram, notes,
-    avatar_initials: initials, avatar_color: c.color, avatar_bg: c.bg,
+    name,
+    segment: formData.get('segment') as string || '',
+    status: formData.get('status') as string || 'active',
+    responsible_id: formData.get('responsible_id') as string || null,
+    main_contact_name: formData.get('main_contact_name') as string || null,
+    main_contact_email: formData.get('main_contact_email') as string || null,
+    main_contact_phone: formData.get('main_contact_phone') as string || null,
+    drive_folder_url: formData.get('drive_folder_url') as string || null,
+    briefing_url: formData.get('briefing_url') as string || null,
+    instagram: formData.get('instagram') as string || null,
+    notes: formData.get('notes') as string || null,
+    avatar_initials: initials,
+    avatar_color: c.color,
+    avatar_bg: c.bg,
     started_at: new Date().toISOString().split('T')[0],
   })
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/clientes')
   return { success: true }
@@ -42,23 +52,33 @@ export async function createClientAction(formData: FormData) {
 export async function createWorkItemAction(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const clientId = formData.get('client_id') as string || null
+  const startDate = formData.get('start_date') as string || ''
+  const endDate = formData.get('final_deadline') as string || ''
+  let title = formData.get('title') as string
+  
+  // Auto-gerar título se não preenchido
+  if (!title && clientId) {
+    const { data: client } = await supabase.from('clients').select('name').eq('id', clientId).single()
+    if (client) title = generateTitle(client.name, startDate, endDate)
+  }
+  if (!title) title = 'Nova demanda'
 
   const { error } = await supabase.from('work_items').insert({
-    title: formData.get('title') as string,
+    title,
     description: formData.get('description') as string || null,
-    client_id: formData.get('client_id') as string || null,
+    client_id: clientId,
     type: formData.get('type') as string || 'task',
     origin: formData.get('origin') as string || 'planned',
-    status: 'not_started',
+    status: formData.get('status') as string || 'not_started',
     priority: formData.get('priority') as string || 'normal',
     responsible_id: formData.get('responsible_id') as string || null,
     internal_deadline: formData.get('internal_deadline') as string || null,
-    final_deadline: formData.get('final_deadline') as string || null,
+    final_deadline: endDate || null,
     drive_link: formData.get('drive_link') as string || null,
     notes: formData.get('notes') as string || null,
     created_by: user?.id,
   })
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/demandas')
   revalidatePath('/dashboard/kanban')
@@ -67,23 +87,31 @@ export async function createWorkItemAction(formData: FormData) {
 
 export async function updateWorkItemStatusAction(id: string, status: string) {
   const supabase = createClient()
-  const { error } = await supabase.from('work_items').update({ status }).eq('id', id)
+  const { error } = await supabase.from('work_items').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/dashboard/kanban')
   revalidatePath('/dashboard/demandas')
   return { success: true }
 }
 
+export async function deleteWorkItemAction(id: string) {
+  const supabase = createClient()
+  const { error } = await supabase.from('work_items').update({ status: 'archived' }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/demandas')
+  revalidatePath('/dashboard/kanban')
+  return { success: true }
+}
+
 export async function createCalendarEventAction(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   const date = formData.get('date') as string
-  const time = formData.get('time') as string
+  const time = formData.get('time') as string || '09:00'
   const duration = parseInt(formData.get('duration') as string || '60')
   const starts_at = new Date(`${date}T${time}`).toISOString()
   const ends_at = new Date(new Date(`${date}T${time}`).getTime() + duration * 60000).toISOString()
-
+  const color = formData.get('color') as string || '#3B82F6'
   const { error } = await supabase.from('calendar_events').insert({
     title: formData.get('title') as string,
     type: formData.get('type') as string || 'meeting',
@@ -95,40 +123,13 @@ export async function createCalendarEventAction(formData: FormData) {
     confirmed: false,
     created_by: user?.id,
   })
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/agenda')
   return { success: true }
 }
 
-export async function createProfileAction(formData: FormData) {
-  const supabase = createClient()
-  const email = formData.get('email') as string
-  const full_name = formData.get('full_name') as string
-  const role = formData.get('role') as string
-  const password = formData.get('password') as string
-
-  const { data, error } = await supabase.auth.admin.createUser({
-    email, password, email_confirm: true,
-    user_metadata: { full_name }
-  })
-
-  if (error) return { error: error.message }
-
-  await supabase.from('profiles').update({
-    full_name,
-    role,
-    avatar_initials: full_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2),
-  }).eq('id', data.user.id)
-
-  revalidatePath('/dashboard/equipe')
-  return { success: true }
-}
-
 export async function createProjectAction(formData: FormData) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
   const { error } = await supabase.from('projects').insert({
     name: formData.get('name') as string,
     type: formData.get('type') as string || 'project',
@@ -140,8 +141,18 @@ export async function createProjectAction(formData: FormData) {
     deadline: formData.get('deadline') as string || null,
     drive_folder_url: formData.get('drive_folder_url') as string || null,
   })
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/projetos')
+  return { success: true }
+}
+
+export async function saveKanbanColumnsAction(columns: any[]) {
+  const supabase = createClient()
+  const { error } = await supabase.from('kanban_columns').upsert(
+    columns.map((c, i) => ({ ...c, position: i })),
+    { onConflict: 'id' }
+  )
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/kanban')
   return { success: true }
 }
