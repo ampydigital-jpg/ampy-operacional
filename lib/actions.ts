@@ -48,7 +48,11 @@ export async function createWorkItemAction(formData: FormData) {
   // Auto-gerar título se não preenchido
   if (!title && clientId) {
     const { data: client } = await supabase.from('clients').select('name').eq('id', clientId).single()
-    if (client) title = generateTitle(client.name, startDate, endDate)
+    if (client) {
+      const fmt = (d: string) => { if (!d) return ''; const [,m,day] = d.split('-'); return `${day}/${m}` }
+      const name = client.name.toUpperCase().split(' ').slice(0,3).join(' ')
+      title = `PLAN ${name}${startDate ? ` - ${fmt(startDate)}` : ''}${endDate ? ` A ${fmt(endDate)}` : ''}`
+    }
   }
   if (!title) title = 'Nova demanda'
 
