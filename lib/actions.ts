@@ -2,19 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-// Gera título padrão: PLAN CLIENTE - DD/MM A DD/MM
-export function generateTitle(clientName: string, startDate: string, endDate: string): string {
-  if (!clientName) return ''
-  const formatDate = (d: string) => {
-    if (!d) return ''
-    const [y, m, day] = d.split('-')
-    return `${day}/${m}`
-  }
-  const name = clientName.toUpperCase().split(' ').slice(0, 3).join(' ')
-  if (startDate && endDate) return `PLAN ${name} - ${formatDate(startDate)} A ${formatDate(endDate)}`
-  if (startDate) return `PLAN ${name} - ${formatDate(startDate)}`
-  return `PLAN ${name}`
-}
+
 
 export async function createClientAction(formData: FormData) {
   const supabase = createClient()
