@@ -2,8 +2,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-
-
 export async function createClientAction(formData: FormData) {
   const supabase = createClient()
   const name = formData.get('name') as string
@@ -17,7 +15,7 @@ export async function createClientAction(formData: FormData) {
   const c = colors[Math.floor(Math.random() * colors.length)]
   const { error } = await supabase.from('clients').insert({
     name,
-    segment: formData.get('segment') as string || '',
+    segment: formData.get('segment') as string || null,
     status: formData.get('status') as string || 'active',
     responsible_id: formData.get('responsible_id') as string || null,
     main_contact_name: formData.get('main_contact_name') as string || null,
@@ -27,11 +25,53 @@ export async function createClientAction(formData: FormData) {
     briefing_url: formData.get('briefing_url') as string || null,
     instagram: formData.get('instagram') as string || null,
     notes: formData.get('notes') as string || null,
+    cnpj_cpf: formData.get('cnpj_cpf') as string || null,
+    cidade: formData.get('cidade') as string || null,
+    metodo_pagamento: formData.get('metodo_pagamento') as string || null,
+    notas_fiscais: formData.get('notas_fiscais') as string || null,
+    valor_mensal: formData.get('valor_mensal') ? parseFloat(formData.get('valor_mensal') as string) : null,
+    dia_vencimento: formData.get('dia_vencimento') ? parseInt(formData.get('dia_vencimento') as string) : null,
+    tempo_contrato: formData.get('tempo_contrato') as string || null,
+    inicio_contrato: formData.get('inicio_contrato') as string || null,
+    fim_contrato: formData.get('fim_contrato') as string || null,
+    situacao_contrato: formData.get('situacao_contrato') as string || null,
     avatar_initials: initials,
     avatar_color: c.color,
     avatar_bg: c.bg,
     started_at: new Date().toISOString().split('T')[0],
   })
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/clientes')
+  return { success: true }
+}
+
+export async function updateClientAction(formData: FormData) {
+  const supabase = createClient()
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string
+  const { error } = await supabase.from('clients').update({
+    name,
+    segment: formData.get('segment') as string || null,
+    status: formData.get('status') as string || 'active',
+    responsible_id: formData.get('responsible_id') as string || null,
+    main_contact_email: formData.get('main_contact_email') as string || null,
+    main_contact_phone: formData.get('main_contact_phone') as string || null,
+    drive_folder_url: formData.get('drive_folder_url') as string || null,
+    briefing_url: formData.get('briefing_url') as string || null,
+    instagram: formData.get('instagram') as string || null,
+    notes: formData.get('notes') as string || null,
+    cnpj_cpf: formData.get('cnpj_cpf') as string || null,
+    cidade: formData.get('cidade') as string || null,
+    metodo_pagamento: formData.get('metodo_pagamento') as string || null,
+    notas_fiscais: formData.get('notas_fiscais') as string || null,
+    valor_mensal: formData.get('valor_mensal') ? parseFloat(formData.get('valor_mensal') as string) : null,
+    dia_vencimento: formData.get('dia_vencimento') ? parseInt(formData.get('dia_vencimento') as string) : null,
+    tempo_contrato: formData.get('tempo_contrato') as string || null,
+    inicio_contrato: formData.get('inicio_contrato') as string || null,
+    fim_contrato: formData.get('fim_contrato') as string || null,
+    situacao_contrato: formData.get('situacao_contrato') as string || null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/dashboard/clientes')
   return { success: true }
@@ -44,8 +84,7 @@ export async function createWorkItemAction(formData: FormData) {
   const startDate = formData.get('start_date') as string || ''
   const endDate = formData.get('final_deadline') as string || ''
   let title = formData.get('title') as string
-  
-  // Auto-gerar título se não preenchido
+
   if (!title && clientId) {
     const { data: client } = await supabase.from('clients').select('name').eq('id', clientId).single()
     if (client) {
@@ -103,7 +142,6 @@ export async function createCalendarEventAction(formData: FormData) {
   const duration = parseInt(formData.get('duration') as string || '60')
   const starts_at = new Date(`${date}T${time}`).toISOString()
   const ends_at = new Date(new Date(`${date}T${time}`).getTime() + duration * 60000).toISOString()
-  const color = formData.get('color') as string || '#3B82F6'
   const { error } = await supabase.from('calendar_events').insert({
     title: formData.get('title') as string,
     type: formData.get('type') as string || 'meeting',
@@ -135,16 +173,5 @@ export async function createProjectAction(formData: FormData) {
   })
   if (error) return { error: error.message }
   revalidatePath('/dashboard/projetos')
-  return { success: true }
-}
-
-export async function saveKanbanColumnsAction(columns: any[]) {
-  const supabase = createClient()
-  const { error } = await supabase.from('kanban_columns').upsert(
-    columns.map((c, i) => ({ ...c, position: i })),
-    { onConflict: 'id' }
-  )
-  if (error) return { error: error.message }
-  revalidatePath('/dashboard/kanban')
   return { success: true }
 }
