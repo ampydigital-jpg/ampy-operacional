@@ -12,11 +12,12 @@ const nav = [
     { href: '/dashboard/avisos', icon: 'ti-bell', label: 'Avisos', badge: true },
   ]},
   { group: 'Operação', items: [
-    { href: '/dashboard/clientes', icon: 'ti-users', label: 'Clientes' },
+    { href: '/dashboard/clientes', icon: 'ti-users', label: 'Painel de Clientes' },
     { href: '/dashboard/demandas', icon: 'ti-checklist', label: 'Demandas' },
     { href: '/dashboard/kanban', icon: 'ti-layout-kanban', label: 'Kanban' },
     { href: '/dashboard/projetos', icon: 'ti-folder', label: 'Projetos' },
     { href: '/dashboard/agenda', icon: 'ti-calendar', label: 'Agenda' },
+    { href: '/dashboard/clientes/feed-preview', icon: 'ti-grid-dots', label: 'Feed Preview' },
   ]},
   { group: 'Equipe', items: [
     { href: '/dashboard/chat', icon: 'ti-message-circle', label: 'Comunicação' },
@@ -35,7 +36,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
   async function logout() {
     await supabase.auth.signOut()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   return (
@@ -52,7 +53,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
           <div key={g.group} className="nav-grp">
             <div className="nav-lbl">{g.group}</div>
             {g.items.map(item => (
-              <Link key={item.href} href={item.href} className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
+              <Link key={item.href} href={item.href} className={`nav-item ${pathname.startsWith(item.href) && item.href !== '/dashboard' ? 'active' : pathname === item.href ? 'active' : ''}`}>
                 <i className={`ti ${item.icon}`} />
                 <span>{item.label}</span>
                 {item.badge && <span className="nav-badge">!</span>}

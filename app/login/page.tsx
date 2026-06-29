@@ -1,14 +1,12 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -21,8 +19,8 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-    router.push('/dashboard')
-    router.refresh()
+    // Redireciona via window para garantir que os cookies sejam enviados
+    window.location.href = '/dashboard'
   }
 
   return (

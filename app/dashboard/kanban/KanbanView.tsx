@@ -71,18 +71,35 @@ export default function KanbanView({ demands, clients, profiles }: any) {
     setLoading(true)
     setError('')
     const fd = new FormData(e.currentTarget)
-    if (autoTitle) fd.set('title', autoTitle)
+    const titleFinal = autoTitle || fd.get('title') as string || 'Nova demanda'
+    fd.set('title', titleFinal)
     fd.set('status', defaultStatus)
     fd.set('start_date', startDate)
+    fd.set('destino', 'kanban')
     const result = await createWorkItemAction(fd)
     if (result.error) { setError(result.error); setLoading(false); return }
+
+    // Adicionar ao estado local sem recarregar
+    const clienteSelecionado = clients.find((c: any) => c.id === fd.get('client_id'))
+    const responsavelSelecionado = profiles.find((p: any) => p.id === fd.get('responsible_id'))
+    const novoItem = {
+      id: Date.now().toString(), // ID temporário até reload
+      title: titleFinal,
+      status: defaultStatus,
+      priority: fd.get('priority') as string || 'normal',
+      type: fd.get('type') as string || 'Planejamento',
+      final_deadline: fd.get('final_deadline') as string || null,
+      destino: 'kanban',
+      client: clienteSelecionado ? { name: clienteSelecionado.name, avatar_initials: clienteSelecionado.avatar_initials, avatar_bg: clienteSelecionado.avatar_bg, avatar_color: clienteSelecionado.avatar_color } : null,
+      responsible: responsavelSelecionado ? { full_name: responsavelSelecionado.full_name, avatar_initials: responsavelSelecionado.avatar_initials } : null,
+    }
+    setItems((prev: any[]) => [...prev, novoItem])
     setModal(false)
     setLoading(false)
     setAutoTitle('')
     setStartDate('')
     setEndDate('')
     setSelectedClient('')
-    window.location.reload()
   }
 
   async function handleDelete(id: string) {

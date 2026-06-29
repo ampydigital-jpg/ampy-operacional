@@ -83,14 +83,15 @@ export async function createWorkItemAction(formData: FormData) {
   const clientId = formData.get('client_id') as string || null
   const startDate = formData.get('start_date') as string || ''
   const endDate = formData.get('final_deadline') as string || ''
+  const destino = formData.get('destino') as string || 'kanban'
   let title = formData.get('title') as string
 
   if (!title && clientId) {
     const { data: client } = await supabase.from('clients').select('name').eq('id', clientId).single()
     if (client) {
       const fmt = (d: string) => { if (!d) return ''; const [,m,day] = d.split('-'); return `${day}/${m}` }
-      const name = client.name.toUpperCase().split(' ').slice(0,3).join(' ')
-      title = `PLAN ${name}${startDate ? ` - ${fmt(startDate)}` : ''}${endDate ? ` A ${fmt(endDate)}` : ''}`
+      const nome = client.name.toUpperCase().split(' ').slice(0,3).join(' ')
+      title = `PLAN ${nome}${startDate ? ` - ${fmt(startDate)}` : ''}${endDate ? ` A ${fmt(endDate)}` : ''}`
     }
   }
   if (!title) title = 'Nova demanda'
@@ -99,20 +100,22 @@ export async function createWorkItemAction(formData: FormData) {
     title,
     description: formData.get('description') as string || null,
     client_id: clientId,
-    type: formData.get('type') as string || 'task',
+    type: formData.get('type') as string || 'Planejamento',
     origin: formData.get('origin') as string || 'planned',
-    status: formData.get('status') as string || 'not_started',
+    status: 'not_started',
     priority: formData.get('priority') as string || 'normal',
     responsible_id: formData.get('responsible_id') as string || null,
     internal_deadline: formData.get('internal_deadline') as string || null,
     final_deadline: endDate || null,
     drive_link: formData.get('drive_link') as string || null,
     notes: formData.get('notes') as string || null,
+    destino,
     created_by: user?.id,
   })
   if (error) return { error: error.message }
   revalidatePath('/dashboard/demandas')
   revalidatePath('/dashboard/kanban')
+  revalidatePath('/dashboard/projetos')
   return { success: true }
 }
 
@@ -155,23 +158,5 @@ export async function createCalendarEventAction(formData: FormData) {
   })
   if (error) return { error: error.message }
   revalidatePath('/dashboard/agenda')
-  return { success: true }
-}
-
-export async function createProjectAction(formData: FormData) {
-  const supabase = createClient()
-  const { error } = await supabase.from('projects').insert({
-    name: formData.get('name') as string,
-    type: formData.get('type') as string || 'project',
-    client_id: formData.get('client_id') as string || null,
-    responsible_id: formData.get('responsible_id') as string || null,
-    status: 'active',
-    description: formData.get('description') as string || null,
-    started_at: new Date().toISOString().split('T')[0],
-    deadline: formData.get('deadline') as string || null,
-    drive_folder_url: formData.get('drive_folder_url') as string || null,
-  })
-  if (error) return { error: error.message }
-  revalidatePath('/dashboard/projetos')
   return { success: true }
 }
