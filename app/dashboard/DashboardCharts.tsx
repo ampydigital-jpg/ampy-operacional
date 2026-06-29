@@ -19,7 +19,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-export default function DashboardCharts({ metrics, todayDemands, soonDemands, pizzaData, barData, statusData, clients, dateStr, priorityColor }: any) {
+export default function DashboardCharts({ metrics, todayDemands, soonDemands, pizzaData, barData, statusData, dateStr, priorityColor }: any) {
   return (
     <div className="page-wrap">
       <div className="topbar">

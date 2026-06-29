@@ -53,7 +53,7 @@ export default function ProjetosView({ demands, clients, profiles }: any) {
     await supabase.from('project_steps').update({ status }).eq('id', etapaId)
     setEtapasMap(em => ({
       ...em,
-      [workItemId]: em[workItemId].map(e => e.id === etapaId ? { ...e, status } : e)
+      [workItemId]: (em[workItemId]||[]).map(e => e.id === etapaId ? { ...e, status } : e)
     }))
   }
 
@@ -61,7 +61,7 @@ export default function ProjetosView({ demands, clients, profiles }: any) {
     await supabase.from('project_steps').delete().eq('id', etapaId)
     setEtapasMap(em => ({
       ...em,
-      [workItemId]: em[workItemId].filter(e => e.id !== etapaId)
+      [workItemId]: (em[workItemId]||[]).filter(e => e.id !== etapaId)
     }))
   }
 

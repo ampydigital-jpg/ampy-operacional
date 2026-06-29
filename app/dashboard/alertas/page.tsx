@@ -7,7 +7,7 @@ export default async function AlertasPage() {
   const [{ data: late }, { data: blocked }, { data: pending }] = await Promise.all([
     supabase.from('work_items').select('*, client:clients(name)').lt('final_deadline', today).not('status', 'in', '(done,cancelled,archived)').order('final_deadline').limit(20),
     supabase.from('work_items').select('*, client:clients(name)').eq('status', 'blocked').order('updated_at', { ascending: false }).limit(20),
-    supabase.from('approvals').select('*, work_item:work_items(title, client:clients(name))').eq('status', 'pending').order('sent_at').limit(20),
+    Promise.resolve({ data: [] }),
   ])
 
   return (

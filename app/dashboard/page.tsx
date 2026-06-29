@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     supabase.from('clients').select('*',{count:'exact',head:true}).eq('status','active'),
     supabase.from('work_items').select('*',{count:'exact',head:true}).not('status','in','(done,cancelled,archived)'),
     supabase.from('work_items').select('*',{count:'exact',head:true}).lt('final_deadline',hoje).not('status','in','(done,cancelled,archived)'),
-    supabase.from('approvals').select('*',{count:'exact',head:true}).eq('status','pending'),
+    Promise.resolve({ count: 0 }),
     supabase.from('work_items').select('*,client:clients(name,avatar_initials,avatar_color,avatar_bg),responsible:profiles(full_name,avatar_initials)').eq('final_deadline',hoje).not('status','in','(done,cancelled,archived)').limit(8),
     supabase.from('work_items').select('*,client:clients(name)').gt('final_deadline',hoje).lte('final_deadline',in3).not('status','in','(done,cancelled,archived)').order('final_deadline').limit(5),
     supabase.from('work_items').select('type,status,priority,final_deadline,created_at').gte('created_at',last30+'T00:00:00').limit(200),
