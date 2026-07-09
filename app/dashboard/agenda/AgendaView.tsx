@@ -143,7 +143,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     </button>
   }
 
-  return <div className="page-wrap">
+  return <div className="page-wrap ops-page">
     <div className="topbar">
       <div className="tb-title">Agenda</div>
       <div className="tb-sub">{periodLabel(period, startDate)}</div>

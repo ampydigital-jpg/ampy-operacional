@@ -29,7 +29,7 @@ export default function ProjetosView({ demands, clients, profiles, loadErrors = 
     return matchesSearch && (clientId === 'all' || item.client_id === clientId) && (responsibleId === 'all' || item.responsible_id === responsibleId) && (status === 'all' || item.status === status)
   }), [safeDemands, query, clientId, responsibleId, status])
 
-  return <div className="page-wrap">
+  return <div className="page-wrap ops-page">
     <div className="topbar">
       <div className="tb-title">Projetos</div>
       <div className="tb-sub">Demandas com processo Projeto ou Quadro + Projeto</div>
