@@ -2,7 +2,7 @@ import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from '../DashboardCharts'
 import { dateKeyInAmpyTimezone } from '@/lib/date'
-import { addDays, countBy, demandTouchesRange, formatDateShort, getDemandDate, isDone, isLate, isOpen, loadOperationData, startOfWeek, statusName, summarizeEvents, summarizeItems, typeName, ymd } from '../dashboard-data'
+import { addDays, countBy, demandTouchesRange, formatDateShort, getDemandDate, isDone, isLate, isOpen, loadOperationData, priorityWeight, startOfWeek, statusName, summarizeEvents, summarizeItems, typeName, ymd } from '../dashboard-data'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -42,7 +42,14 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
   const responsibleData = countBy(weekOpen, (item: any) => item.responsible?.full_name || 'Sem responsável').slice(0, 8)
   const sectorData = countBy(weekDemands, (item: any) => typeName(item.type)).slice(0, 6)
   const deliveryPct = weekDemands.length ? Math.round((weekDone.length / weekDemands.length) * 100) : 0
-  const weekQueue = weekOpen.sort((a: any, b: any) => String(getDemandDate(a) || '').localeCompare(String(getDemandDate(b) || '')))
+  const weekQueue = [...weekOpen].sort((a: any, b: any) => {
+    const dateCompare = String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999'))
+    if (dateCompare !== 0) return dateCompare
+    return priorityWeight(b.priority) - priorityWeight(a.priority)
+  })
+  const priorityQueue = [...priority, ...late]
+    .filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index)
+    .sort((a: any, b: any) => priorityWeight(b.priority) - priorityWeight(a.priority) || String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999')))
 
   return (
     <DashboardCharts
@@ -50,7 +57,7 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
       eyebrow="Dashboard semanal"
       title="Semana"
       periodLabel={`${formatDateShort(startKey)} – ${formatDateShort(ymd(addDays(end, -1)))}`}
-      description="Leitura gráfica das demandas e eventos distribuídos no intervalo semanal."
+      description="Leitura gráfica das demandas, prioridades e eventos distribuídos no intervalo semanal."
       metrics={[
         { label: 'Demandas semana', value: weekDemands.length, hint: 'prazo ou criação no intervalo', tone: 'blue', icon: 'ti-calendar-week' },
         { label: 'Entregas', value: weekDone.length, hint: 'concluídas/entregues', tone: 'green', icon: 'ti-circle-check' },
@@ -59,6 +66,10 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
         { label: 'Prioridades', value: priority.length, hint: 'alta ou urgente', tone: priority.length ? 'yellow' : 'neutral', icon: 'ti-flag' },
       ]}
       progress={{ title: 'Progresso semanal', description: 'Conclusão das demandas previstas na semana.', value: deliveryPct, done: weekDone.length, total: weekDemands.length, remainingLabel: `${Math.max(0, weekDemands.length - weekDone.length)} demanda(s) ainda abertas na semana` }}
+      featured={[
+        { title: 'Resumo da semana', subtitle: 'Demandas abertas mais relevantes', items: summarizeItems(weekQueue, 6) },
+        { title: 'Agenda da semana', subtitle: 'Eventos ordenados por horário', items: summarizeEvents(events, 6) },
+      ]}
       primaryChart={{
         title: 'Distribuição da semana',
         description: 'Demandas, eventos e entregas por dia.',
@@ -70,15 +81,14 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
           { key: 'eventos', name: 'Eventos', color: '#EAB308' },
           { key: 'entregas', name: 'Entregas', color: '#16A34A' },
         ],
-        height: 250,
+        height: 210,
         span: 2,
       }}
-      donut={{ title: 'Status da semana', description: 'Composição das demandas do intervalo.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: weekDemands.length, centerLabel: 'demandas' }}
       bars={{ title: 'Carga por responsável', description: 'Demandas abertas na semana.', data: responsibleData, labelKey: 'name', valueKey: 'value' }}
-      secondaryChart={{ title: 'Demandas por setor', description: 'Tipos de atividades previstas.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#DC2626' }], height: 200 }}
+      donut={{ title: 'Status da semana', description: 'Composição das demandas do intervalo.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: weekDemands.length, centerLabel: 'demandas' }}
+      secondaryChart={{ title: 'Demandas por setor', description: 'Tipos de atividades previstas.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#DC2626' }], height: 180 }}
       summaries={[
-        { title: 'Resumo da semana', subtitle: 'Demandas abertas mais relevantes', items: summarizeItems(weekQueue, 6) },
-        { title: 'Agenda da semana', subtitle: 'Primeiros eventos do período', items: summarizeEvents(events, 6) },
+        { title: 'Prioridades da semana', subtitle: 'Atrasos e demandas de alta prioridade', items: summarizeItems(priorityQueue, 6) },
       ]}
     />
   )

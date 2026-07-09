@@ -2,7 +2,7 @@ import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from '../DashboardCharts'
 import { dateKeyInAmpyTimezone } from '@/lib/date'
-import { addDays, countBy, demandTouchesRange, formatMonth, getDemandDate, isDone, isLate, isOpen, loadOperationData, startOfMonth, statusName, summarizeEvents, summarizeItems, typeName, ymd } from '../dashboard-data'
+import { addDays, countBy, demandTouchesRange, formatMonth, getDemandDate, isDone, isLate, isOpen, loadOperationData, priorityWeight, startOfMonth, statusName, summarizeEvents, summarizeItems, typeName, ymd } from '../dashboard-data'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -25,6 +25,7 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
   const monthDone = monthDemands.filter(isDone)
   const late = demands.filter((item: any) => isLate(item, todayKey))
   const pending = monthDemands.filter((item: any) => ['not_started', 'waiting', 'awaiting_approval', 'scheduled'].includes(String(item.status)))
+  const priority = monthOpen.filter((item: any) => ['urgent', 'high'].includes(String(item.priority)))
   const deliveryPct = monthDemands.length ? Math.round((monthDone.length / monthDemands.length) * 100) : 0
 
   const totalDays = Math.round((end.getTime() - start.getTime()) / 86400000)
@@ -45,7 +46,10 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
   const statusData = countBy(monthDemands, (item: any) => statusName(item.status))
   const clientData = countBy(monthDemands, (item: any) => item.client?.name || 'Interno Ampy').slice(0, 8)
   const sectorData = countBy(monthDemands, (item: any) => typeName(item.type)).slice(0, 7)
-  const relevantOpen = monthOpen.sort((a: any, b: any) => String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999')))
+  const relevantOpen = [...monthOpen].sort((a: any, b: any) => String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999')) || priorityWeight(b.priority) - priorityWeight(a.priority))
+  const focusMonth = [...late, ...priority, ...pending]
+    .filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index)
+    .sort((a: any, b: any) => priorityWeight(b.priority) - priorityWeight(a.priority) || String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999')))
 
   return (
     <DashboardCharts
@@ -62,6 +66,10 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
         { label: 'Eventos', value: events.length, hint: 'agenda do mês', tone: 'blue', icon: 'ti-calendar-event' },
       ]}
       progress={{ title: '% Entrega mensal', description: 'Quanto já foi entregue no mês.', value: deliveryPct, done: monthDone.length, total: monthDemands.length, remainingLabel: `${Math.max(0, monthDemands.length - monthDone.length)} demanda(s) ainda faltam no mês` }}
+      featured={[
+        { title: 'Pendências do mês', subtitle: 'Demandas abertas mais relevantes', items: summarizeItems(relevantOpen, 6) },
+        { title: 'Eventos do mês', subtitle: 'Próximos eventos registrados', items: summarizeEvents(events, 6) },
+      ]}
       primaryChart={{
         title: 'Evolução do mês',
         description: 'Demandas, entregas e atrasos por semana.',
@@ -73,16 +81,14 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
           { key: 'entregas', name: 'Entregas', color: '#16A34A' },
           { key: 'atrasos', name: 'Atrasos', color: '#DC2626' },
         ],
-        height: 250,
+        height: 210,
         span: 2,
       }}
-      donut={{ title: 'Status do mês', description: 'Distribuição de status das demandas mensais.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: monthDemands.length, centerLabel: 'demandas' }}
       bars={{ title: 'Demandas por cliente', description: 'Clientes com maior volume no mês.', data: clientData, labelKey: 'name', valueKey: 'value' }}
-      secondaryChart={{ title: 'Demandas por setor', description: 'Volume mensal por tipo de atividade.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#EAB308' }], height: 200 }}
+      donut={{ title: 'Status do mês', description: 'Distribuição de status das demandas mensais.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: monthDemands.length, centerLabel: 'demandas' }}
+      secondaryChart={{ title: 'Demandas por setor', description: 'Volume mensal por tipo de atividade.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#EAB308' }], height: 180 }}
       summaries={[
-        { title: 'Pendências do mês', subtitle: 'Demandas abertas com maior prioridade', items: summarizeItems(relevantOpen, 6) },
-        { title: 'Eventos do mês', subtitle: 'Próximos eventos registrados', items: summarizeEvents(events, 6) },
-        { title: 'Foco do mês', subtitle: 'Atrasos e demandas de alta prioridade', items: summarizeItems([...late, ...monthOpen.filter((item: any) => ['urgent', 'high'].includes(String(item.priority)))].filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index), 6) },
+        { title: 'Foco do mês', subtitle: 'Atrasos, prioridades e pendências', items: summarizeItems(focusMonth, 6) },
       ]}
     />
   )

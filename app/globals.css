@@ -928,3 +928,86 @@ body { background: var(--bg); color: var(--t1); }
 @media (max-width: 960px) {
   .dash-variant-day .dash-main-grid { grid-template-columns: 1fr; }
 }
+
+/* HOTFIX 11 — FECHAMENTO VISUAL SEMANA/MÊS PARA TV */
+.dash-variant-week .dash-focus-grid,
+.dash-variant-month .dash-focus-grid {
+  grid-template-columns: .95fr 1.05fr 1.05fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dash-variant-week .dash-focus-grid .dash-card,
+.dash-variant-month .dash-focus-grid .dash-card {
+  min-height: 248px;
+}
+.dash-variant-week .progress-card,
+.dash-variant-month .progress-card {
+  justify-content: center;
+}
+.dash-variant-week .dash-main-grid,
+.dash-variant-month .dash-main-grid {
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.dash-variant-week .dash-main-grid .dash-card,
+.dash-variant-month .dash-main-grid .dash-card {
+  min-height: 244px;
+}
+.dash-variant-week .chart-card .dash-chart,
+.dash-variant-month .chart-card .dash-chart {
+  height: 210px !important;
+}
+.dash-variant-week .dash-span-2,
+.dash-variant-month .dash-span-2 {
+  grid-column: span 2;
+}
+.dash-variant-week .summary-card,
+.dash-variant-month .summary-card {
+  min-height: 244px;
+}
+.dash-variant-week .summary-list,
+.dash-variant-month .summary-list {
+  max-height: 188px;
+  overflow: hidden;
+}
+.dash-variant-week .dash-donut-wrap,
+.dash-variant-month .dash-donut-wrap {
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  min-height: 190px;
+}
+.dash-variant-week .dash-donut,
+.dash-variant-month .dash-donut {
+  height: 166px;
+}
+.dash-variant-week .dash-bars,
+.dash-variant-month .dash-bars {
+  max-height: 190px;
+  overflow: hidden;
+}
+.dash-variant-week .dash-empty,
+.dash-variant-month .dash-empty {
+  min-height: 120px;
+}
+
+@media (min-width: 1500px) {
+  .dash-variant-week .dash-focus-grid .dash-card,
+  .dash-variant-month .dash-focus-grid .dash-card { min-height: 260px; }
+  .dash-variant-week .dash-main-grid .dash-card,
+  .dash-variant-month .dash-main-grid .dash-card { min-height: 252px; }
+}
+@media (max-width: 1320px) {
+  .dash-variant-week .dash-focus-grid,
+  .dash-variant-month .dash-focus-grid { grid-template-columns: 1fr; }
+  .dash-variant-week .dash-main-grid,
+  .dash-variant-month .dash-main-grid { grid-template-columns: 1fr 1fr; }
+  .dash-variant-week .dash-span-2,
+  .dash-variant-month .dash-span-2 { grid-column: span 2; }
+}
+@media (max-width: 960px) {
+  .dash-variant-week .dash-main-grid,
+  .dash-variant-month .dash-main-grid { grid-template-columns: 1fr; }
+  .dash-variant-week .dash-span-2,
+  .dash-variant-month .dash-span-2 { grid-column: span 1; }
+}
