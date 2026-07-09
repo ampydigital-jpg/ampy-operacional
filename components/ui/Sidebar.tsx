@@ -1,76 +1,71 @@
 'use client'
+
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/types'
 
-const nav = [
-  { group: 'Dashboards', items: [
-    { href: '/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
-    { href: '/dashboard/meu-dia', icon: 'ti-sun', label: 'Meu dia' },
-    { href: '/dashboard/semana-equipe', icon: 'ti-calendar-week', label: 'Semana equipe' },
-    { href: '/dashboard/avisos', icon: 'ti-bell', label: 'Avisos', badge: true },
+const groups = [
+  { label: 'Dashboards', items: [
+    { href: '/dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard' },
+    { href: '/dashboard/meu-dia', label: 'Meu dia', icon: 'ti-sun' },
+    { href: '/dashboard/minha-semana', label: 'Minha semana', icon: 'ti-calendar-week' },
+    { href: '/dashboard/alertas', label: 'Alertas', icon: 'ti-bell-ringing' },
   ]},
-  { group: 'Operação', items: [
-    { href: '/dashboard/clientes', icon: 'ti-users', label: 'Painel de Clientes' },
-    { href: '/dashboard/demandas', icon: 'ti-checklist', label: 'Demandas' },
-    { href: '/dashboard/kanban', icon: 'ti-layout-kanban', label: 'Kanban' },
-    { href: '/dashboard/projetos', icon: 'ti-folder', label: 'Projetos' },
-    { href: '/dashboard/agenda', icon: 'ti-calendar', label: 'Agenda' },
-    { href: '/dashboard/clientes/feed-preview', icon: 'ti-grid-dots', label: 'Feed Preview' },
+  { label: 'Operação', items: [
+    { href: '/dashboard/clientes', label: 'Painel de Clientes', icon: 'ti-users' },
+    { href: '/dashboard/demandas', label: 'Demandas', icon: 'ti-checklist' },
+    { href: '/dashboard/quadro', label: 'Quadro', icon: 'ti-layout-kanban' },
+    { href: '/dashboard/projetos', label: 'Projetos', icon: 'ti-route' },
+    { href: '/dashboard/agenda', label: 'Agenda', icon: 'ti-calendar-event' },
+    { href: '/dashboard/feed-preview', label: 'Feed Preview', icon: 'ti-grid-dots' },
   ]},
-  { group: 'Equipe', items: [
-    { href: '/dashboard/chat', icon: 'ti-message-circle', label: 'Comunicação' },
-    { href: '/dashboard/equipe', icon: 'ti-users-group', label: 'Equipe' },
-    { href: '/dashboard/relatorios', icon: 'ti-chart-bar', label: 'Relatórios' },
+  { label: 'Equipe', items: [
+    { href: '/dashboard/comunicacao', label: 'Comunicação', icon: 'ti-message-circle' },
+    { href: '/dashboard/equipe', label: 'Equipe', icon: 'ti-users-group' },
+    { href: '/dashboard/relatorios', label: 'Relatórios', icon: 'ti-chart-bar' },
   ]},
-  { group: 'Sistema', items: [
-    { href: '/dashboard/configuracoes', icon: 'ti-settings', label: 'Configurações' },
+  { label: 'Sistema', items: [
+    { href: '/dashboard/configuracoes', label: 'Configurações', icon: 'ti-settings' },
   ]},
 ]
 
-export default function Sidebar({ profile }: { profile: Profile | null }) {
+export default function Sidebar({ profile }: { profile: any }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
 
   async function logout() {
+    const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = '/login'
+    router.replace('/login')
+    router.refresh()
   }
 
   return (
-    <div className="sb">
+    <aside className="sb">
       <div className="sb-brand">
         <div className="brand-ico">A</div>
-        <div>
-          <div className="brand-name">Ampy</div>
-          <div className="brand-sub">Digital</div>
-        </div>
+        <div><div className="brand-name">Ampy</div><div className="brand-sub">Digital</div></div>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {nav.map(g => (
-          <div key={g.group} className="nav-grp">
-            <div className="nav-lbl">{g.group}</div>
-            {g.items.map(item => (
-              <Link key={item.href} href={item.href} className={`nav-item ${pathname.startsWith(item.href) && item.href !== '/dashboard' ? 'active' : pathname === item.href ? 'active' : ''}`}>
-                <i className={`ti ${item.icon}`} />
-                <span>{item.label}</span>
-                {item.badge && <span className="nav-badge">!</span>}
-              </Link>
-            ))}
+      <nav style={{ overflowY: 'auto', flex: 1 }}>
+        {groups.map((group) => (
+          <div className="nav-grp" key={group.label}>
+            <div className="nav-lbl">{group.label}</div>
+            {group.items.map((item) => {
+              const active = item.href === '/dashboard' ? pathname === item.href : pathname.startsWith(item.href)
+              return (
+                <Link href={item.href} className={`nav-item ${active ? 'active' : ''}`} key={item.href}>
+                  <i className={`ti ${item.icon}`} /><span>{item.label}</span>
+                  {item.href === '/dashboard/alertas' && <span className="nav-badge">!</span>}
+                </Link>
+              )
+            })}
           </div>
         ))}
-      </div>
-      <div className="sb-user" onClick={logout} title="Sair">
-        <div className="uav" style={{ background: profile?.avatar_bg || '#1C1C1C', color: profile?.avatar_color || '#888' }}>
-          {profile?.avatar_initials || 'AM'}
-        </div>
-        <div>
-          <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--t2)' }}>{profile?.full_name || 'Usuário'}</div>
-          <div style={{ fontSize: '10px', color: 'var(--t4)' }}>Sair</div>
-        </div>
-      </div>
-    </div>
+      </nav>
+      <button className="sb-user" onClick={logout} title="Sair" type="button">
+        <div className="uav" style={{ background: profile?.avatar_bg || '#1C1C1C', color: profile?.avatar_color || '#888' }}>{profile?.avatar_initials || 'AM'}</div>
+        <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--t2)' }}>{profile?.full_name || 'Usuário'}</div><div style={{ fontSize: '10px', color: 'var(--t4)' }}>Sair</div></div>
+      </button>
+    </aside>
   )
 }

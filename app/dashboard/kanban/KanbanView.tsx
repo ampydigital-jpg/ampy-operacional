@@ -18,8 +18,12 @@ const columns = [
 ]
 const priorityColor: Record<string,string> = { urgent:'var(--err)', high:'var(--warn)', normal:'var(--blue)', low:'var(--t4)' }
 
-export default function KanbanView({ demands, clients, profiles }: any) {
-  const [items, setItems] = useState(demands)
+export default function KanbanView({ demands, clients, profiles, loadErrors = [] }: any) {
+  const safeDemands = Array.isArray(demands) ? demands.filter(Boolean) : []
+  const safeClients = Array.isArray(clients) ? clients.filter(Boolean) : []
+  const safeProfiles = Array.isArray(profiles) ? profiles.filter(Boolean) : []
+  const safeLoadErrors = Array.isArray(loadErrors) ? loadErrors.filter(Boolean) : []
+  const [items, setItems] = useState(safeDemands)
   const [dragId, setDragId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [clientId, setClientId] = useState('all')
@@ -44,7 +48,8 @@ export default function KanbanView({ demands, clients, profiles }: any) {
 
   return <div className="page-wrap">
     <div className="topbar"><div className="tb-title">Quadro</div><div className="sbox"><i className="ti ti-search"/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Buscar demanda..."/></div><Link className="bpri" href="/dashboard/demandas"><i className="ti ti-plus"/> Nova demanda</Link></div>
-    <div className="board-toolbar"><select className="fi compact" value={clientId} onChange={(e)=>setClientId(e.target.value)}><option value="all">Todos os clientes</option>{clients.map((client:any)=><option key={client.id} value={client.id}>{client.name}</option>)}</select><select className="fi compact" value={responsibleId} onChange={(e)=>setResponsibleId(e.target.value)}><option value="all">Todos responsáveis</option>{profiles.map((profile:any)=><option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select><span className="board-hint">Arraste cards entre colunas para mudar o status. A criação acontece apenas em Demandas.</span></div>
+    <div className="board-toolbar"><select className="fi compact" value={clientId} onChange={(e)=>setClientId(e.target.value)}><option value="all">Todos os clientes</option>{safeClients.map((client:any)=><option key={client.id} value={client.id}>{client.name}</option>)}</select><select className="fi compact" value={responsibleId} onChange={(e)=>setResponsibleId(e.target.value)}><option value="all">Todos responsáveis</option>{safeProfiles.map((profile:any)=><option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select><span className="board-hint">Arraste cards entre colunas para mudar o status. A criação acontece apenas em Demandas.</span></div>
+    {safeLoadErrors.length > 0 && <div className="notice notice-err" style={{ margin:'10px 20px' }}><i className="ti ti-alert-circle" /><span>{safeLoadErrors.join(' | ')}</span></div>}
     <div ref={wrapRef} onMouseDown={panStart} className="kanban-wrap">
       {columns.map((column) => {
         const cards = filtered.filter((item:any) => item.status === column.id)
