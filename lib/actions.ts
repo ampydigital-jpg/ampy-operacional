@@ -526,3 +526,260 @@ export async function updateMemberAccessAction(formData: FormData) {
   revalidateOperationalPaths()
   return { success: true }
 }
+
+// =========================================================
+// HOTFIX 15B — Feed Preview documentos/grades
+// =========================================================
+
+function feedActionValue(formData: FormData, key: string) {
+  return String(formData.get(key) || '').trim()
+}
+
+function feedActionNullable(formData: FormData, key: string) {
+  const result = feedActionValue(formData, key)
+  return result || null
+}
+
+function feedMonthStart(raw: string | null | undefined) {
+  const clean = String(raw || '').trim()
+  if (/^\d{4}-\d{2}$/.test(clean)) return `${clean}-01`
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return `${clean.slice(0, 7)}-01`
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+function feedValidPreset(input: string | null | undefined) {
+  const value = String(input || 'custom')
+  return ['custom', 'standard', 'minimalist', 'creative', 'neutral', 'bold'].includes(value) ? value : 'custom'
+}
+
+function feedValidBoardStatus(input: string | null | undefined) {
+  const value = String(input || 'draft')
+  return ['draft', 'in_progress', 'sent', 'approved', 'changes_requested', 'archived'].includes(value) ? value : 'draft'
+}
+
+function revalidateFeedBoardPaths(boardId?: string | null) {
+  revalidatePath('/dashboard/feed-preview')
+  if (boardId) revalidatePath(`/dashboard/feed-preview/${boardId}`)
+}
+
+async function addFeedBoardEventInternal(
+  supabase: ReturnType<typeof createClient>,
+  boardId: string,
+  itemId: string | null,
+  eventType: string,
+  message: string,
+  metadata: Record<string, any> = {}
+) {
+  try {
+    const { data: auth } = await supabase.auth.getUser()
+    await supabase.from('feed_board_events').insert({
+      board_id: boardId,
+      item_id: itemId,
+      actor_type: 'internal',
+      actor_id: auth.user?.id || null,
+      actor_name: 'Ampy Digital',
+      event_type: eventType,
+      message,
+      metadata,
+    })
+  } catch {}
+}
+
+export async function createFeedBoardAction(formData: FormData) {
+  const supabase = createClient()
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) return { error: 'Sessao expirada. Faca login novamente.' }
+
+  const clientId = feedActionValue(formData, 'client_id')
+  if (!clientId) return { error: 'Selecione um cliente.' }
+
+  const periodMonth = feedMonthStart(feedActionValue(formData, 'period_month'))
+  const title = feedActionValue(formData, 'title') || `Feed Preview ${periodMonth.slice(5, 7)}/${periodMonth.slice(0, 4)}`
+
+  const { data, error } = await supabase
+    .from('feed_boards')
+    .insert({
+      client_id: clientId,
+      title,
+      period_month: periodMonth,
+      status: 'draft',
+      visual_preset: feedValidPreset(feedActionValue(formData, 'visual_preset')),
+      created_by: auth.user.id,
+      notes: feedActionNullable(formData, 'notes'),
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+
+  revalidateFeedBoardPaths(data.id)
+  return { success: true, id: data.id }
+}
+
+export async function updateFeedBoardAction(boardId: string, formData: FormData) {
+  const supabase = createClient()
+
+  const update = {
+    title: feedActionValue(formData, 'title') || 'Feed Preview',
+    status: feedValidBoardStatus(feedActionValue(formData, 'status')),
+    visual_preset: feedValidPreset(feedActionValue(formData, 'visual_preset')),
+    notes: feedActionNullable(formData, 'notes'),
+  }
+
+  const { error } = await supabase
+    .from('feed_boards')
+    .update(update)
+    .eq('id', boardId)
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    null,
+    'board_updated',
+    'Ampy Digital atualizou o documento.',
+    update
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true }
+}
+
+export async function createFeedBoardItemAction(formData: FormData) {
+  const supabase = createClient()
+
+  const boardId = feedActionValue(formData, 'board_id')
+  if (!boardId) return { error: 'Documento nao encontrado.' }
+
+  const positionRaw = Number(feedActionValue(formData, 'position') || '0')
+  const position = Number.isFinite(positionRaw) && positionRaw >= 0 ? positionRaw : 0
+
+  const payload = {
+    board_id: boardId,
+    position,
+    title: feedActionNullable(formData, 'title'),
+    cover_url: feedActionNullable(formData, 'cover_url'),
+    storage_path: feedActionNullable(formData, 'storage_path'),
+    content_url: feedActionNullable(formData, 'content_url'),
+    caption: feedActionNullable(formData, 'caption'),
+    internal_notes: feedActionNullable(formData, 'internal_notes'),
+    approval_status: 'pending',
+  }
+
+  const { data, error } = await supabase
+    .from('feed_board_items')
+    .insert(payload)
+    .select('*')
+    .single()
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    data.id,
+    'item_created',
+    `Ampy Digital adicionou a capa ${position + 1}.`,
+    { title: payload.title, storage_path: payload.storage_path }
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true, item: data }
+}
+
+export async function updateFeedBoardItemAction(itemId: string, formData: FormData) {
+  const supabase = createClient()
+
+  const { data: existing, error: existingError } = await supabase
+    .from('feed_board_items')
+    .select('id,board_id,title,content_url,caption,internal_notes')
+    .eq('id', itemId)
+    .single()
+
+  if (existingError || !existing) return { error: existingError?.message || 'Item nao encontrado.' }
+
+  const update = {
+    title: feedActionNullable(formData, 'title'),
+    content_url: feedActionNullable(formData, 'content_url'),
+    caption: feedActionNullable(formData, 'caption'),
+    internal_notes: feedActionNullable(formData, 'internal_notes'),
+  }
+
+  const { error } = await supabase
+    .from('feed_board_items')
+    .update(update)
+    .eq('id', itemId)
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    existing.board_id,
+    itemId,
+    'item_updated',
+    'Ampy Digital atualizou um item do documento.',
+    update
+  )
+
+  revalidateFeedBoardPaths(existing.board_id)
+  return { success: true }
+}
+
+export async function reorderFeedBoardItemsAction(boardId: string, itemIds: string[]) {
+  const supabase = createClient()
+
+  const safeIds = Array.isArray(itemIds) ? itemIds.filter(Boolean) : []
+  if (!boardId || safeIds.length === 0) return { error: 'Ordem invalida.' }
+
+  const updates = await Promise.all(
+    safeIds.map((id, index) =>
+      supabase
+        .from('feed_board_items')
+        .update({ position: index })
+        .eq('id', id)
+        .eq('board_id', boardId)
+    )
+  )
+
+  const firstError = updates.find((result) => result.error)?.error
+  if (firstError) return { error: firstError.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    null,
+    'items_reordered',
+    'Ampy Digital alterou a ordem da grade.',
+    { itemIds: safeIds }
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true }
+}
+
+export async function deleteFeedBoardItemAction(itemId: string, boardId: string) {
+  const supabase = createClient()
+
+  if (!itemId || !boardId) return { error: 'Item invalido.' }
+
+  const { error } = await supabase
+    .from('feed_board_items')
+    .delete()
+    .eq('id', itemId)
+    .eq('board_id', boardId)
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    null,
+    'item_deleted',
+    'Ampy Digital removeu uma capa do documento.'
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true }
+}

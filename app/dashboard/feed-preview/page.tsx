@@ -1,6 +1,6 @@
 ﻿import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import FeedPreviewView from './FeedPreviewView'
+import FeedPreviewHome from './FeedPreviewHome'
 
 function mapById(items: any[] | null | undefined) {
   return new Map((Array.isArray(items) ? items : []).filter(Boolean).map((item) => [item.id, item]))
@@ -14,42 +14,30 @@ export default async function FeedPreviewPage() {
 
   const supabase = createClient()
 
-  const [demandsResult, clientsResult, profilesResult] = await Promise.all([
+  const [boardsResult, clientsResult] = await Promise.all([
     supabase
-      .from('work_items')
-      .select('id,title,description,type,origin,destino,status,priority,client_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at')
-      .not('status', 'in', '(archived,cancelled)')
+      .from('feed_boards')
+      .select('id,client_id,title,period_month,status,visual_preset,share_token,notes,published_at,last_client_action_at,created_at,updated_at')
       .order('updated_at', { ascending: false })
-      .limit(500),
+      .limit(200),
     supabase
       .from('clients')
-      .select('id,name,segment,status')
-      .eq('status', 'active')
+      .select('id,name,segment,status,main_contact_phone,instagram')
       .order('name'),
-    supabase
-      .from('profiles')
-      .select('id,full_name,role,is_active')
-      .eq('is_active', true)
-      .order('full_name'),
   ])
 
   const clients = clientsResult.data || []
-  const profiles = profilesResult.data || []
-
   const clientsById = mapById(clients)
-  const profilesById = mapById(profiles)
 
-  const demands = (demandsResult.data || []).map((item: any) => ({
-    ...item,
-    client: item.client_id ? clientsById.get(item.client_id) || null : null,
-    responsible: item.responsible_id ? profilesById.get(item.responsible_id) || null : null,
+  const boards = (boardsResult.data || []).map((board: any) => ({
+    ...board,
+    client: board.client_id ? clientsById.get(board.client_id) || null : null,
   }))
 
   const loadErrors = [
-    demandsResult.error ? `Demandas: ${demandsResult.error.message}` : null,
+    boardsResult.error ? `Documentos: ${boardsResult.error.message}` : null,
     clientsResult.error ? `Clientes: ${clientsResult.error.message}` : null,
-    profilesResult.error ? `Responsaveis: ${profilesResult.error.message}` : null,
   ].filter(Boolean) as string[]
 
-  return <FeedPreviewView demands={demands} clients={clients} profiles={profiles} loadErrors={loadErrors} />
+  return <FeedPreviewHome boards={boards} clients={clients} loadErrors={loadErrors} />
 }
