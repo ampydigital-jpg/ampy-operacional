@@ -13,7 +13,7 @@ const TONES: Record<string, { color: string; bg: string; iconBg: string }> = {
 
 type Metric = { label: string; value: string | number; hint?: string; tone?: string; icon?: string }
 type Series = { key: string; name: string; color?: string }
-type ChartSpec = { title: string; description?: string; type?: 'bar' | 'line'; data: any[]; xKey: string; series: Series[]; height?: number }
+type ChartSpec = { title: string; description?: string; type?: 'bar' | 'line'; data: any[]; xKey: string; series: Series[]; height?: number; span?: 1 | 2 | 3 }
 type DonutSpec = { title: string; description?: string; data: any[]; nameKey: string; valueKey: string; centerLabel?: string; centerValue?: string | number }
 type BarsSpec = { title: string; description?: string; data: any[]; labelKey: string; valueKey: string; max?: number }
 type SummaryBlock = { title: string; subtitle?: string; items: { label: string; value: string | number; tone?: string; meta?: string }[] }
@@ -23,16 +23,24 @@ type Props = {
   periodLabel: string
   eyebrow?: string
   description?: string
+  variant?: 'control' | 'day' | 'week' | 'month'
   metrics: Metric[]
   primaryChart?: ChartSpec
   secondaryChart?: ChartSpec
   donut?: DonutSpec
   bars?: BarsSpec
   progress?: { title: string; description?: string; value: number; done: number; total: number; remainingLabel: string }
+  featured?: SummaryBlock[]
   summaries?: SummaryBlock[]
 }
 
 const formatTooltipValue = (value: any) => typeof value === 'number' ? value.toLocaleString('pt-BR') : value
+
+function spanClass(span?: 1 | 2 | 3) {
+  if (span === 3) return 'dash-span-3'
+  if (span === 2) return 'dash-span-2'
+  return ''
+}
 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
@@ -68,7 +76,7 @@ function ChartCard({ chart }: { chart: ChartSpec }) {
   const height = chart.height || 250
   const isLine = chart.type === 'line'
   return (
-    <section className="dash-card">
+    <section className="dash-card chart-card">
       <div className="dash-card-head">
         <div>
           <h3>{chart.title}</h3>
@@ -104,13 +112,8 @@ function ChartCard({ chart }: { chart: ChartSpec }) {
 
 function DonutCard({ donut }: { donut: DonutSpec }) {
   return (
-    <section className="dash-card">
-      <div className="dash-card-head">
-        <div>
-          <h3>{donut.title}</h3>
-          {donut.description && <p>{donut.description}</p>}
-        </div>
-      </div>
+    <section className="dash-card donut-card">
+      <div className="dash-card-head"><div><h3>{donut.title}</h3>{donut.description && <p>{donut.description}</p>}</div></div>
       <div className="dash-donut-wrap">
         <div className="dash-donut">
           {donut.data.length === 0 ? <EmptyChart /> : (
@@ -136,13 +139,8 @@ function DonutCard({ donut }: { donut: DonutSpec }) {
 function HorizontalBars({ bars }: { bars: BarsSpec }) {
   const max = bars.max || Math.max(1, ...bars.data.map((item: any) => Number(item[bars.valueKey] || 0)))
   return (
-    <section className="dash-card">
-      <div className="dash-card-head">
-        <div>
-          <h3>{bars.title}</h3>
-          {bars.description && <p>{bars.description}</p>}
-        </div>
-      </div>
+    <section className="dash-card bars-card">
+      <div className="dash-card-head"><div><h3>{bars.title}</h3>{bars.description && <p>{bars.description}</p>}</div></div>
       <div className="dash-bars">
         {bars.data.length === 0 ? <EmptyChart /> : bars.data.slice(0, 8).map((item: any, index: number) => {
           const value = Number(item[bars.valueKey] || 0)
@@ -164,15 +162,15 @@ function ProgressCard({ progress }: { progress: NonNullable<Props['progress']> }
       <div className="progress-ring" style={{ ['--progress' as any]: `${value * 3.6}deg` }}>
         <div><b>{value}%</b><span>entregue</span></div>
       </div>
-      <div className="progress-meta"><div><b>{progress.done}</b><span>concluídas</span></div><div><b>{progress.total}</b><span>total mês</span></div></div>
+      <div className="progress-meta"><div><b>{progress.done}</b><span>concluídas</span></div><div><b>{progress.total}</b><span>total</span></div></div>
       <div className="progress-foot">{progress.remainingLabel}</div>
     </section>
   )
 }
 
-function Summary({ block }: { block: SummaryBlock }) {
+function Summary({ block, featured = false }: { block: SummaryBlock; featured?: boolean }) {
   return (
-    <section className="dash-card summary-card">
+    <section className={`dash-card summary-card ${featured ? 'summary-featured' : ''}`}>
       <div className="dash-card-head"><div><h3>{block.title}</h3>{block.subtitle && <p>{block.subtitle}</p>}</div></div>
       <div className="summary-list">
         {block.items.length === 0 ? <EmptyChart label="Sem itens para este período" /> : block.items.map((item, index) => {
@@ -188,9 +186,10 @@ function EmptyChart({ label = 'Sem dados suficientes' }: { label?: string }) {
   return <div className="dash-empty"><i className="ti ti-chart-dots" />{label}</div>
 }
 
-export default function DashboardCharts({ title, periodLabel, eyebrow, description, metrics, primaryChart, secondaryChart, donut, bars, progress, summaries = [] }: Props) {
+export default function DashboardCharts({ title, periodLabel, eyebrow, description, variant = 'control', metrics, primaryChart, secondaryChart, donut, bars, progress, featured = [], summaries = [] }: Props) {
+  const hasFocus = Boolean(progress || featured.length)
   return (
-    <div className="page-wrap dash-pro-page">
+    <div className={`page-wrap dash-pro-page dash-variant-${variant}`}>
       <div className="dash-pro-head">
         <div>
           {eyebrow && <div className="dash-eyebrow">{eyebrow}</div>}
@@ -201,12 +200,16 @@ export default function DashboardCharts({ title, periodLabel, eyebrow, descripti
       </div>
       <div className="dash-pro-body">
         <div className="dash-stat-grid">{metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}</div>
-        <div className="dash-main-grid">
-          {primaryChart && <div className="dash-span-2"><ChartCard chart={primaryChart} /></div>}
+        {hasFocus && <div className="dash-focus-grid">
           {progress && <ProgressCard progress={progress} />}
+          {featured.map((block) => <Summary key={block.title} block={block} featured />)}
+        </div>}
+        <div className="dash-main-grid">
+          {primaryChart && <div className={spanClass(primaryChart.span || 1)}><ChartCard chart={primaryChart} /></div>}
+          {!hasFocus && progress && <ProgressCard progress={progress} />}
           {donut && <DonutCard donut={donut} />}
           {bars && <HorizontalBars bars={bars} />}
-          {secondaryChart && <ChartCard chart={secondaryChart} />}
+          {secondaryChart && <div className={spanClass(secondaryChart.span || 1)}><ChartCard chart={secondaryChart} /></div>}
           {summaries.map((block) => <Summary key={block.title} block={block} />)}
         </div>
       </div>

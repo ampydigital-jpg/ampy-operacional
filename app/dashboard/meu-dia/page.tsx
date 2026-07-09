@@ -1,8 +1,8 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from '../DashboardCharts'
-import { addDateKeyDays, ampyDayStart, dateKeyInAmpyTimezone } from '@/lib/date'
-import { countBy, formatDateLong, formatDateShort, getDemandDate, isDone, isLate, isOpen, statusName, summarizeItems, typeName } from '../dashboard-data'
+import { addDateKeyDays, dateKeyInAmpyTimezone } from '@/lib/date'
+import { countBy, formatDateLong, getDemandDate, isDone, isLate, isOpen, loadOperationData, statusName, summarizeEvents, summarizeItems, typeName } from '../dashboard-data'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -13,31 +13,9 @@ export default async function DiaPage() {
   const todayKey = dateKeyInAmpyTimezone()
   const tomorrowKey = addDateKeyDays(todayKey, 1)
 
-  const [{ data: demandsRaw }, { data: eventsRaw }, { data: stepsRaw }] = await Promise.all([
-    supabase
-      .from('work_items')
-      .select('id,title,type,status,priority,destino,client_id,responsible_id,internal_deadline,final_deadline,created_at,updated_at,closed_at,client:clients(name),responsible:profiles(full_name)')
-      .not('status', 'in', '(archived,cancelled)')
-      .limit(1000),
-    supabase
-      .from('calendar_events')
-      .select('id,title,type,starts_at,ends_at,all_day,client:clients(name),responsible:profiles(full_name),work_item:work_items(id,title)')
-      .gte('starts_at', ampyDayStart(todayKey))
-      .lt('starts_at', ampyDayStart(tomorrowKey))
-      .order('starts_at')
-      .limit(300),
-    supabase
-      .from('project_steps')
-      .select('id,title,start_date,end_date,status,work_item:work_items(id,title,client:clients(name)),responsible:profiles(full_name)')
-      .or(`start_date.eq.${todayKey},end_date.eq.${todayKey}`)
-      .neq('status', 'done')
-      .order('position')
-      .limit(200),
-  ])
-
-  const demands = demandsRaw || []
-  const events = eventsRaw || []
-  const steps = stepsRaw || []
+  const source = await loadOperationData(supabase, { eventStartKey: todayKey, eventEndKey: tomorrowKey })
+  const demands = source.demands.filter((item: any) => !['archived', 'cancelled'].includes(String(item.status)))
+  const events = source.events
   const open = demands.filter(isOpen)
   const dueToday = open.filter((item: any) => item.final_deadline === todayKey || item.internal_deadline === todayKey)
   const late = open.filter((item: any) => isLate(item, todayKey))
@@ -49,6 +27,7 @@ export default async function DiaPage() {
     return {
       hora: `${String(hour).padStart(2, '0')}h`,
       eventos: events.filter((event: any) => Number(String(event.starts_at || '').slice(11, 13)) === hour).length,
+      demandas: dueToday.filter((item: any) => String(getDemandDate(item) || '') === todayKey).length,
     }
   })
 
@@ -61,6 +40,7 @@ export default async function DiaPage() {
 
   return (
     <DashboardCharts
+      variant="day"
       eyebrow="Dashboard diário"
       title="Dia"
       periodLabel={formatDateLong(todayKey)}
@@ -78,8 +58,12 @@ export default async function DiaPage() {
         type: 'bar',
         data: hourly,
         xKey: 'hora',
-        series: [{ key: 'eventos', name: 'Eventos', color: '#2563EB' }],
-        height: 260,
+        series: [
+          { key: 'eventos', name: 'Eventos', color: '#2563EB' },
+          { key: 'demandas', name: 'Demandas', color: '#EAB308' },
+        ],
+        height: 250,
+        span: 2,
       }}
       donut={{ title: 'Status do dia', description: 'Demandas do dia e atrasadas abertas.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: dueToday.length + late.length, centerLabel: 'itens' }}
       bars={{ title: 'Carga por responsável', description: 'Demandas com prazo hoje.', data: responsibleData, labelKey: 'name', valueKey: 'value' }}
@@ -90,11 +74,11 @@ export default async function DiaPage() {
         data: sectorData,
         xKey: 'name',
         series: [{ key: 'value', name: 'Demandas', color: '#16A34A' }],
-        height: 220,
+        height: 200,
       }}
       summaries={[
         { title: 'Fila crítica', subtitle: 'Atrasos, entregas do dia e prioridades', items: summarizeItems(priorityQueue, 6) },
-        { title: 'Cronograma', subtitle: 'Etapas com início ou fim hoje', items: steps.slice(0, 6).map((step: any) => ({ label: step.title, value: step.end_date ? formatDateShort(step.end_date) : 'hoje', meta: `${step.work_item?.title || 'Demanda'} · ${step.responsible?.full_name || 'sem responsável'}`, tone: 'blue' })) },
+        { title: 'Agenda do dia', subtitle: 'Eventos ordenados por horário', items: summarizeEvents(events, 6) },
       ]}
     />
   )

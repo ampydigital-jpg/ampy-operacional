@@ -589,3 +589,291 @@ body { background: var(--bg); color: var(--t1); }
 .dash-empty i { font-size: 24px; color: var(--t4); }
 @media (max-width: 1320px) { .dash-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dash-main-grid { grid-template-columns: 1fr 1fr; } .dash-span-2 { grid-column: span 2; } }
 @media (max-width: 960px) { .dash-stat-grid, .dash-main-grid { grid-template-columns: 1fr; } .dash-span-2 { grid-column: span 1; } .dash-donut-wrap { grid-template-columns: 1fr; } .dash-pro-head { flex-direction: column; align-items: flex-start; } }
+
+/* HOTFIX 09 — INTEGRAÇÃO REAL, DASHBOARDS PARA TV E AGENDA CLARA */
+.dash-pro-page {
+  min-height: 100vh;
+  background: #DDE4EE;
+}
+.dash-pro-head {
+  padding: 22px 24px 14px;
+}
+.dash-pro-body {
+  padding: 0 24px 24px;
+}
+.dash-pro-head h1 {
+  font-size: 26px;
+  letter-spacing: -.9px;
+}
+.dash-pro-head p {
+  font-size: 11px;
+  color: #475467;
+}
+.dash-period {
+  background: #FFFFFF;
+  color: #1F2937;
+  border: 1px solid rgba(15, 23, 42, .08);
+}
+.dash-stat-grid {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.dash-stat {
+  min-height: 98px;
+  padding: 15px 16px;
+  border-radius: 18px;
+}
+.dash-stat-label {
+  font-size: 9px;
+  margin-bottom: 8px;
+}
+.dash-stat-value {
+  font-size: 30px;
+}
+.dash-stat-hint {
+  font-size: 10px;
+  margin-top: 7px;
+}
+.dash-stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  font-size: 18px;
+}
+.dash-focus-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1.25fr;
+  gap: 14px;
+  margin-bottom: 14px;
+  align-items: stretch;
+}
+.dash-focus-grid .dash-card {
+  min-height: 250px;
+}
+.dash-main-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.dash-span-3 { grid-column: span 3; }
+.dash-span-2 { grid-column: span 2; }
+.dash-card {
+  border-radius: 20px;
+  padding: 17px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .055);
+}
+.dash-card h3 {
+  font-size: 14px;
+}
+.dash-card p {
+  font-size: 10px;
+}
+.dash-chart {
+  min-height: 0;
+}
+.progress-ring {
+  width: 142px;
+  height: 142px;
+  margin: 3px auto 12px;
+}
+.progress-ring > div {
+  width: 102px;
+  height: 102px;
+}
+.progress-ring b {
+  font-size: 29px;
+}
+.progress-meta div {
+  padding: 10px;
+}
+.progress-foot {
+  font-size: 11px;
+  margin-top: 10px;
+}
+.summary-card .dash-empty,
+.bars-card .dash-empty,
+.donut-card .dash-empty {
+  min-height: 116px;
+}
+.summary-featured .summary-list {
+  max-height: 190px;
+  overflow: hidden;
+}
+.summary-row {
+  padding: 8px 0;
+}
+.summary-row b {
+  font-size: 11px;
+}
+.summary-row span {
+  font-size: 9px;
+}
+.dash-variant-control .dash-main-grid .chart-card .dash-chart { height: 185px !important; }
+.dash-variant-day .dash-main-grid,
+.dash-variant-week .dash-main-grid,
+.dash-variant-month .dash-main-grid {
+  grid-template-columns: 1.25fr 1fr 1fr;
+}
+.dash-variant-day .dash-card,
+.dash-variant-week .dash-card,
+.dash-variant-month .dash-card {
+  min-height: 210px;
+}
+.dash-variant-day .dash-main-grid,
+.dash-variant-week .dash-main-grid,
+.dash-variant-month .dash-main-grid {
+  margin-bottom: 0;
+}
+
+/* Agenda clara, próxima de Google Agenda */
+.ops-page .agenda-content {
+  background: #F1F5F9;
+  padding: 16px;
+}
+.ops-page .agenda-filters {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 10px 24px rgba(15,23,42,.045);
+}
+.ops-page .agenda-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0;
+}
+.ops-page .agenda-side {
+  display: none !important;
+}
+.ops-page .calendar-shell {
+  background: #FFFFFF !important;
+  border: 1px solid #D8E0EA !important;
+  border-radius: 20px !important;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, .06);
+  overflow: hidden;
+}
+.ops-page .timeline-wrap {
+  background: #FFFFFF !important;
+  overflow: auto;
+}
+.ops-page .timeline-head {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #D8E0EA !important;
+  box-shadow: 0 4px 18px rgba(15,23,42,.04);
+}
+.ops-page .timeline-corner {
+  background: #F8FAFC !important;
+  color: #64748B !important;
+  border-right: 1px solid #D8E0EA !important;
+}
+.ops-page .timeline-day-head {
+  background: #FFFFFF !important;
+  border-right: 1px solid #D8E0EA !important;
+}
+.ops-page .timeline-day-head b {
+  color: #475467 !important;
+}
+.ops-page .timeline-day-head span {
+  background: #EFF6FF !important;
+  color: #1D4ED8 !important;
+  border-radius: 999px;
+}
+.ops-page .timeline-hours {
+  background: #F8FAFC !important;
+  border-right: 1px solid #D8E0EA !important;
+}
+.ops-page .timeline-hour {
+  color: #64748B !important;
+  border-bottom: 1px solid #E6ECF3 !important;
+  font-weight: 600;
+}
+.ops-page .timeline-day {
+  background: #FFFFFF !important;
+  border-right: 1px solid #D8E0EA !important;
+}
+.ops-page .timeline-slot {
+  border-bottom: 1px solid #E6ECF3 !important;
+  background: #FFFFFF !important;
+}
+.ops-page .timeline-slot:hover {
+  background: #EFF6FF !important;
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.16) !important;
+}
+.ops-page .timeline-event {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-left-width: 5px !important;
+  border-left-color: rgba(255,255,255,.7) !important;
+  box-shadow: 0 10px 24px rgba(37,99,235,.24) !important;
+}
+.ops-page .timeline-event span,
+.ops-page .timeline-event small {
+  color: rgba(255,255,255,.82) !important;
+}
+.ops-page .timeline-event b {
+  color: #FFFFFF !important;
+}
+.ops-page .calendar-weekdays {
+  background: #F8FAFC !important;
+  border-bottom: 1px solid #D8E0EA !important;
+}
+.ops-page .calendar-weekdays > div {
+  color: #475467 !important;
+}
+.ops-page .calendar-cell {
+  background: #FFFFFF !important;
+  border-color: #E6ECF3 !important;
+  min-height: 128px;
+}
+.ops-page .calendar-cell:hover {
+  background: #F8FAFC !important;
+}
+.ops-page .calendar-cell.today {
+  background: #EFF6FF !important;
+  box-shadow: inset 0 0 0 2px #93C5FD;
+}
+.ops-page .calendar-day-number {
+  color: #111827 !important;
+  font-weight: 800;
+}
+.ops-page .calendar-event {
+  color: #FFFFFF !important;
+  background: #2563EB !important;
+  border-left-color: rgba(255,255,255,.75) !important;
+}
+.ops-page .calendar-event span,
+.ops-page .calendar-event small {
+  color: rgba(255,255,255,.82) !important;
+}
+.ops-page .calendar-event b {
+  color: #FFFFFF !important;
+}
+.ops-page .calendar-ref,
+.ops-page .range-ref {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475467 !important;
+}
+.ops-page .calendar-ref.opportunity,
+.ops-page .range-ref.opportunity {
+  background: #FFFBEB !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+@media (min-width: 1500px) {
+  .dash-pro-head { padding-top: 24px; }
+  .dash-stat { min-height: 104px; }
+  .dash-focus-grid .dash-card { min-height: 270px; }
+}
+@media (max-width: 1320px) {
+  .dash-focus-grid { grid-template-columns: 1fr; }
+  .dash-span-3, .dash-span-2 { grid-column: span 1; }
+  .dash-variant-day .dash-main-grid,
+  .dash-variant-week .dash-main-grid,
+  .dash-variant-month .dash-main-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 960px) {
+  .dash-variant-day .dash-main-grid,
+  .dash-variant-week .dash-main-grid,
+  .dash-variant-month .dash-main-grid { grid-template-columns: 1fr; }
+}
