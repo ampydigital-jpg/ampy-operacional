@@ -1309,3 +1309,50 @@ body { background: var(--bg); color: var(--t1); }
 .dash-stat[style*="#EAB308"], .dash-stat[style*="#CA8A04"] { border-bottom-color: var(--warn) !important; }
 .dash-stat[style*="#DC2626"] { border-bottom-color: var(--err) !important; }
 .dash-stat[style*="#2563EB"] { border-bottom-color: var(--blue) !important; }
+
+/* HOTFIX 12.1 — RESTAURA ROLAGEM GERAL DOS DASHBOARDS
+   Regra final:
+   - Dashboard pode rolar a página inteira quando a composição for maior que a tela.
+   - Cards/listas internas continuam sem scroll manual; listas longas usam movimento automático.
+   - Operação mantém scroll manual onde necessário. */
+html,
+body {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+body {
+  overflow-y: auto;
+}
+.app,
+.main {
+  min-height: 100vh;
+}
+.page-wrap {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+.dash-pro-page {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+}
+.dash-pro-body {
+  overflow: visible !important;
+  padding-bottom: 42px;
+}
+/* Mantém a regra de TV: nada de scroll manual dentro dos cards/listas dos dashboards. */
+.dash-pro-page .dash-card,
+.dash-pro-page .summary-list,
+.dash-pro-page .dash-bars,
+.dash-pro-page .dash-legend,
+.dash-pro-page .dashboard-auto-list {
+  scrollbar-width: none;
+}
+.dash-pro-page .dash-card::-webkit-scrollbar,
+.dash-pro-page .summary-list::-webkit-scrollbar,
+.dash-pro-page .dash-bars::-webkit-scrollbar,
+.dash-pro-page .dash-legend::-webkit-scrollbar,
+.dash-pro-page .dashboard-auto-list::-webkit-scrollbar {
+  display: none;
+}
