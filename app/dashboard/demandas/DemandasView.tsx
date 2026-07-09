@@ -19,8 +19,14 @@ const today = () => new Date().toISOString().slice(0,10)
 
 function fmtDate(date?: string | null) { return date ? new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR') : '—' }
 
-export default function DemandasView({ demands, clients, profiles, clientServices }: any) {
-  const [items, setItems] = useState<any[]>(demands)
+export default function DemandasView({ demands, clients, profiles, clientServices, loadErrors = [] }: any) {
+  const safeDemands = Array.isArray(demands) ? demands.filter(Boolean) : []
+  const safeClients = Array.isArray(clients) ? clients.filter(Boolean) : []
+  const safeProfiles = Array.isArray(profiles) ? profiles.filter(Boolean) : []
+  const safeClientServices = Array.isArray(clientServices) ? clientServices.filter(Boolean) : []
+  const safeLoadErrors = Array.isArray(loadErrors) ? loadErrors.filter(Boolean) : []
+
+  const [items, setItems] = useState<any[]>(safeDemands)
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
@@ -34,7 +40,7 @@ export default function DemandasView({ demands, clients, profiles, clientService
   const [error, setError] = useState('')
 
   const filtered = useMemo(() => items.filter((item) => {
-    const matchesSearch = !search || item.title.toLowerCase().includes(search.toLowerCase()) || item.client?.name?.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch = !search || String(item.title || '').toLowerCase().includes(search.toLowerCase()) || String(item.client?.name || '').toLowerCase().includes(search.toLowerCase())
     const matchesStatus = status === 'all' || item.status === status || (status === 'late' && item.final_deadline && item.final_deadline < today() && !['done','cancelled'].includes(item.status))
     return matchesSearch && matchesStatus && (process === 'all' || item.destino === process || (process === 'quadro' && item.destino === 'kanban') || (process === 'quadro' && item.destino === 'ambos') || (process === 'projeto' && item.destino === 'ambos')) && (clientId === 'all' || item.client_id === clientId) && (responsibleId === 'all' || item.responsible_id === responsibleId) && (priority === 'all' || item.priority === priority)
   }), [items, search, status, process, clientId, responsibleId, priority])
@@ -59,7 +65,7 @@ export default function DemandasView({ demands, clients, profiles, clientService
     if ('error' in result) { setItems(current); alert(result.error) }
   }
 
-  const activeServices = formClient ? clientServices.filter((item: any) => item.client_id === formClient) : []
+  const activeServices = formClient ? safeClientServices.filter((item: any) => item && item.client_id === formClient) : []
 
   return <div className="page-wrap">
     <div className="topbar">
@@ -73,10 +79,11 @@ export default function DemandasView({ demands, clients, profiles, clientService
       </div>
       <div className="filters demand-filters">
         <select className="fi compact" value={process} onChange={(e) => setProcess(e.target.value)}><option value="all">Todos processos</option><option value="quadro">Quadro</option><option value="projeto">Projeto</option><option value="ambos">Quadro + Projeto</option><option value="avulsa">Avulsa</option></select>
-        <select className="fi compact" value={clientId} onChange={(e) => setClientId(e.target.value)}><option value="all">Todos os clientes</option>{clients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
-        <select className="fi compact" value={responsibleId} onChange={(e) => setResponsibleId(e.target.value)}><option value="all">Todos responsáveis</option>{profiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select>
+        <select className="fi compact" value={clientId} onChange={(e) => setClientId(e.target.value)}><option value="all">Todos os clientes</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
+        <select className="fi compact" value={responsibleId} onChange={(e) => setResponsibleId(e.target.value)}><option value="all">Todos responsáveis</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select>
         <select className="fi compact" value={priority} onChange={(e) => setPriority(e.target.value)}><option value="all">Todas prioridades</option><option value="urgent">Urgente</option><option value="high">Alta</option><option value="normal">Normal</option><option value="low">Baixa</option></select>
       </div>
+      {safeLoadErrors.length > 0 && <div className="notice notice-err"><i className="ti ti-alert-circle" /><span>{safeLoadErrors.join(' | ')}</span></div>}
       <div className="sh"><div className="ssub">{filtered.length} demanda(s) encontrada(s)</div></div>
       {filtered.length === 0 ? <div className="empty"><i className="ti ti-checklist" /><div className="empty-title">Nenhuma demanda encontrada</div><div className="empty-sub">Crie a atividade nesta tela. Quadro e Projetos são visualizações do mesmo registro.</div></div> :
         <div className="demand-list">
@@ -101,8 +108,8 @@ export default function DemandasView({ demands, clients, profiles, clientService
       <form onSubmit={submit}><div className="modal-body">
         <div className="fg"><label className="fl">Título *</label><input className="fi" name="title" required placeholder="Ex.: Conteúdos de Julho — Cliente X" /></div>
         <div className="frow"><div className="fg"><label className="fl">Processo *</label><select className="fi" name="destino" value={formProcess} onChange={(e) => setFormProcess(e.target.value as 'quadro'|'projeto'|'ambos'|'avulsa')}><option value="quadro">Quadro</option><option value="projeto">Projeto / Cronograma</option><option value="ambos">Quadro + Projeto</option><option value="avulsa">Avulsa</option></select></div><div className="fg"><label className="fl">Tipo</label><select className="fi" name="type">{TYPES.map((type) => <option key={type}>{type}</option>)}</select></div></div>
-        <div className="frow"><div className="fg"><label className="fl">Cliente</label><select className="fi" name="client_id" value={formClient} onChange={(e) => setFormClient(e.target.value)}><option value="">Interno — Ampy</option>{clients.map((client: any) => <option value={client.id} key={client.id}>{client.name}</option>)}</select></div><div className="fg"><label className="fl">Serviço vinculado</label><select className="fi" name="client_service_id" disabled={!formClient}><option value="">Não vincular</option>{activeServices.map((service: any) => <option value={service.id} key={service.id}>{service.service?.name || 'Serviço'}</option>)}</select></div></div>
-        <div className="frow"><div className="fg"><label className="fl">Responsável</label><select className="fi" name="responsible_id"><option value="">Definir depois</option>{profiles.map((profile: any) => <option value={profile.id} key={profile.id}>{profile.full_name}</option>)}</select></div><div className="fg"><label className="fl">Prioridade</label><select className="fi" name="priority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baixa</option></select></div></div>
+        <div className="frow"><div className="fg"><label className="fl">Cliente</label><select className="fi" name="client_id" value={formClient} onChange={(e) => setFormClient(e.target.value)}><option value="">Interno — Ampy</option>{safeClients.map((client: any) => <option value={client.id} key={client.id}>{client.name}</option>)}</select></div><div className="fg"><label className="fl">Serviço vinculado</label><select className="fi" name="client_service_id" disabled={!formClient}><option value="">Não vincular</option>{activeServices.map((service: any) => <option value={service.id} key={service.id}>{service.service?.name || 'Serviço'}</option>)}</select></div></div>
+        <div className="frow"><div className="fg"><label className="fl">Responsável</label><select className="fi" name="responsible_id"><option value="">Definir depois</option>{safeProfiles.map((profile: any) => <option value={profile.id} key={profile.id}>{profile.full_name}</option>)}</select></div><div className="fg"><label className="fl">Prioridade</label><select className="fi" name="priority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baixa</option></select></div></div>
         <div className="frow"><div className="fg"><label className="fl">Prazo interno</label><input className="fi" name="internal_deadline" type="date" /></div><div className="fg"><label className="fl">Prazo final</label><input className="fi" name="final_deadline" type="date" /></div></div>
         <div className="fg"><label className="fl">Link Drive</label><input className="fi" name="drive_link" type="url" placeholder="https://drive.google.com/..." /></div>
         <div className="fg"><label className="fl">Descrição / contexto</label><textarea className="fi" name="description" placeholder="Objetivo, materiais necessários, critérios de entrega..." /></div>
