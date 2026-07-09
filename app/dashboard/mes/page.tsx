@@ -61,14 +61,14 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
       metrics={[
         { label: 'Demandas mês', value: monthDemands.length, hint: 'prazo ou criação no mês', tone: 'blue', icon: 'ti-calendar-month' },
         { label: 'Entregas', value: monthDone.length, hint: 'concluídas/entregues', tone: 'green', icon: 'ti-circle-check' },
-        { label: 'Pendentes', value: pending.length, hint: 'ainda sem execução', tone: pending.length ? 'yellow' : 'neutral', icon: 'ti-hourglass' },
-        { label: 'Atrasos', value: late.length, hint: 'abertos acumulados', tone: late.length ? 'red' : 'green', icon: 'ti-alert-triangle' },
-        { label: 'Eventos', value: events.length, hint: 'agenda do mês', tone: 'blue', icon: 'ti-calendar-event' },
+        { label: 'Pendentes', value: pending.length, hint: 'ainda sem execução', tone: 'yellow', icon: 'ti-hourglass' },
+        { label: 'Atrasos', value: late.length, hint: 'abertos acumulados', tone: 'red', icon: 'ti-alert-triangle' },
+        { label: 'Agendas', value: events.length, hint: 'agenda do mês', tone: 'blue', icon: 'ti-calendar-event' },
       ]}
       progress={{ title: '% Entrega mensal', description: 'Quanto já foi entregue no mês.', value: deliveryPct, done: monthDone.length, total: monthDemands.length, remainingLabel: `${Math.max(0, monthDemands.length - monthDone.length)} demanda(s) ainda faltam no mês` }}
       featured={[
         { title: 'Pendências do mês', subtitle: 'Demandas abertas mais relevantes', items: summarizeItems(relevantOpen, 6) },
-        { title: 'Eventos do mês', subtitle: 'Próximos eventos registrados', items: summarizeEvents(events, 6) },
+        { title: 'Agenda do mês', subtitle: 'Próximas agendas registradas', items: summarizeEvents(events, 6) },
       ]}
       primaryChart={{
         title: 'Evolução do mês',
@@ -82,11 +82,11 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
           { key: 'atrasos', name: 'Atrasos', color: '#DC2626' },
         ],
         height: 210,
-        span: 2,
+        span: 1,
       }}
       bars={{ title: 'Demandas por cliente', description: 'Clientes com maior volume no mês.', data: clientData, labelKey: 'name', valueKey: 'value' }}
       donut={{ title: 'Status do mês', description: 'Distribuição de status das demandas mensais.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: monthDemands.length, centerLabel: 'demandas' }}
-      secondaryChart={{ title: 'Demandas por setor', description: 'Volume mensal por tipo de atividade.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#EAB308' }], height: 180 }}
+      secondaryChart={{ title: 'Demandas por setor', description: 'Volume mensal por tipo de atividade.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#2563EB' }], height: 180 }}
       summaries={[
         { title: 'Foco do mês', subtitle: 'Atrasos, prioridades e pendências', items: summarizeItems(focusMonth, 6) },
       ]}

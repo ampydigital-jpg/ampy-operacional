@@ -116,6 +116,23 @@ export function priorityWeight(priority?: string | null) {
   return ({ urgent: 4, high: 3, normal: 2, low: 1 } as Record<string, number>)[String(priority || 'normal')] || 2
 }
 
+
+export function toneForStatus(status?: string | null) {
+  const value = String(status || '')
+  if (DONE_STATUSES.includes(value) || value === 'approved') return 'green'
+  if (value === 'blocked') return 'red'
+  if (['not_started', 'waiting', 'awaiting_approval', 'scheduled'].includes(value)) return 'yellow'
+  if (['in_progress', 'in_review'].includes(value)) return 'blue'
+  return 'blue'
+}
+
+export function toneForDemand(item: any) {
+  if (!item) return 'blue'
+  if (item.status === 'blocked') return 'red'
+  if (['urgent', 'high'].includes(String(item.priority))) return 'yellow'
+  return toneForStatus(item.status)
+}
+
 export function countBy<T>(items: T[], getter: (item: T) => string) {
   const map = new Map<string, number>()
   items.forEach((item) => {
@@ -145,16 +162,16 @@ export function summarizeItems(items: any[], limit = 5) {
     label: item.title || 'Sem título',
     value: item.final_deadline || item.internal_deadline ? formatDateShort(item.final_deadline || item.internal_deadline) : 'sem prazo',
     meta: `${item.client?.name || 'Interno Ampy'} · ${item.responsible?.full_name || 'sem responsável'}`,
-    tone: item.status === 'blocked' ? 'red' : item.priority === 'urgent' ? 'red' : item.priority === 'high' ? 'yellow' : 'blue',
+    tone: toneForDemand(item),
   }))
 }
 
 export function summarizeEvents(events: any[], limit = 5) {
   return events.slice(0, limit).map((event) => ({
-    label: event.title || 'Evento sem título',
+    label: event.title || 'Agenda sem título',
     value: event.all_day ? 'dia inteiro' : localHour(event.starts_at) || 'sem hora',
     meta: `${event.client?.name || event.work_item?.title || 'Interno Ampy'} · ${event.responsible?.full_name || 'sem responsável'}`,
-    tone: event.type === 'delivery' ? 'green' : event.type === 'capture_external' || event.type === 'capture_studio' ? 'yellow' : 'blue',
+    tone: event.type === 'delivery' ? 'green' : 'blue',
   }))
 }
 

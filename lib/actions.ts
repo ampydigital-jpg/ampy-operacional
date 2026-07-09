@@ -90,9 +90,9 @@ async function validateCalendarLinks(supabase: ReturnType<typeof createClient>, 
     .select('id, client_id, status')
     .eq('id', workItemId)
     .single()
-  if (error || !item) return { error: 'Demanda vinculada ao evento não foi encontrada.' as const }
-  if (['archived', 'cancelled'].includes(item.status)) return { error: 'Não vincule evento a uma demanda arquivada ou cancelada.' as const }
-  if (clientId && item.client_id !== clientId) return { error: 'Cliente do evento não corresponde ao cliente da demanda vinculada.' as const }
+  if (error || !item) return { error: 'Demanda vinculada à agenda não foi encontrada.' as const }
+  if (['archived', 'cancelled'].includes(item.status)) return { error: 'Não vincule agenda a uma demanda arquivada ou cancelada.' as const }
+  if (clientId && item.client_id !== clientId) return { error: 'Cliente da agenda não corresponde ao cliente da demanda vinculada.' as const }
   return { clientId: item.client_id || clientId, ok: true as const }
 }
 
@@ -378,7 +378,7 @@ export async function createCalendarEventAction(formData: FormData) {
   const { supabase, user, profile } = await getCurrentProfile()
   if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
   const title = value(formData, 'title')
-  if (!title) return { error: 'Informe o título do evento.' }
+  if (!title) return { error: 'Informe o título da agenda.' }
   const allDay = value(formData, 'all_day') === 'on'
   const startsAt = isoFromForm(formData, 'start_date', 'start_time', allDay)
   const endsAt = isoFromForm(formData, 'end_date', 'end_time', allDay, true)
@@ -416,7 +416,7 @@ export async function updateCalendarEventAction(id: string, formData: FormData) 
   const { supabase, user, profile } = await getCurrentProfile()
   if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
   const { data: existing } = await supabase.from('calendar_events').select('responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!existing || (!isManager(profile.role) && existing.responsible_id !== user.id && existing.created_by !== user.id)) return forbidden('Você não possui permissão para alterar este evento.')
+  if (!existing || (!isManager(profile.role) && existing.responsible_id !== user.id && existing.created_by !== user.id)) return forbidden('Você não possui permissão para alterar esta agenda.')
   const allDay = value(formData, 'all_day') === 'on'
   const startsAt = isoFromForm(formData, 'start_date', 'start_time', allDay)
   const endsAt = isoFromForm(formData, 'end_date', 'end_time', allDay, true)
@@ -445,7 +445,7 @@ export async function moveCalendarEventAction(id: string, nextDate: string) {
   const { supabase, user, profile } = await getCurrentProfile()
   if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
   const { data: event } = await supabase.from('calendar_events').select('starts_at, ends_at, responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para mover este evento.')
+  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para mover esta agenda.')
   const start = new Date(event.starts_at)
   const end = new Date(event.ends_at)
   const duration = end.getTime() - start.getTime()
@@ -465,7 +465,7 @@ export async function deleteCalendarEventAction(id: string) {
   const { supabase, user, profile } = await getCurrentProfile()
   if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
   const { data: event } = await supabase.from('calendar_events').select('responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para excluir este evento.')
+  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para excluir esta agenda.')
   const { error } = await supabase.from('calendar_events').delete().eq('id', id)
   if (error) return { error: error.message }
   if (event.work_item_id) await addHistory(event.work_item_id, user.id, 'calendar_event_deleted', event.title, null)

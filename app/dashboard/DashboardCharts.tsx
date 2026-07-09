@@ -2,7 +2,13 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts'
 
-const COLORS = ['#2563EB', '#16A34A', '#EAB308', '#DC2626', '#7C3AED', '#0891B2', '#F97316']
+const COLORS = ['#2563EB', '#16A34A', '#EAB308', '#DC2626']
+const SEMANTIC_COLORS = {
+  blue: '#2563EB',
+  green: '#16A34A',
+  yellow: '#EAB308',
+  red: '#DC2626',
+}
 const TONES: Record<string, { color: string; bg: string; iconBg: string }> = {
   blue: { color: '#2563EB', bg: '#EFF6FF', iconBg: '#DBEAFE' },
   green: { color: '#16A34A', bg: '#F0FDF4', iconBg: '#DCFCE7' },
@@ -36,6 +42,21 @@ type Props = {
 }
 
 const formatTooltipValue = (value: any) => typeof value === 'number' ? value.toLocaleString('pt-BR') : value
+
+
+function semanticKey(label: any) {
+  const value = String(label || '').toLowerCase()
+  if (/(entrega|entregue|conclu|aprovad|done|delivered|approved)/.test(value)) return 'green'
+  if (/(pendente|aguard|aprovaç|aprovacao|programad|não iniciad|nao iniciad|not_started|waiting|scheduled|awaiting)/.test(value)) return 'yellow'
+  if (/(atras|bloque|erro|crític|critic|vencid|fora do prazo|blocked|late|overdue)/.test(value)) return 'red'
+  if (/(andamento|execuç|execuc|revis|demanda|agenda|evento|cliente|responsável|responsavel|setor|status|neutro|in_progress|review)/.test(value)) return 'blue'
+  return 'blue'
+}
+
+function semanticColor(label: any, fallbackIndex = 0) {
+  const key = semanticKey(label) as keyof typeof SEMANTIC_COLORS
+  return SEMANTIC_COLORS[key] || COLORS[fallbackIndex % COLORS.length]
+}
 
 function spanClass(span?: 1 | 2 | 3) {
   if (span === 3) return 'dash-span-3'
@@ -93,7 +114,7 @@ function ChartCard({ chart }: { chart: ChartSpec }) {
                 <XAxis dataKey={chart.xKey} tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                {chart.series.map((series, index) => <Line key={series.key} dataKey={series.key} name={series.name} type="monotone" stroke={series.color || COLORS[index % COLORS.length]} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />)}
+                {chart.series.map((series, index) => <Line key={series.key} dataKey={series.key} name={series.name} type="monotone" stroke={series.color || semanticColor(series.name, index)} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />)}
               </LineChart>
             ) : (
               <BarChart data={chart.data} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
@@ -101,7 +122,7 @@ function ChartCard({ chart }: { chart: ChartSpec }) {
                 <XAxis dataKey={chart.xKey} tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                {chart.series.map((series, index) => <Bar key={series.key} dataKey={series.key} name={series.name} fill={series.color || COLORS[index % COLORS.length]} radius={[8, 8, 0, 0]} maxBarSize={38} />)}
+                {chart.series.map((series, index) => <Bar key={series.key} dataKey={series.key} name={series.name} fill={series.color || semanticColor(series.name, index)} radius={[8, 8, 0, 0]} maxBarSize={38} />)}
               </BarChart>
             )}
           </ResponsiveContainer>
@@ -121,7 +142,7 @@ function DonutCard({ donut }: { donut: DonutSpec }) {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={donut.data} cx="50%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={3} dataKey={donut.valueKey} nameKey={donut.nameKey}>
-                  {donut.data.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                  {donut.data.map((item: any, index: number) => <Cell key={index} fill={semanticColor(item[donut.nameKey], index)} />)}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
@@ -130,7 +151,7 @@ function DonutCard({ donut }: { donut: DonutSpec }) {
           <div className="dash-donut-center"><b>{donut.centerValue ?? ''}</b><span>{donut.centerLabel ?? ''}</span></div>
         </div>
         <div className="dash-legend">
-          {donut.data.slice(0, 7).map((item: any, index: number) => <div className="dash-legend-row" key={`${item[donut.nameKey]}-${index}`}><span style={{ background: COLORS[index % COLORS.length] }} /> <p>{item[donut.nameKey]}</p><b>{item[donut.valueKey]}</b></div>)}
+          {donut.data.slice(0, 7).map((item: any, index: number) => <div className="dash-legend-row" key={`${item[donut.nameKey]}-${index}`}><span style={{ background: semanticColor(item[donut.nameKey], index) }} /> <p>{item[donut.nameKey]}</p><b>{item[donut.valueKey]}</b></div>)}
         </div>
       </div>
     </section>
@@ -147,7 +168,7 @@ function HorizontalBars({ bars }: { bars: BarsSpec }) {
           const value = Number(item[bars.valueKey] || 0)
           return <div className="dash-bar-row" key={`${item[bars.labelKey]}-${index}`}>
             <div className="dash-bar-info"><span>{item[bars.labelKey]}</span><b>{value}</b></div>
-            <div className="dash-bar-track"><div style={{ width: `${Math.min(100, (value / max) * 100)}%`, background: COLORS[index % COLORS.length] }} /></div>
+            <div className="dash-bar-track"><div style={{ width: `${Math.min(100, (value / max) * 100)}%`, background: semanticColor(item[bars.labelKey], index) }} /></div>
           </div>
         })}
       </div>
@@ -170,14 +191,16 @@ function ProgressCard({ progress }: { progress: NonNullable<Props['progress']> }
 }
 
 function Summary({ block, featured = false }: { block: SummaryBlock; featured?: boolean }) {
+  const rows = block.items.map((item, index) => {
+    const tone = TONES[item.tone || 'neutral'] || TONES.neutral
+    return <div className="summary-row" key={`${item.label}-${index}`}><div className="summary-dot" style={{ background: tone.color }} /><div><b>{item.label}</b>{item.meta && <span>{item.meta}</span>}</div><strong>{item.value}</strong></div>
+  })
+  const shouldAutoScroll = block.items.length > 4
   return (
     <section className={`dash-card summary-card ${featured ? 'summary-featured' : ''}`}>
       <div className="dash-card-head"><div><h3>{block.title}</h3>{block.subtitle && <p>{block.subtitle}</p>}</div></div>
-      <div className="summary-list">
-        {block.items.length === 0 ? <EmptyChart label="Sem itens para este período" /> : block.items.map((item, index) => {
-          const tone = TONES[item.tone || 'neutral'] || TONES.neutral
-          return <div className="summary-row" key={`${item.label}-${index}`}><div className="summary-dot" style={{ background: tone.color }} /><div><b>{item.label}</b>{item.meta && <span>{item.meta}</span>}</div><strong>{item.value}</strong></div>
-        })}
+      <div className={`summary-list ${shouldAutoScroll ? 'dashboard-auto-list' : ''}`}>
+        {block.items.length === 0 ? <EmptyChart label="Sem itens para este período" /> : <div className="dashboard-auto-track">{rows}{shouldAutoScroll && rows.map((row, index) => <div className="summary-row duplicate" key={`loop-${block.title}-${index}`}>{row.props.children}</div>)}</div>}
       </div>
     </section>
   )

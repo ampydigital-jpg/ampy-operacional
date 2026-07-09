@@ -1011,3 +1011,301 @@ body { background: var(--bg); color: var(--t1); }
   .dash-variant-week .dash-span-2,
   .dash-variant-month .dash-span-2 { grid-column: span 1; }
 }
+
+/* HOTFIX 12 — SCROLL CONTÍNUO, AGENDA 14/28D E PAINÉIS PARA TV */
+.page-wrap,
+.dash-pro-page,
+.ops-page {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, .24) transparent;
+}
+.page-wrap::-webkit-scrollbar,
+.dash-pro-page::-webkit-scrollbar,
+.ops-page::-webkit-scrollbar,
+.summary-list::-webkit-scrollbar,
+.kcol-body::-webkit-scrollbar,
+.kanban-wrap::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.page-wrap::-webkit-scrollbar-thumb,
+.dash-pro-page::-webkit-scrollbar-thumb,
+.ops-page::-webkit-scrollbar-thumb,
+.summary-list::-webkit-scrollbar-thumb,
+.kcol-body::-webkit-scrollbar-thumb,
+.kanban-wrap::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, .22);
+  border-radius: 999px;
+}
+
+.dash-card {
+  overflow: hidden;
+}
+.donut-card,
+.progress-card {
+  overflow: visible;
+}
+.dash-donut-wrap {
+  overflow: visible;
+}
+.dash-donut {
+  overflow: visible;
+}
+.summary-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.summary-list .dashboard-auto-track {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dashboard-auto-list {
+  overflow: hidden !important;
+  max-height: 226px !important;
+  position: relative;
+}
+.dashboard-auto-list .dashboard-auto-track {
+  will-change: transform;
+}
+.dashboard-auto-list .summary-row.duplicate {
+  opacity: .92;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-auto-list .dashboard-auto-track {
+    animation: dashboardAutoScroll 26s linear infinite;
+  }
+  .dashboard-auto-list:hover .dashboard-auto-track {
+    animation-play-state: paused;
+  }
+}
+@keyframes dashboardAutoScroll {
+  0%, 12% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+.dash-variant-week .summary-list,
+.dash-variant-month .summary-list,
+.dash-variant-day .summary-list {
+  max-height: 226px;
+  overflow-y: auto;
+}
+.dash-variant-month .dash-main-grid {
+  grid-template-columns: .95fr 1.25fr 1fr;
+}
+.dash-variant-month .chart-card .dash-chart {
+  height: 178px !important;
+}
+.dash-variant-month .donut-card {
+  min-height: 252px;
+}
+.dash-variant-month .dash-donut-wrap {
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr) !important;
+  min-height: 206px;
+}
+.dash-variant-month .dash-donut {
+  height: 196px !important;
+}
+.dash-variant-month .dash-legend-row p,
+.dash-variant-week .dash-legend-row p {
+  min-width: 0;
+}
+.dash-variant-week .dash-donut-wrap {
+  grid-template-columns: minmax(180px, 210px) minmax(0, 1fr) !important;
+}
+.dash-variant-week .dash-donut {
+  height: 188px !important;
+}
+.dash-variant-week .chart-card .dash-chart {
+  height: 190px !important;
+}
+
+/* Quadro: scroll real em colunas e na área horizontal */
+.kanban-wrap {
+  overflow: auto !important;
+  padding-bottom: 18px;
+  max-height: calc(100vh - 146px);
+}
+.kcol {
+  max-height: calc(100vh - 172px);
+}
+.kcol-body {
+  overflow-y: auto !important;
+  min-height: 160px;
+}
+
+/* Agenda 14d/28d: visão compacta funcional em grade, sem timeline gigante */
+.ops-page .agenda-range-grid {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #FFFFFF;
+  min-height: 540px;
+  overflow: auto;
+}
+.ops-page .agenda-range-14 {
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+}
+.ops-page .agenda-range-28 {
+  grid-template-columns: repeat(7, minmax(140px, 1fr));
+}
+.ops-page .agenda-range-day {
+  appearance: none;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  border-radius: 16px;
+  min-height: 154px;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.ops-page .agenda-range-day:hover {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+}
+.ops-page .agenda-range-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #475467;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.ops-page .agenda-range-head b {
+  color: #111827;
+  font-size: 18px;
+  letter-spacing: -.5px;
+}
+.ops-page .agenda-range-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+.ops-page .range-empty.compact {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94A3B8;
+  font-size: 11px;
+}
+.ops-page .calendar-more {
+  color: #2563EB !important;
+  font-weight: 800;
+  font-size: 10px;
+  padding: 4px 0;
+}
+.ops-page .bpri,
+.ops-page .modal-title,
+.ops-page .fl {
+  color: #111827;
+}
+
+@media (max-width: 1320px) {
+  .ops-page .agenda-range-14,
+  .ops-page .agenda-range-28 {
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+  }
+  .dash-variant-month .dash-main-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 960px) {
+  .ops-page .agenda-range-14,
+  .ops-page .agenda-range-28 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-variant-month .dash-main-grid { grid-template-columns: 1fr; }
+}
+
+
+/* HOTFIX 12 REV — DASHBOARDS SEM SCROLL MANUAL + MOVIMENTO CONTÍNUO + CORES PADRÃO
+   Regra visual: Entregas=verde, Pendências=amarelo, Atrasos=vermelho, Andamento/neutro=azul.
+   Dashboards são painéis de TV: sem rolagem manual interna; listas extensas usam movimento suave e contínuo. */
+.dash-pro-page {
+  overflow: hidden !important;
+  height: 100%;
+}
+.dash-pro-body {
+  overflow: hidden !important;
+}
+.dash-card {
+  overflow: hidden;
+}
+.dash-card.donut-card,
+.dash-card.progress-card {
+  overflow: visible;
+}
+.summary-list,
+.dash-bars,
+.dash-legend {
+  overflow: hidden !important;
+  scrollbar-width: none;
+}
+.summary-list::-webkit-scrollbar,
+.dash-bars::-webkit-scrollbar,
+.dash-legend::-webkit-scrollbar {
+  display: none;
+}
+.dashboard-auto-list {
+  overflow: hidden !important;
+  max-height: 226px !important;
+  position: relative;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+.dashboard-auto-list .dashboard-auto-track {
+  will-change: transform;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-auto-list .dashboard-auto-track {
+    animation: dashboardAutoScrollSmooth 48s linear infinite;
+  }
+  .dashboard-auto-list:hover .dashboard-auto-track {
+    animation-play-state: running;
+  }
+}
+@keyframes dashboardAutoScrollSmooth {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.summary-row.duplicate {
+  opacity: .94;
+}
+
+/* Operação continua com scroll manual quando necessário */
+.ops-page,
+.kanban-wrap,
+.kcol-body,
+.timeline-wrap,
+.agenda-range-grid,
+.client-table-wrap,
+.client-detail-body,
+.page-wrap:not(.dash-pro-page) {
+  scrollbar-width: thin;
+}
+
+/* Cores semânticas globais de status/tags/chips onde houver classes genéricas */
+.tone-green, .status-done, .status-delivered, .status-approved { color: var(--ok) !important; }
+.tone-yellow, .status-not_started, .status-waiting, .status-awaiting_approval, .status-scheduled { color: var(--warn) !important; }
+.tone-red, .status-blocked, .status-late, .status-overdue { color: var(--err) !important; }
+.tone-blue, .status-in_progress, .status-in_review { color: var(--blue) !important; }
+
+.bok { background: var(--ok-bg) !important; color: var(--ok) !important; border-color: var(--ok-br) !important; }
+.bwarn { background: var(--warn-bg) !important; color: var(--warn) !important; border-color: var(--warn-br) !important; }
+.berr { background: var(--err-bg) !important; color: var(--err) !important; border-color: var(--err-br) !important; }
+.bblue, .bmut { background: var(--blue-bg) !important; color: var(--blue) !important; border-color: var(--blue-br) !important; }
+
+.dash-stat[style*="#16A34A"] { border-bottom-color: var(--ok) !important; }
+.dash-stat[style*="#EAB308"], .dash-stat[style*="#CA8A04"] { border-bottom-color: var(--warn) !important; }
+.dash-stat[style*="#DC2626"] { border-bottom-color: var(--err) !important; }
+.dash-stat[style*="#2563EB"] { border-bottom-color: var(--blue) !important; }

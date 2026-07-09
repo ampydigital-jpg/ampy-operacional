@@ -83,7 +83,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   ), [safeEvents, clientFilter, profileFilter, typeFilter, demandFilter])
   const refsVisible = refs.filter((ref) => (ref.kind === 'opportunity' ? showOpportunities : showHoliday) && ref.date >= start && ref.date < end)
   const isMonth = period === 'month'
-  const timelineMode = period !== 'month'
+  const isLongRange = period === '14' || period === '28'
 
   const monthCells = useMemo(() => {
     if (!isMonth) return []
@@ -112,11 +112,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     event.preventDefault(); setLoading(true); setError('')
     const fd = new FormData(event.currentTarget)
     const result = editing ? await updateCalendarEventAction(editing.id, fd) : await createCalendarEventAction(fd)
-    if ('error' in result) { setError(result.error || 'Erro ao salvar evento'); setLoading(false); return }
+    if ('error' in result) { setError(result.error || 'Erro ao salvar agenda'); setLoading(false); return }
     setLoading(false); setShowModal(false); window.location.reload()
   }
   async function remove() {
-    if (!editing || !confirm('Excluir este evento?')) return
+    if (!editing || !confirm('Excluir esta agenda?')) return
     const result = await deleteCalendarEventAction(editing.id)
     if ('error' in result) { setError(result.error || 'Erro inesperado.'); return }
     setShowModal(false); window.location.reload()
@@ -150,7 +150,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       <div className="agenda-periods">{[['day','Dia'],['7','7d'],['14','14d'],['28','28d'],['month','Mês']].map(([key, label]) => <Link key={key} href={`/dashboard/agenda?period=${key}&start=${start}`} className={`fb ${period === key ? 'on' : ''}`}>{label}</Link>)}</div>
       <Link href={navigate(period, startDate, -1)} className="bico"><i className="ti ti-chevron-left" /></Link>
       <Link href={navigate(period, startDate, 1)} className="bico"><i className="ti ti-chevron-right" /></Link>
-      <button className="bpri" onClick={() => openCreate()}><i className="ti ti-plus" /> Novo evento</button>
+      <button className="bpri" onClick={() => openCreate()}><i className="ti ti-plus" /> Nova agenda</button>
     </div>
     <div className="agenda-content">
       <div className="agenda-filters">
@@ -174,14 +174,29 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                 <div className="calendar-day-number">{date.getDate()}</div>
                 {dayRefs.slice(0, 2).map((ref) => <div key={ref.id} className={`calendar-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`} title={`${ref.title} · ${ref.sourceLabel}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</div>)}
                 {dayEvents.slice(0, 3).map((event: any) => renderEventButton(event, true))}
-                {dayEvents.length > 3 && <div className="calendar-more">+{dayEvents.length - 3} eventos</div>}
+                {dayEvents.length > 3 && <div className="calendar-more">+{dayEvents.length - 3} agendas</div>}
               </div>
             })}</div>
-          </> : <div className="timeline-wrap">
-            <div className="timeline-head" style={{ gridTemplateColumns: `72px repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '170px'}, 1fr))` }}><div className="timeline-corner">Horário</div>{rangeDays.map((day) => <div className="timeline-day-head" key={ymd(day)}><b>{dayNames[day.getDay()]}</b><span>{day.getDate()}</span></div>)}</div>
+          </> : isLongRange ? <div className={`agenda-range-grid agenda-range-${period}`}>
+            {rangeDays.map((day) => {
+              const key = ymd(day)
+              const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
+              const dayRefs = refsVisible.filter((ref) => ref.date === key)
+              return <button type="button" className="agenda-range-day" key={key} onClick={() => openCreate(key)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData('event-id'); if (id) move(id, key) }}>
+                <div className="agenda-range-head"><span>{dayNames[day.getDay()]}</span><b>{day.getDate()}</b></div>
+                <div className="agenda-range-list">
+                  {dayRefs.slice(0, 2).map((ref) => <div key={ref.id} className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</div>)}
+                  {dayEvents.slice(0, 5).map((event: any) => renderEventButton(event, true))}
+                  {dayEvents.length === 0 && dayRefs.length === 0 && <div className="range-empty compact">Livre</div>}
+                  {dayEvents.length > 5 && <div className="calendar-more">+{dayEvents.length - 5} agendas</div>}
+                </div>
+              </button>
+            })}
+          </div> : <div className="timeline-wrap">
+            <div className="timeline-head" style={{ gridTemplateColumns: `72px repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))` }}><div className="timeline-corner">Horário</div>{rangeDays.map((day) => <div className="timeline-day-head" key={ymd(day)}><b>{dayNames[day.getDay()]}</b><span>{day.getDate()}</span></div>)}</div>
             <div className="timeline-body" style={{ height: `${(endHour - startHour) * hourHeight}px` }}>
               <div className="timeline-hours">{hours.map((hour) => <div className="timeline-hour" key={hour} style={{ height: `${hourHeight}px` }}>{String(hour).padStart(2,'0')}:00</div>)}</div>
-              <div className="timeline-days" style={{ gridTemplateColumns: `repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '170px'}, 1fr))` }}>
+              <div className="timeline-days" style={{ gridTemplateColumns: `repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))` }}>
                 {rangeDays.map((day) => {
                   const key = ymd(day)
                   const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
@@ -193,7 +208,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                       {dayRefs.map((ref) => <span key={ref.id} className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</span>)}
                       {allDayEvents.map((event: any) => renderEventButton(event, true))}
                     </div>
-                    {hours.map((hour) => <button type="button" className="timeline-slot" key={`${key}-${hour}`} style={{ height: `${hourHeight}px` }} onClick={() => openCreate(key, `${String(hour).padStart(2,'0')}:00`)} aria-label={`Criar evento em ${key} às ${hour}h`} />)}
+                    {hours.map((hour) => <button type="button" className="timeline-slot" key={`${key}-${hour}`} style={{ height: `${hourHeight}px` }} onClick={() => openCreate(key, `${String(hour).padStart(2,'0')}:00`)} aria-label={`Criar agenda em ${key} às ${hour}h`} />)}
                     {timedEvents.map((event: any) => renderEventButton(event))}
                   </div>
                 })}
@@ -202,24 +217,24 @@ export default function AgendaView({ events, clients, profiles, demands, period,
           </div>}
         </section>
         <aside className="agenda-side">
-          <div className="side-card"><div className="stitle">Próximos eventos</div>{filteredEvents.slice(0, 8).map((event: any) => <button key={event.id} className="next-event" onClick={() => openEdit(event)}><span>{localTime(event.starts_at)}</span><div><b>{event.title}</b><small>{event.client?.name || event.responsible?.full_name || 'Interno Ampy'}</small></div></button>)}{filteredEvents.length === 0 && <div className="range-empty">Nenhum evento no período.</div>}</div>
+          <div className="side-card"><div className="stitle">Próximas agendas</div>{filteredEvents.slice(0, 8).map((event: any) => <button key={event.id} className="next-event" onClick={() => openEdit(event)}><span>{localTime(event.starts_at)}</span><div><b>{event.title}</b><small>{event.client?.name || event.responsible?.full_name || 'Interno Ampy'}</small></div></button>)}{filteredEvents.length === 0 && <div className="range-empty">Nenhuma agenda no período.</div>}</div>
           <div className="side-card"><div className="stitle">Legenda</div>{EVENT_TYPES.map(([id, label, color]) => <div className="legend-row" key={id}><i style={{ background: color }} /> {label}</div>)}</div>
         </aside>
       </div>
     </div>
     {showModal && <div className="modal-ov" onClick={() => setShowModal(false)}><div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-head"><div><div className="modal-title">{editing ? 'Editar evento' : 'Novo evento'}</div><div className="modal-sub">Agenda cria blocos de execução. O prazo de demanda não é alterado ao mover o evento.</div></div><button className="mclose" onClick={() => setShowModal(false)}><i className="ti ti-x" /></button></div>
+      <div className="modal-head"><div><div className="modal-title">{editing ? 'Editar agenda' : 'Nova agenda'}</div><div className="modal-sub">Agenda cria blocos de execução. O prazo de demanda não é alterado ao mover a agenda.</div></div><button className="mclose" onClick={() => setShowModal(false)}><i className="ti ti-x" /></button></div>
       <form onSubmit={submit}><div className="modal-body">
         <div className="fg"><label className="fl">Título *</label><input className="fi" name="title" required defaultValue={editing?.title || ''} /></div>
         <div className="frow"><div className="fg"><label className="fl">Tipo</label><select className="fi" name="type" defaultValue={editing?.type || 'meeting'}>{EVENT_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div><div className="fg"><label className="fl">Responsável</label><select className="fi" name="responsible_id" defaultValue={editing?.responsible_id || ''}><option value="">Definir depois</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select></div></div>
         <div className="frow"><div className="fg"><label className="fl">Cliente</label><select className="fi" name="client_id" defaultValue={editing?.client_id || ''}><option value="">Interno — Ampy</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></div><div className="fg"><label className="fl">Demanda vinculada</label><select className="fi" name="work_item_id" defaultValue={editing?.work_item_id || ''}><option value="">Não vincular</option>{safeDemands.map((demand: any) => <option key={demand.id} value={demand.id}>{demand.title}</option>)}</select></div></div>
-        <label className="checkbox-line"><input name="all_day" type="checkbox" defaultChecked={editing?.all_day || false} /> Evento de dia inteiro</label>
+        <label className="checkbox-line"><input name="all_day" type="checkbox" defaultChecked={editing?.all_day || false} /> Agenda de dia inteiro</label>
         <div className="frow"><div className="fg"><label className="fl">Início</label><input className="fi" name="start_date" required type="date" defaultValue={editing?.starts_at ? dateKeyInAmpyTimezone(editing.starts_at) : draft.date} /><input className="fi time-field" name="start_time" type="time" defaultValue={editing?.starts_at ? timeValue(editing.starts_at) : draft.startTime} /></div><div className="fg"><label className="fl">Término</label><input className="fi" name="end_date" required type="date" defaultValue={editing?.ends_at ? dateKeyInAmpyTimezone(editing.ends_at) : draft.date} /><input className="fi time-field" name="end_time" type="time" defaultValue={editing?.ends_at ? timeValue(editing.ends_at) : draft.endTime} /></div></div>
         <div className="frow"><div className="fg"><label className="fl">Local</label><input className="fi" name="location" defaultValue={editing?.location || ''} placeholder="Local, endereço ou link" /></div><div className="fg"><label className="fl">Recorrência</label><select className="fi" name="recurrence_rule" defaultValue={editing?.recurrence_rule || ''}><option value="">Não recorrente</option><option value="weekly">Semanal</option><option value="monthly">Mensal</option></select></div></div>
         <div className="fg"><label className="fl">Link Drive</label><input className="fi" name="drive_link" defaultValue={editing?.drive_link || ''} placeholder="https://drive.google.com/..." /></div>
         <div className="fg"><label className="fl">Observações</label><textarea className="fi" name="notes" defaultValue={editing?.notes || ''} /></div>
         {error && <div className="notice notice-err"><i className="ti ti-alert-circle" /><span>{error}</span></div>}
-      </div><div className="modal-foot">{editing && <button type="button" className="bsec danger-button" onClick={remove}>Excluir</button>}<button type="button" className="bsec" onClick={() => setShowModal(false)}>Cancelar</button><button className="bpri" disabled={loading}>{loading ? 'Salvando...' : editing ? 'Salvar evento' : 'Criar evento'}</button></div></form>
+      </div><div className="modal-foot">{editing && <button type="button" className="bsec danger-button" onClick={remove}>Excluir</button>}<button type="button" className="bsec" onClick={() => setShowModal(false)}>Cancelar</button><button className="bpri" disabled={loading}>{loading ? 'Salvando...' : editing ? 'Salvar agenda' : 'Criar agenda'}</button></div></form>
     </div></div>}
   </div>
 }

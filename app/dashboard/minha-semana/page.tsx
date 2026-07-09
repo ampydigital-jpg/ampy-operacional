@@ -57,28 +57,28 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
       eyebrow="Dashboard semanal"
       title="Semana"
       periodLabel={`${formatDateShort(startKey)} – ${formatDateShort(ymd(addDays(end, -1)))}`}
-      description="Leitura gráfica das demandas, prioridades e eventos distribuídos no intervalo semanal."
+      description="Leitura gráfica das demandas, prioridades e agendas distribuídas no intervalo semanal."
       metrics={[
         { label: 'Demandas semana', value: weekDemands.length, hint: 'prazo ou criação no intervalo', tone: 'blue', icon: 'ti-calendar-week' },
         { label: 'Entregas', value: weekDone.length, hint: 'concluídas/entregues', tone: 'green', icon: 'ti-circle-check' },
-        { label: 'Atrasos', value: late.length, hint: 'abertos acumulados', tone: late.length ? 'red' : 'green', icon: 'ti-alert-triangle' },
-        { label: 'Eventos', value: events.length, hint: 'agenda da semana', tone: 'blue', icon: 'ti-calendar-event' },
-        { label: 'Prioridades', value: priority.length, hint: 'alta ou urgente', tone: priority.length ? 'yellow' : 'neutral', icon: 'ti-flag' },
+        { label: 'Atrasos', value: late.length, hint: 'abertos acumulados', tone: 'red', icon: 'ti-alert-triangle' },
+        { label: 'Agendas', value: events.length, hint: 'agenda da semana', tone: 'blue', icon: 'ti-calendar-event' },
+        { label: 'Prioridades', value: priority.length, hint: 'alta ou urgente', tone: 'yellow', icon: 'ti-flag' },
       ]}
       progress={{ title: 'Progresso semanal', description: 'Conclusão das demandas previstas na semana.', value: deliveryPct, done: weekDone.length, total: weekDemands.length, remainingLabel: `${Math.max(0, weekDemands.length - weekDone.length)} demanda(s) ainda abertas na semana` }}
       featured={[
         { title: 'Resumo da semana', subtitle: 'Demandas abertas mais relevantes', items: summarizeItems(weekQueue, 6) },
-        { title: 'Agenda da semana', subtitle: 'Eventos ordenados por horário', items: summarizeEvents(events, 6) },
+        { title: 'Agenda da semana', subtitle: 'Agendas ordenadas por horário', items: summarizeEvents(events, 6) },
       ]}
       primaryChart={{
         title: 'Distribuição da semana',
-        description: 'Demandas, eventos e entregas por dia.',
+        description: 'Demandas, agendas e entregas por dia.',
         type: 'bar',
         data: trend,
         xKey: 'dia',
         series: [
           { key: 'demandas', name: 'Demandas', color: '#2563EB' },
-          { key: 'eventos', name: 'Eventos', color: '#EAB308' },
+          { key: 'eventos', name: 'Agendas', color: '#2563EB' },
           { key: 'entregas', name: 'Entregas', color: '#16A34A' },
         ],
         height: 210,
@@ -86,7 +86,7 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
       }}
       bars={{ title: 'Carga por responsável', description: 'Demandas abertas na semana.', data: responsibleData, labelKey: 'name', valueKey: 'value' }}
       donut={{ title: 'Status da semana', description: 'Composição das demandas do intervalo.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: weekDemands.length, centerLabel: 'demandas' }}
-      secondaryChart={{ title: 'Demandas por setor', description: 'Tipos de atividades previstas.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#DC2626' }], height: 180 }}
+      secondaryChart={{ title: 'Demandas por setor', description: 'Tipos de atividades previstas.', type: 'bar', data: sectorData, xKey: 'name', series: [{ key: 'value', name: 'Demandas', color: '#2563EB' }], height: 180 }}
       summaries={[
         { title: 'Prioridades da semana', subtitle: 'Atrasos e demandas de alta prioridade', items: summarizeItems(priorityQueue, 6) },
       ]}

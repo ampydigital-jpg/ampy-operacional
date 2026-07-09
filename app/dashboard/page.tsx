@@ -71,8 +71,8 @@ export default async function DashboardPage() {
         { label: 'Clientes ativos', value: source.activeClientsCount, hint: 'em operação', tone: 'blue', icon: 'ti-users' },
         { label: 'Entregas', value: done.length, hint: 'concluídas/entregues', tone: 'green', icon: 'ti-circle-check' },
         { label: 'Andamento', value: inProgress.length, hint: 'em execução', tone: 'blue', icon: 'ti-progress' },
-        { label: 'Atraso', value: late.length, hint: 'fora do prazo', tone: late.length ? 'red' : 'green', icon: 'ti-alert-triangle' },
-        { label: 'Pendente', value: pending.length, hint: 'aguardando início', tone: pending.length ? 'yellow' : 'neutral', icon: 'ti-hourglass' },
+        { label: 'Atraso', value: late.length, hint: 'fora do prazo', tone: 'red', icon: 'ti-alert-triangle' },
+        { label: 'Pendente', value: pending.length, hint: 'aguardando início', tone: 'yellow', icon: 'ti-hourglass' },
       ]}
       progress={{
         title: '% Entrega do mês',
@@ -83,8 +83,8 @@ export default async function DashboardPage() {
         remainingLabel: `${Math.max(0, monthDemands.length - monthDone.length)} demanda(s) ainda faltam no mês`,
       }}
       featured={[
-        { title: 'Semana', subtitle: `${weekDemands.length} demanda(s) e ${weekEvents.length} evento(s) no intervalo`, items: summarizeItems(weekQueue, 5) },
-        { title: 'Dia', subtitle: `${dayDemands.length} demanda(s) e ${todayEvents.length} evento(s) hoje`, items: summarizeItems(dayQueue, 5).concat(summarizeEvents(todayEvents, 2)).slice(0, 5) },
+        { title: 'Semana', subtitle: `${weekDemands.length} demanda(s) e ${weekEvents.length} agenda(s) no intervalo`, items: summarizeItems(weekQueue, 5) },
+        { title: 'Dia', subtitle: `${dayDemands.length} demanda(s) e ${todayEvents.length} agenda(s) hoje`, items: summarizeItems(dayQueue, 5).concat(summarizeEvents(todayEvents, 2)).slice(0, 5) },
       ]}
       primaryChart={{
         title: 'Demandas Últ. 30d',
@@ -102,7 +102,7 @@ export default async function DashboardPage() {
       donut={{ title: 'Status da operação', description: 'Composição atual das demandas.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: demands.length, centerLabel: 'demandas' }}
       bars={{ title: 'Demandas por Setor', description: 'Distribuição por tipo de atividade.', data: sectorData, labelKey: 'name', valueKey: 'value' }}
       summaries={[
-        { title: 'Agenda próxima', subtitle: 'Primeiros eventos do período', items: summarizeEvents(events.slice(0, 6), 6) },
+        { title: 'Agenda próxima', subtitle: 'Primeiras agendas do período', items: summarizeEvents(events.slice(0, 6), 6) },
         { title: 'Fila crítica', subtitle: 'Atrasos e prioridades abertas', items: summarizeItems([...late, ...open.filter((item: any) => ['urgent', 'high'].includes(String(item.priority)))].filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index), 6) },
         { title: 'Operação aberta', subtitle: 'Demandas abertas com prazo mais próximo', items: summarizeItems(open.sort((a: any, b: any) => String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999'))), 6) },
       ]}

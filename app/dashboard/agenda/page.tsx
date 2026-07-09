@@ -64,7 +64,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { per
   }))
 
   const loadErrors = [
-    eventsResult.error ? `Eventos: ${eventsResult.error.message}` : null,
+    eventsResult.error ? `Agenda: ${eventsResult.error.message}` : null,
     clientsResult.error ? `Clientes: ${clientsResult.error.message}` : null,
     profilesResult.error ? `Equipe: ${profilesResult.error.message}` : null,
     demandsResult.error ? `Demandas: ${demandsResult.error.message}` : null,
