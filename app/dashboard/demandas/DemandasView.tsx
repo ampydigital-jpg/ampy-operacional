@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { createWorkItemAction, deleteWorkItemAction, updateWorkItemStatusAction } from '@/lib/actions'
 
 const STATUS: Record<string, { label: string; className: string }> = {
@@ -42,16 +41,16 @@ const TYPES = ['Planejamento','Captação','Edição','Design','Organização de
 const today = () => new Date().toISOString().slice(0,10)
 const plusDays = (days: number) => { const date = new Date(); date.setDate(date.getDate()+days); return date.toISOString().slice(0,10) }
 function fmtDate(date?: string | null) { return date ? new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR') : '—' }
-function processMatches(itemDestino: string, selected: string) {
+function processMatches(itemDestino: string | null | undefined, selected: string) {
+  const value = String(itemDestino || 'quadro')
   if (selected === 'all') return true
-  if (selected === 'quadro') return itemDestino === 'quadro' || itemDestino === 'kanban' || itemDestino === 'ambos'
-  if (selected === 'projeto') return itemDestino === 'projeto' || itemDestino === 'ambos'
-  return itemDestino === selected
+  if (selected === 'quadro') return value === 'quadro' || value === 'kanban' || value === 'ambos'
+  if (selected === 'projeto') return value === 'projeto' || value === 'ambos'
+  return value === selected
 }
 function deadlineOf(item: any) { return item.final_deadline || item.internal_deadline || '' }
 
 export default function DemandasView({ demands, clients, profiles, clientServices, loadErrors = [] }: any) {
-  const params = useSearchParams()
   const safeDemands = Array.isArray(demands) ? demands.filter(Boolean) : []
   const safeClients = Array.isArray(clients) ? clients.filter(Boolean) : []
   const safeProfiles = Array.isArray(profiles) ? profiles.filter(Boolean) : []
@@ -60,14 +59,14 @@ export default function DemandasView({ demands, clients, profiles, clientService
 
   const [items, setItems] = useState<any[]>(safeDemands)
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState(params.get('q') || '')
-  const [status, setStatus] = useState(params.get('status') || 'all')
-  const [process, setProcess] = useState(params.get('process') || 'all')
-  const [clientId, setClientId] = useState(params.get('client') || 'all')
-  const [responsibleId, setResponsibleId] = useState(params.get('responsible') || 'all')
-  const [priority, setPriority] = useState(params.get('priority') || 'all')
-  const [deadline, setDeadline] = useState(params.get('due') || 'all')
-  const [sort, setSort] = useState(params.get('sort') || 'deadline_asc')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('all')
+  const [process, setProcess] = useState('all')
+  const [clientId, setClientId] = useState('all')
+  const [responsibleId, setResponsibleId] = useState('all')
+  const [priority, setPriority] = useState('all')
+  const [deadline, setDeadline] = useState('all')
+  const [sort, setSort] = useState('deadline_asc')
   const [formClient, setFormClient] = useState('')
   const [formProcess, setFormProcess] = useState<'quadro'|'projeto'|'ambos'|'avulsa'>('quadro')
   const [loading, setLoading] = useState(false)

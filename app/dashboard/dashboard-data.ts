@@ -176,7 +176,7 @@ export async function loadOperationData(supabase: any, options: { eventStartKey?
   if (options.eventEndKey) eventsQuery = eventsQuery.lt('starts_at', `${options.eventEndKey}T00:00:00-03:00`)
 
   const [clientsResult, profilesResult, demandsResult, eventsResult] = await Promise.all([
-    supabase.from('clients').select('id,name,status,segment,city,avatar_initials,avatar_color,avatar_bg').limit(2500),
+    supabase.from('clients').select('id,name,status,segment,cidade,avatar_initials,avatar_color,avatar_bg').limit(2500),
     supabase.from('profiles').select('id,full_name,role,is_active,avatar_initials').limit(500),
     supabase
       .from('work_items')

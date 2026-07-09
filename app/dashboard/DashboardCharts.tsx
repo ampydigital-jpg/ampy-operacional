@@ -28,6 +28,7 @@ type Props = {
   primaryChart?: ChartSpec
   secondaryChart?: ChartSpec
   donut?: DonutSpec
+  secondaryDonut?: DonutSpec
   bars?: BarsSpec
   progress?: { title: string; description?: string; value: number; done: number; total: number; remainingLabel: string }
   featured?: SummaryBlock[]
@@ -186,7 +187,7 @@ function EmptyChart({ label = 'Sem dados suficientes' }: { label?: string }) {
   return <div className="dash-empty"><i className="ti ti-chart-dots" />{label}</div>
 }
 
-export default function DashboardCharts({ title, periodLabel, eyebrow, description, variant = 'control', metrics, primaryChart, secondaryChart, donut, bars, progress, featured = [], summaries = [] }: Props) {
+export default function DashboardCharts({ title, periodLabel, eyebrow, description, variant = 'control', metrics, primaryChart, secondaryChart, donut, secondaryDonut, bars, progress, featured = [], summaries = [] }: Props) {
   const hasFocus = Boolean(progress || featured.length)
   return (
     <div className={`page-wrap dash-pro-page dash-variant-${variant}`}>
@@ -208,6 +209,7 @@ export default function DashboardCharts({ title, periodLabel, eyebrow, descripti
           {primaryChart && <div className={spanClass(primaryChart.span || 1)}><ChartCard chart={primaryChart} /></div>}
           {!hasFocus && progress && <ProgressCard progress={progress} />}
           {donut && <DonutCard donut={donut} />}
+          {secondaryDonut && <DonutCard donut={secondaryDonut} />}
           {bars && <HorizontalBars bars={bars} />}
           {secondaryChart && <div className={spanClass(secondaryChart.span || 1)}><ChartCard chart={secondaryChart} /></div>}
           {summaries.map((block) => <Summary key={block.title} block={block} />)}

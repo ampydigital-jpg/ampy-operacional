@@ -877,3 +877,54 @@ body { background: var(--bg); color: var(--t1); }
   .dash-variant-week .dash-main-grid,
   .dash-variant-month .dash-main-grid { grid-template-columns: 1fr; }
 }
+
+/* HOTFIX 10 — ESTABILIZAÇÃO DE DEMANDAS/CLIENTES E DASHBOARD DIÁRIO OPERACIONAL */
+.clients-page .client-layout { background: transparent; min-height: 0; }
+.clients-page .client-table-wrap { background: rgba(255,255,255,.9); border: 1px solid rgba(15,23,42,.08); border-radius: 22px; box-shadow: 0 14px 34px rgba(15,23,42,.055); overflow: auto; }
+.clients-page .client-table tr { cursor: pointer; }
+.clients-page .client-table tr.selected { background: #EFF6FF; }
+.clients-page .client-detail-panel { background: rgba(255,255,255,.96); color: #111827; border-left: 1px solid rgba(15,23,42,.08); }
+.clients-page .client-detail-panel header, .clients-page .client-detail-panel footer { border-color: rgba(15,23,42,.08); }
+.clients-page .detail-tabs button { color: #475467; }
+.clients-page .detail-tabs button.active { color: #111827; background: #E5E7EB; }
+.clients-page .service-card, .clients-page .quick-link, .clients-page .info-row { background: #F8FAFC; border-color: #E2E8F0; color: #111827; }
+.clients-page .service-card small, .clients-page .info-row span { color: #64748B; }
+
+.demands-page { background: #DDE4EE; }
+.demands-page .demand-table, .demands-page .demand-list { color: #111827; }
+.demands-page .demand-row { background: rgba(255,255,255,.92); border-color: rgba(15,23,42,.08); }
+.demands-page .demand-row:hover { background: #FFFFFF; box-shadow: 0 10px 24px rgba(15,23,42,.06); }
+
+.dash-variant-day .dash-focus-grid { grid-template-columns: 1.08fr 1.08fr; }
+.dash-variant-day .dash-focus-grid .dash-card { min-height: 240px; }
+.dash-variant-day .dash-main-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.dash-variant-day .donut-card { min-height: 270px; }
+.dash-variant-day .summary-card { min-height: 240px; }
+.dash-variant-day .summary-list { max-height: 188px; overflow: hidden; }
+.dash-variant-day .summary-row { grid-template-columns: 10px minmax(0,1fr) auto; }
+.dash-variant-day .summary-row strong { white-space: nowrap; }
+.dash-variant-day .dash-donut-wrap { grid-template-columns: 170px minmax(0,1fr); }
+
+.dash-variant-week .dash-main-grid, .dash-variant-month .dash-main-grid { align-items: stretch; }
+.dash-variant-week .dash-card, .dash-variant-month .dash-card { min-height: 230px; }
+
+.ops-page .topbar { background: #F8FAFC; color: #111827; }
+.ops-page .agenda-content { background: #EEF3F8 !important; }
+.ops-page .agenda-filters .fi, .ops-page .agenda-filters select.fi { background: #FFFFFF; color: #111827; border-color: #D8E0EA; }
+.ops-page .calendar-shell, .ops-page .timeline-wrap, .ops-page .timeline-head, .ops-page .timeline-day, .ops-page .timeline-slot { background: #FFFFFF !important; color: #111827 !important; }
+.ops-page .timeline-day-head span { background: #2563EB !important; color: #FFFFFF !important; }
+.ops-page .timeline-day-head b, .ops-page .timeline-hour, .ops-page .timeline-corner { color: #475467 !important; }
+.ops-page .timeline-event { border-radius: 8px !important; color: #FFFFFF !important; font-weight: 700; }
+.ops-page .timeline-event b, .ops-page .timeline-event span, .ops-page .timeline-event small { color: #FFFFFF !important; }
+
+@media (min-width: 1500px) {
+  .dash-variant-day .dash-main-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-variant-day .dash-card { min-height: 245px; }
+}
+@media (max-width: 1320px) {
+  .dash-variant-day .dash-focus-grid { grid-template-columns: 1fr; }
+  .dash-variant-day .dash-main-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 960px) {
+  .dash-variant-day .dash-main-grid { grid-template-columns: 1fr; }
+}
