@@ -33,7 +33,7 @@ export default async function ProjetosPage() {
       .order('full_name'),
     supabase
       .from('project_steps')
-      .select('id,work_item_id,status')
+      .select('id,work_item_id,title,status,start_date,end_date,responsible_id,position')
       .order('position'),
   ])
 
@@ -52,6 +52,10 @@ export default async function ProjetosPage() {
       responsible: item.responsible_id ? profilesById.get(item.responsible_id) || null : null,
       steps_count: itemSteps.length,
       steps_done: doneSteps,
+      steps: itemSteps.map((step: any) => ({
+        ...step,
+        responsible: step.responsible_id ? profilesById.get(step.responsible_id) || null : null,
+      })),
     }
   })
 

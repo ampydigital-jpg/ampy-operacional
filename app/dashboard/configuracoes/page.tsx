@@ -1,48 +1,49 @@
 import { createClient } from '@/lib/supabase/server'
 
+function fmt(value?: string | null) {
+  return value ? new Date(`${String(value).slice(0,10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'
+}
+function statusLabel(status?: string | null) {
+  const value = String(status || 'active')
+  if (value === 'archived') return 'Arquivado'
+  if (value === 'paused') return 'Pausado'
+  if (value === 'inactive' || value === 'ended') return 'Inativo'
+  return 'Ativo'
+}
+
 export default async function ConfiguracoesPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user?.id || '').single()
   const { count: totalClients } = await supabase.from('clients').select('*', { count: 'exact', head: true })
   const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true)
+  const { data: archivedClients } = await supabase
+    .from('clients')
+    .select('id,name,status,cidade,segment,fim_contrato,ended_at')
+    .in('status', ['archived','inactive','ended'])
+    .order('name')
+    .limit(120)
 
   return (
-    <div className="page-wrap">
-      <div className="topbar"><div className="tb-title">Configurações</div></div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: '16px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px' }}>Organização</div>
-            {[['Nome', 'Ampy Digital'], ['Sistema', 'Gerenciador Operacional V1'], ['Clientes', String(totalClients ?? 0)], ['Usuários ativos', String(totalUsers ?? 0)]].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '0.5px solid #141414' }}>
-                <span style={{ fontSize: '11px', color: 'var(--t4)' }}>{k}</span>
-                <span style={{ fontSize: '11px', color: 'var(--t2)' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: '16px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px' }}>Meu perfil</div>
-            {[['Nome', profile?.full_name || '—'], ['Email', profile?.email || '—'], ['Perfil', profile?.role || '—']].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '0.5px solid #141414' }}>
-                <span style={{ fontSize: '11px', color: 'var(--t4)' }}>{k}</span>
-                <span style={{ fontSize: '11px', color: 'var(--t2)' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: '16px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px' }}>Integrações</div>
-            {[['Google Drive', 'Links ativos'], ['Google Calendar', 'Agenda interna'], ['WhatsApp', 'Fase futura'], ['Meta Ads', 'Fase futura'], ['Google Ads', 'Fase futura']].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '0.5px solid #141414' }}>
-                <span style={{ fontSize: '11px', color: 'var(--t4)' }}>{k}</span>
-                <span className="badge bmut" style={{ fontSize: '9px' }}>{v}</span>
-              </div>
-            ))}
-          </div>
+    <div className="page-wrap ops-page settings-page">
+      <div className="topbar"><div><div className="tb-title">Configurações</div><div className="tb-sub">Estrutura, arquivos operacionais e clientes fora da operação ativa</div></div></div>
+      <div className="pad settings-pad">
+        <div className="settings-grid">
+          <ConfigCard title="Organização" rows={[['Nome', 'Ampy Digital'], ['Sistema', 'Gerenciador Operacional'], ['Clientes', String(totalClients ?? 0)], ['Usuários ativos', String(totalUsers ?? 0)]]} />
+          <ConfigCard title="Meu perfil" rows={[['Nome', profile?.full_name || '—'], ['Email', profile?.email || '—'], ['Perfil', profile?.role || '—']]} />
+          <ConfigCard title="Integrações" rows={[['Google Drive', 'Links ativos'], ['Agenda', 'Interna'], ['WhatsApp', 'Fase futura'], ['Meta Ads', 'Fase futura'], ['Google Ads', 'Fase futura']]} badge />
         </div>
+        <section className="settings-card archived-clients-card">
+          <div className="sh"><div><div className="stitle">Arquivo de clientes</div><div className="ssub">Clientes arquivados ou inativos ficam fora da operação por padrão.</div></div><span className="badge bmut">{archivedClients?.length || 0}</span></div>
+          {!archivedClients?.length ? <div className="empty-inline">Nenhum cliente arquivado/inativo.</div> : <div className="archived-client-list">
+            {archivedClients.map((client: any) => <div className="archived-client-row" key={client.id}><div><b>{client.name}</b><small>{client.segment || 'Sem segmento'} · {client.cidade || 'Sem cidade'}</small></div><span>{fmt(client.fim_contrato || client.ended_at)}</span><span className="badge bmut">{statusLabel(client.status)}</span></div>)}
+          </div>}
+        </section>
       </div>
     </div>
   )
+}
+
+function ConfigCard({ title, rows, badge = false }: { title: string; rows: string[][]; badge?: boolean }) {
+  return <section className="settings-card"><div className="settings-card-title">{title}</div>{rows.map(([k, v]) => <div className="settings-row" key={k}><span>{k}</span>{badge ? <span className="badge bmut">{v}</span> : <b>{v}</b>}</div>)}</section>
 }

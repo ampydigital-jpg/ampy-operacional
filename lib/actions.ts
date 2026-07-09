@@ -102,9 +102,9 @@ export async function createClientAction(formData: FormData) {
   const name = value(formData, 'name')
   if (!name) return { error: 'Informe o nome do cliente.' }
   const palette = [
-    { color: '#F59E0B', bg: '#1C1200' }, { color: '#22C55E', bg: '#052E16' },
-    { color: '#8B5CF6', bg: '#0D0A1F' }, { color: '#3B82F6', bg: '#0A1628' },
-    { color: '#EC4899', bg: '#1A0514' }, { color: '#10B981', bg: '#052019' },
+    { color: '#2563EB', bg: '#EAF2FF' }, { color: '#16A34A', bg: '#EAF7EF' },
+    { color: '#CA8A04', bg: '#FFF7E6' }, { color: '#DC2626', bg: '#FEECEC' },
+    { color: '#475467', bg: '#EEF2F7' },
   ]
   const color = palette[Math.floor(Math.random() * palette.length)]
   const { error } = await supabase.from('clients').insert({
@@ -158,6 +158,23 @@ export async function updateClientAction(formData: FormData) {
     ended_at: nullable(formData, 'fim_contrato'),
   }).eq('id', id)
   if (error) return { error: error.message }
+  revalidateOperationalPaths()
+  return { success: true }
+}
+
+
+export async function archiveClientAction(id: string, mode: 'archived' | 'inactive' = 'archived') {
+  const { supabase, profile } = await getCurrentProfile()
+  if (!profile || !isManager(profile.role)) return forbidden()
+  if (!id) return { error: 'Cliente inválido.' }
+  const nextStatus = mode === 'inactive' ? 'inactive' : 'archived'
+  const payload: Record<string, unknown> = { status: nextStatus }
+  if (mode === 'inactive') payload.ended_at = new Date().toISOString().slice(0, 10)
+  const { error } = await supabase.from('clients').update(payload).eq('id', id)
+  if (error) return { error: error.message }
+  if (mode === 'inactive') {
+    await supabase.from('client_services').update({ status: 'inactive' }).eq('client_id', id)
+  }
   revalidateOperationalPaths()
   return { success: true }
 }

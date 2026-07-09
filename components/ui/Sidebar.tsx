@@ -17,7 +17,7 @@ const groups = [
     { href: '/dashboard/quadro', label: 'Quadro', icon: 'ti-layout-kanban' },
     { href: '/dashboard/projetos', label: 'Projetos', icon: 'ti-route' },
     { href: '/dashboard/agenda', label: 'Agenda', icon: 'ti-calendar-event' },
-    { href: '/dashboard/alertas', label: 'Alertas', icon: 'ti-bell-ringing' },
+    { href: '/dashboard/alertas', label: 'Avisos', icon: 'ti-bell-ringing' },
     { href: '/dashboard/feed-preview', label: 'Feed Preview', icon: 'ti-grid-dots' },
   ]},
   { label: 'Equipe', items: [

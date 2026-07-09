@@ -1,56 +1,32 @@
 import { createClient } from '@/lib/supabase/server'
+import { isManager } from '@/lib/permissions'
+import AlertasView from './AlertasView'
 
 export default async function AlertasPage() {
   const supabase = createClient()
-  const today = new Date().toISOString().split('T')[0]
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id || '').single()
+  const date = new Date().toISOString().slice(0, 10)
 
-  const [{ data: late }, { data: blocked }, { data: pending }] = await Promise.all([
-    supabase.from('work_items').select('*, client:clients(name)').lt('final_deadline', today).not('status', 'in', '(done,cancelled,archived)').order('final_deadline').limit(20),
-    supabase.from('work_items').select('*, client:clients(name)').eq('status', 'blocked').order('updated_at', { ascending: false }).limit(20),
-    Promise.resolve({ data: [] }),
-  ])
+  let late = supabase.from('work_items').select('id,title,final_deadline,blocked_reason,client:clients(name),responsible_id').lt('final_deadline', date).not('status', 'in', '(done,cancelled,archived)').order('final_deadline').limit(100)
+  let blocked = supabase.from('work_items').select('id,title,final_deadline,blocked_reason,client:clients(name),responsible_id').eq('status', 'blocked').not('status', 'in', '(done,cancelled,archived)').order('updated_at', { ascending: false }).limit(100)
+  let urgent = supabase.from('work_items').select('id,title,final_deadline,blocked_reason,client:clients(name),responsible_id').eq('priority', 'urgent').not('status', 'in', '(done,cancelled,archived)').order('final_deadline').limit(100)
+  let due = supabase.from('work_items').select('id,title,final_deadline,blocked_reason,client:clients(name),responsible_id').gte('final_deadline', date).lte('final_deadline', new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10)).not('status', 'in', '(done,cancelled,archived)').order('final_deadline').limit(100)
 
-  return (
-    <div className="page-wrap">
-      <div className="topbar"><div className="tb-title">Alertas</div></div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-        <div className="metrics">
-          <div className="metric"><div className="metric-lbl">Atrasadas</div><div className="metric-val" style={{ color: (late?.length ?? 0) > 0 ? 'var(--red)' : 'var(--w)' }}>{late?.length ?? 0}</div><div className="metric-inf"><span className="dot" style={{ background: 'var(--red)' }} />Com atraso</div></div>
-          <div className="metric"><div className="metric-lbl">Bloqueadas</div><div className="metric-val" style={{ color: (blocked?.length ?? 0) > 0 ? 'var(--amber)' : 'var(--w)' }}>{blocked?.length ?? 0}</div><div className="metric-inf"><span className="dot" style={{ background: 'var(--amber)' }} />Aguardando</div></div>
-          <div className="metric"><div className="metric-lbl">Aprovações</div><div className="metric-val" style={{ color: (pending?.length ?? 0) > 0 ? 'var(--purple)' : 'var(--w)' }}>{pending?.length ?? 0}</div><div className="metric-inf"><span className="dot" style={{ background: 'var(--purple)' }} />Pendentes</div></div>
-          <div className="metric"><div className="metric-lbl">Total alertas</div><div className="metric-val">{(late?.length ?? 0) + (blocked?.length ?? 0) + (pending?.length ?? 0)}</div><div className="metric-inf"><span className="dot" style={{ background: 'var(--t3)' }} />Ativos</div></div>
-        </div>
+  if (!isManager(profile?.role)) {
+    late = late.eq('responsible_id', user?.id)
+    blocked = blocked.eq('responsible_id', user?.id)
+    urgent = urgent.eq('responsible_id', user?.id)
+    due = due.eq('responsible_id', user?.id)
+  }
 
-        {late && late.length > 0 && <>
-          <div className="sh"><div className="stitle">Demandas atrasadas</div></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
-            {late.map((d: any) => (
-              <div key={d.id} style={{ background: 'var(--s1)', border: '0.5px solid var(--rbr)', borderRadius: 'var(--rc)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'var(--rbg)', color: 'var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}><i className="ti ti-clock" /></div>
-                <div style={{ flex: 1 }}><div style={{ fontSize: '11px', fontWeight: 500, color: '#CCC' }}>{d.title}</div><div style={{ fontSize: '10px', color: 'var(--t4)', marginTop: '2px' }}>{d.client?.name || 'Interno'} · Prazo: {new Date(d.final_deadline + 'T00:00:00').toLocaleDateString('pt-BR')}</div></div>
-                <span className="badge berr">Atrasada</span>
-              </div>
-            ))}
-          </div>
-        </>}
+  const [{ data: lateItems }, { data: blockedItems }, { data: urgentItems }, { data: dueItems }] = await Promise.all([late, blocked, urgent, due])
+  const sections = [
+    { title: 'Atrasadas', items: lateItems || [], label: 'Atrasada', color: '#DC2626' },
+    { title: 'Bloqueadas', items: blockedItems || [], label: 'Bloqueada', color: '#DC2626' },
+    { title: 'Urgentes', items: urgentItems || [], label: 'Urgente', color: '#DC2626' },
+    { title: 'Entregas próximas', items: dueItems || [], label: 'Próxima', color: '#2563EB' },
+  ]
 
-        {blocked && blocked.length > 0 && <>
-          <div className="sh"><div className="stitle">Demandas bloqueadas</div></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
-            {blocked.map((d: any) => (
-              <div key={d.id} style={{ background: 'var(--s1)', border: '0.5px solid var(--abr)', borderRadius: 'var(--rc)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'var(--abg)', color: 'var(--amber)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}><i className="ti ti-lock" /></div>
-                <div style={{ flex: 1 }}><div style={{ fontSize: '11px', fontWeight: 500, color: '#CCC' }}>{d.title}</div><div style={{ fontSize: '10px', color: 'var(--t4)', marginTop: '2px' }}>{d.client?.name || 'Interno'} · {d.blocked_reason || 'Motivo não informado'}</div></div>
-                <span className="badge bwarn">Bloqueada</span>
-              </div>
-            ))}
-          </div>
-        </>}
-
-        {late?.length === 0 && blocked?.length === 0 && pending?.length === 0 && (
-          <div className="empty"><i className="ti ti-circle-check" /><div className="empty-title" style={{ color: 'var(--green)' }}>Tudo em dia!</div><div className="empty-sub">Nenhum alerta ativo no momento.</div></div>
-        )}
-      </div>
-    </div>
-  )
+  return <AlertasView sections={sections} profileId={user?.id || null} />
 }
