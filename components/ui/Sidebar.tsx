@@ -6,10 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 
 const groups = [
   { label: 'Dashboards', items: [
-    { href: '/dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard' },
-    { href: '/dashboard/meu-dia', label: 'Meu dia', icon: 'ti-sun' },
-    { href: '/dashboard/minha-semana', label: 'Minha semana', icon: 'ti-calendar-week' },
-    { href: '/dashboard/alertas', label: 'Alertas', icon: 'ti-bell-ringing' },
+    { href: '/dashboard', label: 'Painel de Controle', icon: 'ti-layout-dashboard' },
+    { href: '/dashboard/meu-dia', label: 'Dia', icon: 'ti-sun' },
+    { href: '/dashboard/minha-semana', label: 'Semana', icon: 'ti-calendar-week' },
+    { href: '/dashboard/mes', label: 'Mês', icon: 'ti-calendar-month' },
   ]},
   { label: 'Operação', items: [
     { href: '/dashboard/clientes', label: 'Painel de Clientes', icon: 'ti-users' },
@@ -17,6 +17,7 @@ const groups = [
     { href: '/dashboard/quadro', label: 'Quadro', icon: 'ti-layout-kanban' },
     { href: '/dashboard/projetos', label: 'Projetos', icon: 'ti-route' },
     { href: '/dashboard/agenda', label: 'Agenda', icon: 'ti-calendar-event' },
+    { href: '/dashboard/alertas', label: 'Alertas', icon: 'ti-bell-ringing' },
     { href: '/dashboard/feed-preview', label: 'Feed Preview', icon: 'ti-grid-dots' },
   ]},
   { label: 'Equipe', items: [

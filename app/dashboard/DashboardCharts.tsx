@@ -1,123 +1,213 @@
 'use client'
 
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import Link from 'next/link'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts'
 
-const COLORS = ['#3B82F6','#22C55E','#F59E0B','#8B5CF6','#EF4444','#06B6D4','#F97316','#EC4899']
+const COLORS = ['#2563EB', '#16A34A', '#EAB308', '#DC2626', '#7C3AED', '#0891B2', '#F97316']
+const TONES: Record<string, { color: string; bg: string; iconBg: string }> = {
+  blue: { color: '#2563EB', bg: '#EFF6FF', iconBg: '#DBEAFE' },
+  green: { color: '#16A34A', bg: '#F0FDF4', iconBg: '#DCFCE7' },
+  yellow: { color: '#CA8A04', bg: '#FEFCE8', iconBg: '#FEF3C7' },
+  red: { color: '#DC2626', bg: '#FEF2F2', iconBg: '#FEE2E2' },
+  neutral: { color: '#111827', bg: '#F8FAFC', iconBg: '#E5E7EB' },
+}
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+type Metric = { label: string; value: string | number; hint?: string; tone?: string; icon?: string }
+type Series = { key: string; name: string; color?: string }
+type ChartSpec = { title: string; description?: string; type?: 'bar' | 'line'; data: any[]; xKey: string; series: Series[]; height?: number }
+type DonutSpec = { title: string; description?: string; data: any[]; nameKey: string; valueKey: string; centerLabel?: string; centerValue?: string | number }
+type BarsSpec = { title: string; description?: string; data: any[]; labelKey: string; valueKey: string; max?: number }
+type SummaryBlock = { title: string; subtitle?: string; items: { label: string; value: string | number; tone?: string; meta?: string }[] }
+
+type Props = {
+  title: string
+  periodLabel: string
+  eyebrow?: string
+  description?: string
+  metrics: Metric[]
+  primaryChart?: ChartSpec
+  secondaryChart?: ChartSpec
+  donut?: DonutSpec
+  bars?: BarsSpec
+  progress?: { title: string; description?: string; value: number; done: number; total: number; remainingLabel: string }
+  summaries?: SummaryBlock[]
+}
+
+const formatTooltipValue = (value: any) => typeof value === 'number' ? value.toLocaleString('pt-BR') : value
+
+function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background:'#1A1A1A', border:'0.5px solid #2A2A2A', borderRadius:'8px', padding:'10px 14px' }}>
-      {label && <div style={{ fontSize:'10px', color:'#777', marginBottom:'6px' }}>{label}</div>}
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{ fontSize:'11px', color:p.color||'#CCC', display:'flex', gap:'8px', alignItems:'center' }}>
-          <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:p.color||'#CCC', flexShrink:0 }} />
-          {p.name}: <strong>{p.value}</strong>
+    <div className="chart-tooltip">
+      {label && <div className="chart-tooltip-label">{label}</div>}
+      {payload.map((entry: any, index: number) => (
+        <div className="chart-tooltip-row" key={`${entry.name}-${index}`}>
+          <span className="chart-dot" style={{ background: entry.color }} />
+          <span>{entry.name}</span>
+          <b>{formatTooltipValue(entry.value)}</b>
         </div>
       ))}
     </div>
   )
 }
 
-export default function DashboardCharts({ metrics, todayDemands, soonDemands, pizzaData, barData, statusData, dateStr, priorityColor }: any) {
-  const metricCards = [
-    {label:'Clientes ativos', value:metrics.activeClients, icon:'ti-users', color:'var(--ok)', bg:'var(--ok-bg)', sub:'Em operação', href:'/dashboard/clientes'},
-    {label:'Demandas abertas', value:metrics.openDemands, icon:'ti-checklist', color:'var(--warn)', bg:'var(--warn-bg)', sub:`${metrics.lateDemands} com atraso`, href:'/dashboard/demandas?status=open&sort=deadline_asc'},
-    {label:'Atrasadas', value:metrics.lateDemands, icon:'ti-clock-exclamation', color:metrics.lateDemands>0?'var(--err)':'var(--t3)', bg:metrics.lateDemands>0?'var(--err-bg)':'var(--s2)', sub:'Precisam de atenção', href:'/dashboard/demandas?status=late&sort=deadline_asc'},
-    {label:'Bloqueadas', value:metrics.blockedDemands, icon:'ti-ban', color:metrics.blockedDemands>0?'var(--warn)':'var(--t3)', bg:metrics.blockedDemands>0?'var(--warn-bg)':'var(--s2)', sub:'Exigem desbloqueio', href:'/dashboard/demandas?status=blocked&sort=priority_desc'},
-  ]
-
+function MetricCard({ metric }: { metric: Metric }) {
+  const tone = TONES[metric.tone || 'neutral'] || TONES.neutral
   return (
-    <div className="page-wrap dashboard-page">
-      <div className="topbar">
-        <div className="tb-title">Dashboard</div>
-        <div className="tb-sub">{dateStr}</div>
-        <Link href="/dashboard/demandas?sort=deadline_asc" className="bsec">Ver demandas</Link>
-        <Link href="/dashboard/demandas" className="bpri"><i className="ti ti-plus" style={{fontSize:'12px'}}/> Nova demanda</Link>
+    <div className="dash-stat" style={{ ['--stat-color' as any]: tone.color, ['--stat-bg' as any]: tone.bg, ['--stat-icon-bg' as any]: tone.iconBg }}>
+      <div>
+        <div className="dash-stat-label">{metric.label}</div>
+        <div className="dash-stat-value">{metric.value}</div>
+        {metric.hint && <div className="dash-stat-hint">{metric.hint}</div>}
       </div>
+      <div className="dash-stat-icon"><i className={`ti ${metric.icon || 'ti-chart-bar'}`} /></div>
+    </div>
+  )
+}
 
-      <div style={{flex:1, overflowY:'auto', padding:'20px'}}>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', marginBottom:'20px'}}>
-          {metricCards.map((m) => (
-            <Link key={m.label} href={m.href} className="dashboard-metric-link" style={{background:'var(--s1)', border:`0.5px solid ${m.color}30`, borderRadius:'var(--rc)', padding:'18px', position:'relative', overflow:'hidden', textDecoration:'none'}}>
-              <div style={{position:'absolute', top:0, left:0, right:0, height:'3px', background:m.color, borderRadius:'12px 12px 0 0'}} />
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px'}}>
-                <div style={{fontSize:'9px', fontWeight:700, color:'var(--t4)', textTransform:'uppercase', letterSpacing:'1.5px'}}>{m.label}</div>
-                <div style={{width:'32px', height:'32px', borderRadius:'8px', background:m.bg, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                  <i className={`ti ${m.icon}`} style={{color:m.color, fontSize:'16px'}} />
-                </div>
-              </div>
-              <div style={{fontSize:'32px', fontWeight:700, color:m.color, lineHeight:1, letterSpacing:'-1px', marginBottom:'6px'}}>{m.value}</div>
-              <div style={{fontSize:'10px', color:'var(--t4)'}}>{m.sub}</div>
-            </Link>
-          ))}
+function ChartCard({ chart }: { chart: ChartSpec }) {
+  const height = chart.height || 250
+  const isLine = chart.type === 'line'
+  return (
+    <section className="dash-card">
+      <div className="dash-card-head">
+        <div>
+          <h3>{chart.title}</h3>
+          {chart.description && <p>{chart.description}</p>}
         </div>
+      </div>
+      <div className="dash-chart" style={{ height }}>
+        {chart.data.length === 0 ? <EmptyChart /> : (
+          <ResponsiveContainer width="100%" height="100%">
+            {isLine ? (
+              <LineChart data={chart.data} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke="#E5E7EB" vertical={false} />
+                <XAxis dataKey={chart.xKey} tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                {chart.series.map((series, index) => <Line key={series.key} dataKey={series.key} name={series.name} type="monotone" stroke={series.color || COLORS[index % COLORS.length]} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />)}
+              </LineChart>
+            ) : (
+              <BarChart data={chart.data} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke="#E5E7EB" vertical={false} />
+                <XAxis dataKey={chart.xKey} tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                {chart.series.map((series, index) => <Bar key={series.key} dataKey={series.key} name={series.name} fill={series.color || COLORS[index % COLORS.length]} radius={[8, 8, 0, 0]} maxBarSize={38} />)}
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        )}
+      </div>
+    </section>
+  )
+}
 
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'16px'}}>
-          <div style={{background:'var(--s1)', border:'0.5px solid var(--b1)', borderRadius:'var(--rc)', padding:'18px'}}>
-            <div style={{fontSize:'12px', fontWeight:600, color:'var(--w)', marginBottom:'4px'}}>Demandas — últimos 30 dias</div>
-            <div style={{fontSize:'10px', color:'var(--t4)', marginBottom:'16px'}}>Criadas, concluídas e atrasadas</div>
-            {barData.length === 0 ? <div style={{height:'180px', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--t4)', fontSize:'11px'}}>Nenhum dado ainda</div> :
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={barData} margin={{top:0,right:0,left:-20,bottom:0}}>
-                  <XAxis dataKey="date" tick={{fill:'#666', fontSize:9}} axisLine={false} tickLine={false} />
-                  <YAxis tick={{fill:'#666', fontSize:9}} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="total" name="Total" fill="#3B82F6" radius={[4,4,0,0]} maxBarSize={30} />
-                  <Bar dataKey="done" name="Concluídas" fill="#22C55E" radius={[4,4,0,0]} maxBarSize={30} />
-                  <Bar dataKey="late" name="Atrasadas" fill="#EF4444" radius={[4,4,0,0]} maxBarSize={30} />
-                </BarChart>
-              </ResponsiveContainer>}
-          </div>
-
-          <div style={{background:'var(--s1)', border:'0.5px solid var(--b1)', borderRadius:'var(--rc)', padding:'18px'}}>
-            <div style={{fontSize:'12px', fontWeight:600, color:'var(--w)', marginBottom:'4px'}}>Demandas por tipo</div>
-            <div style={{fontSize:'10px', color:'var(--t4)', marginBottom:'8px'}}>Distribuição dos últimos 30 dias</div>
-            {pizzaData.length === 0 ? <div style={{height:'180px', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--t4)', fontSize:'11px'}}>Nenhum dado ainda</div> :
-              <div style={{display:'flex', alignItems:'center', gap:'16px'}}>
-                <ResponsiveContainer width={160} height={160}>
-                  <PieChart><Pie data={pizzaData} cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={3} dataKey="value">{pizzaData.map((_:any, i:number) => <Cell key={i} fill={COLORS[i%COLORS.length]} />)}</Pie><Tooltip content={<CustomTooltip />} /></PieChart>
-                </ResponsiveContainer>
-                <div style={{flex:1}}>{pizzaData.map((d:any, i:number) => <div key={i} style={{display:'flex', alignItems:'center', gap:'7px', marginBottom:'6px'}}><div style={{width:'8px', height:'8px', borderRadius:'2px', background:COLORS[i%COLORS.length], flexShrink:0}} /><span style={{fontSize:'10px', color:'var(--t2)', flex:1}}>{d.name}</span><span style={{fontSize:'10px', fontWeight:600, color:'var(--t3)'}}>{d.value}</span></div>)}</div>
-              </div>}
-          </div>
+function DonutCard({ donut }: { donut: DonutSpec }) {
+  return (
+    <section className="dash-card">
+      <div className="dash-card-head">
+        <div>
+          <h3>{donut.title}</h3>
+          {donut.description && <p>{donut.description}</p>}
         </div>
+      </div>
+      <div className="dash-donut-wrap">
+        <div className="dash-donut">
+          {donut.data.length === 0 ? <EmptyChart /> : (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={donut.data} cx="50%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={3} dataKey={donut.valueKey} nameKey={donut.nameKey}>
+                  {donut.data.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+          <div className="dash-donut-center"><b>{donut.centerValue ?? ''}</b><span>{donut.centerLabel ?? ''}</span></div>
+        </div>
+        <div className="dash-legend">
+          {donut.data.slice(0, 7).map((item: any, index: number) => <div className="dash-legend-row" key={`${item[donut.nameKey]}-${index}`}><span style={{ background: COLORS[index % COLORS.length] }} /> <p>{item[donut.nameKey]}</p><b>{item[donut.valueKey]}</b></div>)}
+        </div>
+      </div>
+    </section>
+  )
+}
 
-        <div style={{display:'grid', gridTemplateColumns:'300px 1fr 280px', gap:'12px'}}>
-          <div style={{background:'var(--s1)', border:'0.5px solid var(--b1)', borderRadius:'var(--rc)', padding:'18px'}}>
-            <div style={{fontSize:'12px', fontWeight:600, color:'var(--w)', marginBottom:'16px'}}>Por status</div>
-            {statusData.length === 0 ? <div style={{color:'var(--t4)', fontSize:'11px', textAlign:'center', padding:'20px 0'}}>Sem dados</div> : statusData.map((d:any, i:number) => (
-              <Link href={`/dashboard/demandas?status=${d.key || 'all'}`} key={i} style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px', textDecoration:'none'}}>
-                <div style={{width:'8px', height:'8px', borderRadius:'50%', background:COLORS[i%COLORS.length], flexShrink:0}} />
-                <span style={{fontSize:'11px', color:'var(--t2)', flex:1}}>{d.name}</span>
-                <div style={{height:'5px', width:`${Math.min((d.value/Math.max(...statusData.map((x:any)=>x.value)))*80,80)}px`, background:COLORS[i%COLORS.length], borderRadius:'3px', opacity:0.7}} />
-                <span style={{fontSize:'10px', fontWeight:600, color:'var(--t3)', minWidth:'20px', textAlign:'right'}}>{d.value}</span>
-              </Link>
-            ))}
+function HorizontalBars({ bars }: { bars: BarsSpec }) {
+  const max = bars.max || Math.max(1, ...bars.data.map((item: any) => Number(item[bars.valueKey] || 0)))
+  return (
+    <section className="dash-card">
+      <div className="dash-card-head">
+        <div>
+          <h3>{bars.title}</h3>
+          {bars.description && <p>{bars.description}</p>}
+        </div>
+      </div>
+      <div className="dash-bars">
+        {bars.data.length === 0 ? <EmptyChart /> : bars.data.slice(0, 8).map((item: any, index: number) => {
+          const value = Number(item[bars.valueKey] || 0)
+          return <div className="dash-bar-row" key={`${item[bars.labelKey]}-${index}`}>
+            <div className="dash-bar-info"><span>{item[bars.labelKey]}</span><b>{value}</b></div>
+            <div className="dash-bar-track"><div style={{ width: `${Math.min(100, (value / max) * 100)}%`, background: COLORS[index % COLORS.length] }} /></div>
           </div>
+        })}
+      </div>
+    </section>
+  )
+}
 
-          <div style={{background:'var(--s1)', border:'0.5px solid var(--b1)', borderRadius:'var(--rc)', overflow:'hidden'}}>
-            <div style={{padding:'14px 16px', borderBottom:'0.5px solid #161616', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-              <div style={{fontSize:'12px', fontWeight:600, color:'var(--w)'}}>Entregas de hoje</div>
-              <Link href="/dashboard/demandas?due=today&sort=priority_desc" style={{fontSize:'10px', color:'var(--blue)'}}>{todayDemands.length} itens</Link>
-            </div>
-            {todayDemands.length === 0 ? <div style={{padding:'32px', textAlign:'center'}}><i className="ti ti-sun" style={{fontSize:'28px', color:'var(--ok)', display:'block', marginBottom:'8px'}} /><div style={{fontSize:'12px', color:'var(--ok)', fontWeight:500}}>Dia livre!</div><div style={{fontSize:'11px', color:'var(--t4)', marginTop:'4px'}}>Nenhuma entrega hoje</div></div> : todayDemands.map((d:any) => (
-              <Link href={`/dashboard/demandas/${d.id}`} key={d.id} style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderBottom:'0.5px solid #141414', textDecoration:'none'}}>
-                <div style={{width:'10px', height:'10px', borderRadius:'50%', background:priorityColor[d.priority]||'var(--t3)', flexShrink:0}} />
-                <div style={{flex:1, minWidth:0}}><div style={{fontSize:'11px', fontWeight:600, color:'#DDD', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{d.title}</div><div style={{fontSize:'10px', color:'var(--t4)', marginTop:'2px'}}>{d.client?.name||'Interno'} · {d.type}</div></div>
-                {d.responsible && <div style={{width:'24px', height:'24px', borderRadius:'6px', background:'var(--s3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', color:'var(--t2)', fontWeight:700, flexShrink:0}}>{d.responsible.avatar_initials}</div>}
-              </Link>
-            ))}
-          </div>
+function ProgressCard({ progress }: { progress: NonNullable<Props['progress']> }) {
+  const value = Math.max(0, Math.min(100, Math.round(progress.value)))
+  return (
+    <section className="dash-card progress-card">
+      <div className="dash-card-head"><div><h3>{progress.title}</h3>{progress.description && <p>{progress.description}</p>}</div></div>
+      <div className="progress-ring" style={{ ['--progress' as any]: `${value * 3.6}deg` }}>
+        <div><b>{value}%</b><span>entregue</span></div>
+      </div>
+      <div className="progress-meta"><div><b>{progress.done}</b><span>concluídas</span></div><div><b>{progress.total}</b><span>total mês</span></div></div>
+      <div className="progress-foot">{progress.remainingLabel}</div>
+    </section>
+  )
+}
 
-          <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
-            <div style={{background:'var(--s1)', border:'0.5px solid var(--b1)', borderRadius:'var(--rc)', padding:'14px'}}>
-              <div style={{fontSize:'9px', fontWeight:700, color:'var(--t4)', textTransform:'uppercase', letterSpacing:'2px', marginBottom:'10px'}}>Acesso rápido</div>
-              {[{href:'/dashboard/meu-dia', icon:'ti-sun', label:'Meu dia', color:'var(--warn)'},{href:'/dashboard/minha-semana', icon:'ti-calendar-week', label:'Minha semana', color:'var(--blue)'},{href:'/dashboard/quadro', icon:'ti-layout-kanban', label:'Quadro', color:'var(--ok)'},{href:'/dashboard/agenda', icon:'ti-calendar', label:'Agenda', color:'var(--purple)'},{href:'/dashboard/avisos', icon:'ti-bell', label:'Alertas', color:'var(--err)'}].map(item => <Link key={item.href} href={item.href} style={{display:'flex', alignItems:'center', gap:'9px', padding:'8px 10px', borderRadius:'var(--r)', color:'var(--t2)', fontSize:'11px', textDecoration:'none', marginBottom:'2px'}}><i className={`ti ${item.icon}`} style={{color:item.color, fontSize:'14px', width:'16px'}} />{item.label}<i className="ti ti-chevron-right" style={{marginLeft:'auto', fontSize:'11px', color:'var(--t4)'}} /></Link>)}
-            </div>
-            {soonDemands.length > 0 && <div style={{background:'var(--s1)', border:'0.5px solid var(--warn-br)', borderRadius:'var(--rc)', overflow:'hidden'}}><div style={{padding:'10px 14px', borderBottom:'0.5px solid #1C1400', display:'flex', alignItems:'center', gap:'7px'}}><i className="ti ti-alert-triangle" style={{color:'var(--warn)', fontSize:'13px'}} /><span style={{fontSize:'11px', fontWeight:600, color:'var(--warn)'}}>Vence em 3 dias</span></div>{soonDemands.map((d:any) => <Link href={`/dashboard/demandas/${d.id}`} key={d.id} style={{padding:'8px 14px', borderBottom:'0.5px solid #141414', display:'flex', justifyContent:'space-between', alignItems:'center', textDecoration:'none'}}><div style={{fontSize:'10px', color:'#CCC', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, marginRight:'8px'}}>{d.title}</div><span style={{fontSize:'9px', fontWeight:700, color:'var(--warn)', flexShrink:0}}>{new Date(d.final_deadline+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></Link>)}</div>}
-          </div>
+function Summary({ block }: { block: SummaryBlock }) {
+  return (
+    <section className="dash-card summary-card">
+      <div className="dash-card-head"><div><h3>{block.title}</h3>{block.subtitle && <p>{block.subtitle}</p>}</div></div>
+      <div className="summary-list">
+        {block.items.length === 0 ? <EmptyChart label="Sem itens para este período" /> : block.items.map((item, index) => {
+          const tone = TONES[item.tone || 'neutral'] || TONES.neutral
+          return <div className="summary-row" key={`${item.label}-${index}`}><div className="summary-dot" style={{ background: tone.color }} /><div><b>{item.label}</b>{item.meta && <span>{item.meta}</span>}</div><strong>{item.value}</strong></div>
+        })}
+      </div>
+    </section>
+  )
+}
+
+function EmptyChart({ label = 'Sem dados suficientes' }: { label?: string }) {
+  return <div className="dash-empty"><i className="ti ti-chart-dots" />{label}</div>
+}
+
+export default function DashboardCharts({ title, periodLabel, eyebrow, description, metrics, primaryChart, secondaryChart, donut, bars, progress, summaries = [] }: Props) {
+  return (
+    <div className="page-wrap dash-pro-page">
+      <div className="dash-pro-head">
+        <div>
+          {eyebrow && <div className="dash-eyebrow">{eyebrow}</div>}
+          <h1>{title}</h1>
+          {description && <p>{description}</p>}
+        </div>
+        <div className="dash-period"><i className="ti ti-calendar-stats" />{periodLabel}</div>
+      </div>
+      <div className="dash-pro-body">
+        <div className="dash-stat-grid">{metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}</div>
+        <div className="dash-main-grid">
+          {primaryChart && <div className="dash-span-2"><ChartCard chart={primaryChart} /></div>}
+          {progress && <ProgressCard progress={progress} />}
+          {donut && <DonutCard donut={donut} />}
+          {bars && <HorizontalBars bars={bars} />}
+          {secondaryChart && <ChartCard chart={secondaryChart} />}
+          {summaries.map((block) => <Summary key={block.title} block={block} />)}
         </div>
       </div>
     </div>
