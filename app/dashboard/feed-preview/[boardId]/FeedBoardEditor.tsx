@@ -382,7 +382,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
       updated_at: new Date().toISOString(),
     }))
 
-    setMessage('Feed marcado como Em andamento. O link público de aprovação entra na próxima etapa.')
+    setMessage('Feed marcado como Em andamento. Link público aberto em nova aba.'); if (boardState.share_token) { window.open(`/aprovar/${boardState.share_token}`, '_blank') }
     addLocalEvent('Ampy Digital subiu o feed para aprovação.')
     setSaving(false)
   }
@@ -778,3 +778,5 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     </div>
   )
 }
+
+

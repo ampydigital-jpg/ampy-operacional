@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
@@ -56,30 +56,30 @@ async function addHistory(workItemId: string, actorId: string | undefined, field
 
 async function canOperateWorkItem(id: string) {
   const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' as const }
+  if (!user || !profile) return { error: 'SessÃ£o invÃ¡lida ou usuÃ¡rio inativo.' as const }
   const { data: item, error } = await supabase
     .from('work_items')
     .select('id, title, client_id, client_service_id, responsible_id, created_by, status, destino')
     .eq('id', id)
     .single()
-  if (error || !item) return { error: 'Demanda não encontrada.' as const }
+  if (error || !item) return { error: 'Demanda nÃ£o encontrada.' as const }
   if (!isManager(profile.role) && item.responsible_id !== user.id && item.created_by !== user.id) {
-    return { error: 'Você não possui permissão para alterar esta demanda.' as const }
+    return { error: 'VocÃª nÃ£o possui permissÃ£o para alterar esta demanda.' as const }
   }
   return { supabase, user, profile, item }
 }
 
 async function validateWorkItemLinks(supabase: ReturnType<typeof createClient>, clientId: string | null, clientServiceId: string | null) {
   if (!clientServiceId) return { ok: true as const }
-  if (!clientId) return { error: 'Serviço vinculado exige um cliente. Para demanda interna, deixe o serviço em branco.' as const }
+  if (!clientId) return { error: 'ServiÃ§o vinculado exige um cliente. Para demanda interna, deixe o serviÃ§o em branco.' as const }
   const { data: service, error } = await supabase
     .from('client_services')
     .select('id, client_id, status')
     .eq('id', clientServiceId)
     .single()
-  if (error || !service) return { error: 'Serviço vinculado não encontrado.' as const }
-  if (service.client_id !== clientId) return { error: 'O serviço selecionado não pertence ao cliente desta demanda.' as const }
-  if (service.status !== 'active') return { error: 'O serviço selecionado não está ativo.' as const }
+  if (error || !service) return { error: 'ServiÃ§o vinculado nÃ£o encontrado.' as const }
+  if (service.client_id !== clientId) return { error: 'O serviÃ§o selecionado nÃ£o pertence ao cliente desta demanda.' as const }
+  if (service.status !== 'active') return { error: 'O serviÃ§o selecionado nÃ£o estÃ¡ ativo.' as const }
   return { ok: true as const }
 }
 
@@ -90,9 +90,9 @@ async function validateCalendarLinks(supabase: ReturnType<typeof createClient>, 
     .select('id, client_id, status')
     .eq('id', workItemId)
     .single()
-  if (error || !item) return { error: 'Demanda vinculada à agenda não foi encontrada.' as const }
-  if (['archived', 'cancelled'].includes(item.status)) return { error: 'Não vincule agenda a uma demanda arquivada ou cancelada.' as const }
-  if (clientId && item.client_id !== clientId) return { error: 'Cliente da agenda não corresponde ao cliente da demanda vinculada.' as const }
+  if (error || !item) return { error: 'Demanda vinculada Ã  agenda nÃ£o foi encontrada.' as const }
+  if (['archived', 'cancelled'].includes(item.status)) return { error: 'NÃ£o vincule agenda a uma demanda arquivada ou cancelada.' as const }
+  if (clientId && item.client_id !== clientId) return { error: 'Cliente da agenda nÃ£o corresponde ao cliente da demanda vinculada.' as const }
   return { clientId: item.client_id || clientId, ok: true as const }
 }
 
@@ -138,7 +138,7 @@ export async function updateClientAction(formData: FormData) {
   if (!profile || !isManager(profile.role)) return forbidden()
   const id = value(formData, 'id')
   const name = value(formData, 'name')
-  if (!id || !name) return { error: 'Cliente inválido.' }
+  if (!id || !name) return { error: 'Cliente invÃ¡lido.' }
   const { error } = await supabase.from('clients').update({
     name,
     segment: nullable(formData, 'segment') || '',
@@ -166,7 +166,7 @@ export async function updateClientAction(formData: FormData) {
 export async function archiveClientAction(id: string, mode: 'archived' | 'inactive' = 'archived') {
   const { supabase, profile } = await getCurrentProfile()
   if (!profile || !isManager(profile.role)) return forbidden()
-  if (!id) return { error: 'Cliente inválido.' }
+  if (!id) return { error: 'Cliente invÃ¡lido.' }
   const nextStatus = mode === 'inactive' ? 'inactive' : 'archived'
   const payload: Record<string, unknown> = { status: nextStatus }
   if (mode === 'inactive') payload.ended_at = new Date().toISOString().slice(0, 10)
@@ -184,7 +184,7 @@ export async function createClientServiceAction(formData: FormData) {
   if (!profile || !isManager(profile.role)) return forbidden()
   const clientId = value(formData, 'client_id')
   const serviceCatalogId = value(formData, 'service_catalog_id')
-  if (!clientId || !serviceCatalogId) return { error: 'Cliente e serviço são obrigatórios.' }
+  if (!clientId || !serviceCatalogId) return { error: 'Cliente e serviÃ§o sÃ£o obrigatÃ³rios.' }
   const monthly = value(formData, 'monthly_quantity')
   const { error } = await supabase.from('client_services').insert({
     client_id: clientId,
@@ -206,7 +206,7 @@ export async function updateClientServiceAction(formData: FormData) {
   if (!profile || !isManager(profile.role)) return forbidden()
   const id = value(formData, 'id')
   const monthly = value(formData, 'monthly_quantity')
-  if (!id) return { error: 'Serviço inválido.' }
+  if (!id) return { error: 'ServiÃ§o invÃ¡lido.' }
   const { error } = await supabase.from('client_services').update({
     responsible_id: nullable(formData, 'responsible_id'),
     status: value(formData, 'status') || 'active',
@@ -221,10 +221,10 @@ export async function updateClientServiceAction(formData: FormData) {
 
 export async function createWorkItemAction(formData: FormData) {
   const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
+  if (!user || !profile) return { error: 'SessÃ£o invÃ¡lida ou usuÃ¡rio inativo.' }
   const title = value(formData, 'title')
   const destino = normalizeProcess(value(formData, 'destino'))
-  if (!title) return { error: 'Informe o título da demanda.' }
+  if (!title) return { error: 'Informe o tÃ­tulo da demanda.' }
   const clientId = nullable(formData, 'client_id')
   const clientServiceId = nullable(formData, 'client_service_id')
   const linkValidation = await validateWorkItemLinks(supabase, clientId, clientServiceId)
@@ -259,7 +259,7 @@ export async function updateWorkItemAction(id: string, formData: FormData) {
   if ('error' in permission) return permission
   const { supabase, user, profile, item } = permission
   const title = value(formData, 'title')
-  if (!title) return { error: 'Informe o título da demanda.' }
+  if (!title) return { error: 'Informe o tÃ­tulo da demanda.' }
   const clientId = nullable(formData, 'client_id')
   const clientServiceId = nullable(formData, 'client_service_id')
   const linkValidation = await validateWorkItemLinks(supabase, clientId, clientServiceId)
@@ -290,7 +290,7 @@ export async function updateWorkItemAction(id: string, formData: FormData) {
 }
 
 export async function updateWorkItemStatusAction(id: string, status: WorkItemStatus | string) {
-  if (!VALID_WORK_ITEM_STATUSES.includes(status as WorkItemStatus)) return { error: 'Status inválido.' }
+  if (!VALID_WORK_ITEM_STATUSES.includes(status as WorkItemStatus)) return { error: 'Status invÃ¡lido.' }
   const permission = await canOperateWorkItem(id)
   if ('error' in permission) return permission
   const { supabase, user, item } = permission
@@ -322,7 +322,7 @@ export async function createProjectStepAction(formData: FormData) {
   if ('error' in permission) return permission
   const { supabase, user } = permission
   const title = value(formData, 'title')
-  if (!title) return { error: 'Informe o título da etapa.' }
+  if (!title) return { error: 'Informe o tÃ­tulo da etapa.' }
   const { count } = await supabase.from('project_steps').select('*', { count: 'exact', head: true }).eq('work_item_id', workItemId)
   const { error } = await supabase.from('project_steps').insert({
     work_item_id: workItemId,
@@ -343,7 +343,7 @@ export async function createProjectStepAction(formData: FormData) {
 
 export async function updateProjectStepStatusAction(stepId: string, workItemId: string, status: string) {
   const validStepStatuses = ['not_started', 'in_progress', 'waiting', 'blocked', 'done']
-  if (!validStepStatuses.includes(status)) return { error: 'Status de etapa inválido.' }
+  if (!validStepStatuses.includes(status)) return { error: 'Status de etapa invÃ¡lido.' }
   const permission = await canOperateWorkItem(workItemId)
   if ('error' in permission) return permission
   const { supabase, user } = permission
@@ -393,19 +393,19 @@ async function findCalendarConflict(supabase: ReturnType<typeof createClient>, r
 
 export async function createCalendarEventAction(formData: FormData) {
   const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
+  if (!user || !profile) return { error: 'SessÃ£o invÃ¡lida ou usuÃ¡rio inativo.' }
   const title = value(formData, 'title')
-  if (!title) return { error: 'Informe o título da agenda.' }
+  if (!title) return { error: 'Informe o tÃ­tulo da agenda.' }
   const allDay = value(formData, 'all_day') === 'on'
   const startsAt = isoFromForm(formData, 'start_date', 'start_time', allDay)
   const endsAt = isoFromForm(formData, 'end_date', 'end_time', allDay, true)
-  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) return { error: 'Informe início e término válidos.' }
+  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) return { error: 'Informe inÃ­cio e tÃ©rmino vÃ¡lidos.' }
   const requestedResponsible = nullable(formData, 'responsible_id')
   const responsibleId = isManager(profile.role) ? requestedResponsible : user.id
   const linked = await validateCalendarLinks(supabase, nullable(formData, 'client_id'), nullable(formData, 'work_item_id'))
   if ('error' in linked) return linked
   const conflict = await findCalendarConflict(supabase, responsibleId, startsAt, endsAt)
-  if (conflict) return { error: `Conflito de agenda com “${conflict.title}”. Reagende ou altere o responsável.` }
+  if (conflict) return { error: `Conflito de agenda com â€œ${conflict.title}â€. Reagende ou altere o responsÃ¡vel.` }
   const { data, error } = await supabase.from('calendar_events').insert({
     title,
     type: value(formData, 'type') || 'internal',
@@ -431,18 +431,18 @@ export async function createCalendarEventAction(formData: FormData) {
 
 export async function updateCalendarEventAction(id: string, formData: FormData) {
   const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
+  if (!user || !profile) return { error: 'SessÃ£o invÃ¡lida ou usuÃ¡rio inativo.' }
   const { data: existing } = await supabase.from('calendar_events').select('responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!existing || (!isManager(profile.role) && existing.responsible_id !== user.id && existing.created_by !== user.id)) return forbidden('Você não possui permissão para alterar esta agenda.')
+  if (!existing || (!isManager(profile.role) && existing.responsible_id !== user.id && existing.created_by !== user.id)) return forbidden('VocÃª nÃ£o possui permissÃ£o para alterar esta agenda.')
   const allDay = value(formData, 'all_day') === 'on'
   const startsAt = isoFromForm(formData, 'start_date', 'start_time', allDay)
   const endsAt = isoFromForm(formData, 'end_date', 'end_time', allDay, true)
-  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) return { error: 'Informe início e término válidos.' }
+  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) return { error: 'Informe inÃ­cio e tÃ©rmino vÃ¡lidos.' }
   const responsibleId = isManager(profile.role) ? nullable(formData, 'responsible_id') : existing.responsible_id
   const linked = await validateCalendarLinks(supabase, nullable(formData, 'client_id'), nullable(formData, 'work_item_id'))
   if ('error' in linked) return linked
   const conflict = await findCalendarConflict(supabase, responsibleId, startsAt, endsAt, id)
-  if (conflict) return { error: `Conflito de agenda com “${conflict.title}”. Reagende ou altere o responsável.` }
+  if (conflict) return { error: `Conflito de agenda com â€œ${conflict.title}â€. Reagende ou altere o responsÃ¡vel.` }
   const { error } = await supabase.from('calendar_events').update({
     title: value(formData, 'title'), type: value(formData, 'type') || 'internal',
     client_id: linked.clientId, work_item_id: nullable(formData, 'work_item_id'),
@@ -460,9 +460,9 @@ export async function updateCalendarEventAction(id: string, formData: FormData) 
 
 export async function moveCalendarEventAction(id: string, nextDate: string) {
   const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
+  if (!user || !profile) return { error: 'SessÃ£o invÃ¡lida ou usuÃ¡rio inativo.' }
   const { data: event } = await supabase.from('calendar_events').select('starts_at, ends_at, responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para mover esta agenda.')
+  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('VocÃª nÃ£o possui permissÃ£o para mover esta agenda.')
   const start = new Date(event.starts_at)
   const end = new Date(event.ends_at)
   const duration = end.getTime() - start.getTime()
@@ -470,7 +470,7 @@ export async function moveCalendarEventAction(id: string, nextDate: string) {
   start.setFullYear(year, month - 1, day)
   const nextEnd = new Date(start.getTime() + duration)
   const conflict = await findCalendarConflict(supabase, event.responsible_id, start.toISOString(), nextEnd.toISOString(), id)
-  if (conflict) return { error: `Conflito de agenda com “${conflict.title}”. Reagende ou altere o responsável.` }
+  if (conflict) return { error: `Conflito de agenda com â€œ${conflict.title}â€. Reagende ou altere o responsÃ¡vel.` }
   const { error } = await supabase.from('calendar_events').update({ starts_at: start.toISOString(), ends_at: nextEnd.toISOString() }).eq('id', id)
   if (error) return { error: error.message }
   if (event.work_item_id) await addHistory(event.work_item_id, user.id, 'calendar_event_moved', event.title, nextDate)
@@ -480,9 +480,9 @@ export async function moveCalendarEventAction(id: string, nextDate: string) {
 
 export async function deleteCalendarEventAction(id: string) {
   const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
+  if (!user || !profile) return { error: 'SessÃ£o invÃ¡lida ou usuÃ¡rio inativo.' }
   const { data: event } = await supabase.from('calendar_events').select('responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para excluir esta agenda.')
+  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('VocÃª nÃ£o possui permissÃ£o para excluir esta agenda.')
   const { error } = await supabase.from('calendar_events').delete().eq('id', id)
   if (error) return { error: error.message }
   if (event.work_item_id) await addHistory(event.work_item_id, user.id, 'calendar_event_deleted', event.title, null)
@@ -492,10 +492,10 @@ export async function deleteCalendarEventAction(id: string) {
 
 export async function inviteMemberAction(formData: FormData) {
   const { profile } = await getCurrentProfile()
-  if (!profile || !isAdmin(profile.role)) return forbidden('Somente Administração ou Direção podem criar acessos.')
+  if (!profile || !isAdmin(profile.role)) return forbidden('Somente AdministraÃ§Ã£o ou DireÃ§Ã£o podem criar acessos.')
   const email = value(formData, 'email')
   const fullName = value(formData, 'full_name')
-  if (!email || !fullName) return { error: 'Nome e e-mail são obrigatórios.' }
+  if (!email || !fullName) return { error: 'Nome e e-mail sÃ£o obrigatÃ³rios.' }
   try {
     const admin = createAdminClient()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -507,15 +507,15 @@ export async function inviteMemberAction(formData: FormData) {
     revalidateOperationalPaths()
     return { success: true }
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Não foi possível enviar o convite.' }
+    return { error: error instanceof Error ? error.message : 'NÃ£o foi possÃ­vel enviar o convite.' }
   }
 }
 
 export async function updateMemberAccessAction(formData: FormData) {
   const { supabase, profile } = await getCurrentProfile()
-  if (!profile || !isAdmin(profile.role)) return forbidden('Somente Administração ou Direção podem alterar acessos.')
+  if (!profile || !isAdmin(profile.role)) return forbidden('Somente AdministraÃ§Ã£o ou DireÃ§Ã£o podem alterar acessos.')
   const id = value(formData, 'id')
-  if (!id) return { error: 'Membro inválido.' }
+  if (!id) return { error: 'Membro invÃ¡lido.' }
   const { error } = await supabase.from('profiles').update({
     role: value(formData, 'role') || 'collaborator',
     team_area: nullable(formData, 'team_area'),
@@ -528,7 +528,7 @@ export async function updateMemberAccessAction(formData: FormData) {
 }
 
 // =========================================================
-// HOTFIX 15B — Feed Preview documentos/grades
+// HOTFIX 15B â€” Feed Preview documentos/grades
 // =========================================================
 
 function feedActionValue(formData: FormData, key: string) {
@@ -785,7 +785,7 @@ export async function deleteFeedBoardItemAction(itemId: string, boardId: string)
 }
 
 // =========================================================
-// HOTFIX 15B.1 — Aprovações: publicar, arquivar e excluir documento
+// HOTFIX 15B.1 â€” AprovaÃ§Ãµes: publicar, arquivar e excluir documento
 // =========================================================
 
 export async function publishFeedBoardAction(boardId: string) {
@@ -807,7 +807,7 @@ export async function publishFeedBoardAction(boardId: string) {
     boardId,
     null,
     'board_published',
-    'Ampy Digital subiu o feed para aprovação.'
+    'Ampy Digital subiu o feed para aprovaÃ§Ã£o.'
   )
 
   revalidateFeedBoardPaths(boardId)
@@ -863,7 +863,7 @@ export async function deleteFeedBoardAction(boardId: string) {
 }
 
 // =========================================================
-// HOTFIX 15B.1 — Aprovações: itens com retorno para UI suave
+// HOTFIX 15B.1 â€” AprovaÃ§Ãµes: itens com retorno para UI suave
 // =========================================================
 
 export async function createFeedBoardItemSmoothAction(formData: FormData) {
@@ -938,3 +938,95 @@ export async function updateFeedBoardItemSmoothAction(itemId: string, formData: 
   revalidateFeedBoardPaths(data.board_id)
   return { success: true, item: data }
 }
+
+// =========================================================
+// HOTFIX 15C.2 â€” AprovaÃ§Ãµes: aÃ§Ã£o pÃºblica do cliente por token
+// =========================================================
+
+export async function submitFeedBoardClientDecisionAction(token: string, itemId: string, formData: FormData) {
+  const supabase = createAdminClient()
+
+  if (!token || !itemId) return { error: 'Link de aprovaÃ§Ã£o invÃ¡lido.' }
+
+  const decision = feedActionValue(formData, 'decision')
+  const feedback = feedActionNullable(formData, 'client_feedback')
+  const actorName = feedActionValue(formData, 'actor_name') || 'Cliente'
+
+  if (!['approved', 'changes_requested'].includes(decision)) {
+    return { error: 'AÃ§Ã£o invÃ¡lida.' }
+  }
+
+  const { data: board, error: boardError } = await supabase
+    .from('feed_boards')
+    .select('id,title,status,share_token')
+    .eq('share_token', token)
+    .single()
+
+  if (boardError || !board) return { error: 'Documento de aprovaÃ§Ã£o nÃ£o encontrado.' }
+  if (board.status === 'archived') return { error: 'Este documento estÃ¡ arquivado.' }
+
+  const itemPayload: any = {
+    approval_status: decision,
+    client_feedback: feedback,
+  }
+
+  if (decision === 'approved') {
+    itemPayload.approved_at = new Date().toISOString()
+  } else {
+    itemPayload.approved_at = null
+  }
+
+  const { data: updatedItem, error: itemError } = await supabase
+    .from('feed_board_items')
+    .update(itemPayload)
+    .eq('id', itemId)
+    .eq('board_id', board.id)
+    .select('id,board_id,title,approval_status,client_feedback,approved_at')
+    .single()
+
+  if (itemError || !updatedItem) return { error: itemError?.message || 'Item nÃ£o encontrado.' }
+
+  const { data: allItems } = await supabase
+    .from('feed_board_items')
+    .select('id,approval_status')
+    .eq('board_id', board.id)
+
+  let nextBoardStatus = board.status
+
+  if (decision === 'changes_requested') {
+    nextBoardStatus = 'changes_requested'
+  } else if ((allItems || []).length > 0 && (allItems || []).every((item: any) => item.approval_status === 'approved')) {
+    nextBoardStatus = 'approved'
+  } else if (board.status === 'draft') {
+    nextBoardStatus = 'in_progress'
+  }
+
+  await supabase
+    .from('feed_boards')
+    .update({
+      status: nextBoardStatus,
+      last_client_action_at: new Date().toISOString(),
+    })
+    .eq('id', board.id)
+
+  await addFeedBoardEventInternal(
+    supabase,
+    board.id,
+    updatedItem.id,
+    decision === 'approved' ? 'client_item_approved' : 'client_item_changes_requested',
+    decision === 'approved'
+      ? `${actorName} aprovou o item "${updatedItem.title || 'Capa'}".`
+      : `${actorName} solicitou ajuste no item "${updatedItem.title || 'Capa'}".`,
+    { feedback }
+  )
+
+  revalidatePath(`/aprovacao/${token}`)
+  revalidateFeedBoardPaths(board.id)
+
+  return {
+    success: true,
+    item: updatedItem,
+    board_status: nextBoardStatus,
+  }
+}
+
