@@ -20,7 +20,7 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
 
   if (boardResult.error || !boardResult.data) notFound()
 
-  const [clientResult, itemsResult, eventsResult] = await Promise.all([
+  const [clientResult, itemsResult, eventsResult, assetsResult] = await Promise.all([
     supabase
       .from('clients')
       .select('id,name,segment,status,main_contact_phone,instagram,drive_folder_url')
@@ -37,6 +37,11 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
       .eq('board_id', boardId)
       .order('created_at', { ascending: false })
       .limit(80),
+    supabase
+      .from('feed_board_item_assets')
+      .select('*')
+      .eq('board_id', boardId)
+      .order('position', { ascending: true }),
   ])
 
   const board = {
@@ -50,7 +55,12 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
     eventsResult.error ? `Historico: ${eventsResult.error.message}` : null,
   ].filter(Boolean) as string[]
 
-  return <FeedBoardEditor board={board} items={itemsResult.data || []} events={eventsResult.data || []} loadErrors={loadErrors} />
+  return <FeedBoardEditor board={board} items={itemsResult.data || []} events={eventsResult.data || []} assets={assetsResult.data || []} loadErrors={loadErrors} />
 }
+
+
+
+
+
 
 

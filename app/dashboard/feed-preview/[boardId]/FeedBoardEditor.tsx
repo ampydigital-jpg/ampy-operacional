@@ -78,10 +78,11 @@ function getVisualTone(preset: string) {
   return 'Personalizado'
 }
 
-export default function FeedBoardEditor({ board, items = [], events = [], loadErrors = [] }: any) {
+export default function FeedBoardEditor({ board, items = [], events = [], assets = [], loadErrors = [] }: any) {
   const [boardState, setBoardState] = useState<any>(board)
   const [gridItems, setGridItems] = useState<any[]>(Array.isArray(items) ? items : [])
   const [localEvents, setLocalEvents] = useState<any[]>(Array.isArray(events) ? events : [])
+  const [carouselAssets] = useState<any[]>(Array.isArray(assets) ? assets : [])
   const [selected, setSelected] = useState<any>(null)
   const [linksModal, setLinksModal] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'mobile' | 'desktop'>('grid')
@@ -98,6 +99,12 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
   }, [gridItems])
 
   const fillerCount = sortedItems.length === 0 ? 12 : Math.max(0, Math.min(12 - sortedItems.length, (3 - (sortedItems.length % 3)) % 3))
+
+  function getAssetsForItem(itemId: any) {
+    return carouselAssets
+      .filter((asset) => asset.item_id === itemId)
+      .sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
+  }
 
   function addLocalEvent(text: string) {
     setLocalEvents((current) => [
@@ -408,6 +415,8 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
   }
 
   function renderCard(item: any, index: number, compact = false) {
+    const itemAssets = getAssetsForItem(item.id)
+
     return (
       <button
         key={item.id}
@@ -447,7 +456,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
         {item.content_type === 'carousel' && (
           <span style={{ position: 'absolute', top: 5, left: 5, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.72)', color: '#FFF', fontSize: compact ? 7 : 8, fontWeight: 900 }}>
-            Carrossel
+            {itemAssets.length ? itemAssets.length + ' slides' : 'Carrossel'}
           </span>
         )}
 
@@ -872,6 +881,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     </div>
   )
 }
+
 
 
 
