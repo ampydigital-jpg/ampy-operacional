@@ -30,6 +30,12 @@ const PRESET_LABEL: Record<string, string> = {
   bold: 'Arrojado',
 }
 
+const VIEW_LABEL: Record<string, string> = {
+  grid: 'Grade',
+  mobile: 'Celular',
+  desktop: 'Desktop',
+}
+
 function formatMonth(value: string) {
   if (!value) return 'Sem período'
   const key = String(value).slice(0, 7)
@@ -58,11 +64,22 @@ function statusTone(status: string) {
   return 'bblue'
 }
 
+function getVisualTone(preset: string) {
+  if (preset === 'minimalist') return 'Minimalista'
+  if (preset === 'creative') return 'Criativo'
+  if (preset === 'neutral') return 'Neutro'
+  if (preset === 'bold') return 'Arrojado'
+  if (preset === 'standard') return 'Padrão'
+  return 'Personalizado'
+}
+
 export default function FeedBoardEditor({ board, items = [], events = [], loadErrors = [] }: any) {
   const [boardState, setBoardState] = useState<any>(board)
   const [gridItems, setGridItems] = useState<any[]>(Array.isArray(items) ? items : [])
   const [localEvents, setLocalEvents] = useState<any[]>(Array.isArray(events) ? events : [])
   const [selected, setSelected] = useState<any>(null)
+  const [linksModal, setLinksModal] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'mobile' | 'desktop'>('grid')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [orderDirty, setOrderDirty] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -183,6 +200,8 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     setMessage('')
 
     const formData = new FormData(event.currentTarget)
+    formData.set('visual_preset', boardState.visual_preset || 'custom')
+
     const result = await updateFeedBoardAction(boardState.id, formData)
 
     if ('error' in result) {
@@ -195,13 +214,37 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
       ...current,
       title: String(formData.get('title') || current.title),
       status: String(formData.get('status') || current.status),
-      visual_preset: String(formData.get('visual_preset') || current.visual_preset),
       notes: String(formData.get('notes') || ''),
       updated_at: new Date().toISOString(),
     }))
 
     setMessage('Configurações da aprovação salvas.')
     addLocalEvent('Ampy Digital atualizou as configurações da aprovação.')
+    setSaving(false)
+  }
+
+  async function saveVisualPreset(preset: string) {
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    const formData = new FormData()
+    formData.set('title', boardState.title || '')
+    formData.set('status', boardState.status || 'draft')
+    formData.set('visual_preset', preset)
+    formData.set('notes', boardState.notes || '')
+
+    const result = await updateFeedBoardAction(boardState.id, formData)
+
+    if ('error' in result) {
+      setError(result.error || 'Erro ao salvar visual.')
+      setSaving(false)
+      return
+    }
+
+    setBoardState((current: any) => ({ ...current, visual_preset: preset, updated_at: new Date().toISOString() }))
+    setMessage(`Visual definido como ${getVisualTone(preset)}.`)
+    addLocalEvent(`Ampy Digital definiu o visual como ${getVisualTone(preset)}.`)
     setSaving(false)
   }
 
@@ -232,6 +275,55 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     setSelected(null)
   }
 
+  async function saveLinksBatch(event: any) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    const formData = new FormData(event.currentTarget)
+    const updatedItems: any[] = []
+
+    try {
+      for (const item of sortedItems) {
+        const nextTitle = String(formData.get(`title_${item.id}`) || item.title || '')
+        const nextUrl = String(formData.get(`content_url_${item.id}`) || '')
+        const nextCaption = String(formData.get(`caption_${item.id}`) || item.caption || '')
+        const nextNotes = String(formData.get(`internal_notes_${item.id}`) || item.internal_notes || '')
+
+        const changed =
+          nextTitle !== String(item.title || '') ||
+          nextUrl !== String(item.content_url || '') ||
+          nextCaption !== String(item.caption || '') ||
+          nextNotes !== String(item.internal_notes || '')
+
+        if (!changed) continue
+
+        const itemForm = new FormData()
+        itemForm.set('title', nextTitle || 'Capa')
+        itemForm.set('content_url', nextUrl)
+        itemForm.set('caption', nextCaption)
+        itemForm.set('internal_notes', nextNotes)
+
+        const result = await updateFeedBoardItemSmoothAction(item.id, itemForm)
+        if ('error' in result) throw new Error(result.error)
+        if ('item' in result && result.item) updatedItems.push(result.item)
+      }
+
+      if (updatedItems.length > 0) {
+        setGridItems((current) => current.map((item) => updatedItems.find((updated) => updated.id === item.id) || item))
+      }
+
+      setMessage(updatedItems.length > 0 ? `${updatedItems.length} link(s) atualizado(s).` : 'Nenhuma alteração nos links.')
+      addLocalEvent('Ampy Digital atualizou links da aprovação.')
+      setLinksModal(false)
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao salvar links.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function deleteItem() {
     if (!selected) return
 
@@ -256,9 +348,9 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     addLocalEvent('Ampy Digital removeu uma capa da grade.')
   }
 
-  function openFirstWithoutLink() {
-    const item = sortedItems.find((entry) => !entry.content_url) || sortedItems[0]
-    if (item) setSelected(item)
+  function openLinksModal() {
+    if (!sortedItems.length) return
+    setLinksModal(true)
   }
 
   async function publishBoard() {
@@ -295,6 +387,140 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     setSaving(false)
   }
 
+  function renderCard(item: any, index: number, compact = false) {
+    return (
+      <button
+        key={item.id}
+        type="button"
+        draggable={viewMode === 'grid'}
+        onDragStart={() => setDragIndex(index)}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={() => dropAt(index)}
+        onDragEnd={() => setDragIndex(null)}
+        onClick={() => setSelected(item)}
+        style={{
+          aspectRatio: '9 / 16',
+          background: '#151515',
+          border: dragIndex === index ? '2px solid var(--blue)' : '1px solid #222',
+          borderRadius: compact ? 6 : 8,
+          overflow: 'hidden',
+          position: 'relative',
+          padding: 0,
+          cursor: viewMode === 'grid' ? 'grab' : 'pointer',
+        }}
+      >
+        {item.cover_url ? (
+          <img src={item.cover_url} alt={item.title || 'Capa'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
+            <i className="ti ti-photo" />
+          </div>
+        )}
+
+        <span style={{ position: 'absolute', top: 5, right: 5, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.78)', color: '#FFF', fontSize: compact ? 8 : 9, fontWeight: 800 }}>
+          {index + 1}
+        </span>
+
+        <span className={`badge ${statusTone(item.approval_status)}`} style={{ position: 'absolute', left: 5, bottom: 5, fontSize: compact ? 7 : 8 }}>
+          {item.approval_status === 'approved' ? 'Aprovado' : item.approval_status === 'changes_requested' ? 'Ajuste' : 'Pendente'}
+        </span>
+
+        {item.content_url && (
+          <span style={{ position: 'absolute', right: 5, bottom: 5, color: '#FFF', background: 'rgba(0,0,0,.78)', borderRadius: 6, padding: '3px 6px', fontSize: 9 }}>
+            <i className="ti ti-link" />
+          </span>
+        )}
+      </button>
+    )
+  }
+
+  function renderFeedGrid(compact = false) {
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: compact ? 'repeat(3, minmax(54px, 76px))' : 'repeat(3, minmax(82px, 112px))',
+          justifyContent: 'center',
+          gap: compact ? 4 : 6,
+        }}
+      >
+        {sortedItems.map((item, index) => renderCard(item, index, compact))}
+
+        {viewMode === 'grid' && Array.from({ length: fillerCount }).map((_, index) => (
+          <button
+            key={`empty-${index}`}
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            style={{
+              aspectRatio: '9 / 16',
+              background: '#111',
+              border: '1px dashed #252525',
+              borderRadius: 8,
+              color: '#333',
+              fontSize: 20,
+            }}
+          >
+            +
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  function renderPreview() {
+    if (viewMode === 'mobile') {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
+          <div style={{ width: 360, maxWidth: '100%', background: '#050505', border: '10px solid #111', borderRadius: 38, padding: '16px 12px 22px', boxShadow: '0 28px 70px rgba(0,0,0,.35)' }}>
+            <div style={{ width: 86, height: 5, borderRadius: 999, background: '#222', margin: '0 auto 14px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px 12px', borderBottom: '0.5px solid #1A1A1A', marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#151515', color: '#DDD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>
+                {String(boardState.client?.name || 'A').slice(0, 1).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#FFF' }}>{boardState.client?.name || 'Cliente'}</div>
+                <div style={{ fontSize: 10, color: '#888' }}>{formatMonth(boardState.period_month)} · {getVisualTone(boardState.visual_preset)}</div>
+              </div>
+            </div>
+            {renderFeedGrid(true)}
+          </div>
+        </div>
+      )
+    }
+
+    if (viewMode === 'desktop') {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
+          <div style={{ width: 'min(860px, 100%)', background: '#050505', border: '1px solid #202020', borderRadius: 18, overflow: 'hidden', boxShadow: '0 28px 70px rgba(0,0,0,.28)' }}>
+            <div style={{ height: 38, background: '#111', borderBottom: '1px solid #202020', display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px' }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#333' }} />
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#333' }} />
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#333' }} />
+              <span style={{ marginLeft: 10, color: '#777', fontSize: 10 }}>aprovações.ampy.digital/{boardState.share_token ? String(boardState.share_token).slice(0, 8) : 'preview'}</span>
+            </div>
+
+            <div style={{ padding: 22 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 22, alignItems: 'start' }}>
+                <div>
+                  <div style={{ width: 76, height: 76, borderRadius: '50%', background: '#151515', color: '#DDD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>
+                    {String(boardState.client?.name || 'A').slice(0, 1).toUpperCase()}
+                  </div>
+                  <div style={{ color: '#FFF', fontWeight: 900, fontSize: 18 }}>{boardState.client?.name || 'Cliente'}</div>
+                  <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>{boardState.title}</div>
+                  <div style={{ color: '#666', fontSize: 10, marginTop: 8 }}>{formatMonth(boardState.period_month)} · {getVisualTone(boardState.visual_preset)}</div>
+                </div>
+
+                <div>{renderFeedGrid(false)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return renderFeedGrid(false)
+  }
+
   return (
     <div className="page-wrap">
       <div className="topbar">
@@ -313,7 +539,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
           <i className="ti ti-upload" /> {uploading ? 'Subindo...' : 'Subir Capas'}
         </button>
 
-        <button className="bsec" onClick={openFirstWithoutLink} disabled={!sortedItems.length || saving}>
+        <button className="bsec" onClick={openLinksModal} disabled={!sortedItems.length || saving}>
           <i className="ti ti-link" /> Adicionar Links
         </button>
 
@@ -337,14 +563,28 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 16, alignItems: 'start' }}>
           <section>
-            <div className="sh">
+            <div className="sh" style={{ alignItems: 'flex-start', gap: 12 }}>
               <div>
                 <div className="stitle">Grade da aprovação</div>
-                <div className="ssub">Capas em 1080x1920. Arraste para definir a sequência do feed.</div>
+                <div className="ssub">Capas em 1080x1920. Escolha uma visualização para revisar a sequência.</div>
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="badge bblue">3 colunas</span>
-                <span className="badge bmut">{sortedItems.length} item(ns)</span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {Object.entries(VIEW_LABEL).map(([value, label]) => (
+                    <button key={value} className={`fb ${viewMode === value ? 'on' : ''}`} type="button" onClick={() => setViewMode(value as any)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {Object.entries(PRESET_LABEL).map(([value, label]) => (
+                    <button key={value} className={`fb ${boardState.visual_preset === value ? 'on' : ''}`} type="button" disabled={saving} onClick={() => saveVisualPreset(value)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -355,79 +595,15 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                 </div>
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 800, color: '#FFF' }}>{boardState.client?.name || 'Cliente'}</div>
-                  <div style={{ fontSize: 10, color: '#888' }}>{formatMonth(boardState.period_month)}</div>
+                  <div style={{ fontSize: 10, color: '#888' }}>{formatMonth(boardState.period_month)} · {VIEW_LABEL[viewMode]} · {getVisualTone(boardState.visual_preset)}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                  <span className="badge bblue">3 colunas</span>
+                  <span className="badge bmut">{sortedItems.length} item(ns)</span>
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, minmax(82px, 112px))',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                {sortedItems.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    draggable
-                    onDragStart={() => setDragIndex(index)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => dropAt(index)}
-                    onDragEnd={() => setDragIndex(null)}
-                    onClick={() => setSelected(item)}
-                    style={{
-                      aspectRatio: '9 / 16',
-                      background: '#151515',
-                      border: dragIndex === index ? '2px solid var(--blue)' : '1px solid #222',
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      position: 'relative',
-                      padding: 0,
-                      cursor: 'grab',
-                    }}
-                  >
-                    {item.cover_url ? (
-                      <img src={item.cover_url} alt={item.title || 'Capa'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
-                        <i className="ti ti-photo" />
-                      </div>
-                    )}
-
-                    <span style={{ position: 'absolute', top: 5, right: 5, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.78)', color: '#FFF', fontSize: 9, fontWeight: 800 }}>{index + 1}</span>
-
-                    <span className={`badge ${statusTone(item.approval_status)}`} style={{ position: 'absolute', left: 5, bottom: 5, fontSize: 8 }}>
-                      {item.approval_status === 'approved' ? 'Aprovado' : item.approval_status === 'changes_requested' ? 'Ajuste' : 'Pendente'}
-                    </span>
-
-                    {item.content_url && (
-                      <span style={{ position: 'absolute', right: 5, bottom: 5, color: '#FFF', background: 'rgba(0,0,0,.78)', borderRadius: 6, padding: '3px 6px', fontSize: 9 }}>
-                        <i className="ti ti-link" />
-                      </span>
-                    )}
-                  </button>
-                ))}
-
-                {Array.from({ length: fillerCount }).map((_, index) => (
-                  <button
-                    key={`empty-${index}`}
-                    type="button"
-                    onClick={() => inputRef.current?.click()}
-                    style={{
-                      aspectRatio: '9 / 16',
-                      background: '#111',
-                      border: '1px dashed #252525',
-                      borderRadius: 8,
-                      color: '#333',
-                      fontSize: 20,
-                    }}
-                  >
-                    +
-                  </button>
-                ))}
-              </div>
+              {renderPreview()}
             </div>
           </section>
 
@@ -440,20 +616,11 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                 <input className="fi" name="title" defaultValue={boardState.title || ''} />
               </div>
 
-              <div className="frow">
-                <div className="fg">
-                  <label className="fl">Status</label>
-                  <select className="fi" name="status" defaultValue={boardState.status || 'draft'}>
-                    {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </div>
-
-                <div className="fg">
-                  <label className="fl">Visual</label>
-                  <select className="fi" name="visual_preset" defaultValue={boardState.visual_preset || 'custom'}>
-                    {Object.entries(PRESET_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </div>
+              <div className="fg">
+                <label className="fl">Status</label>
+                <select className="fi" name="status" defaultValue={boardState.status || 'draft'}>
+                  {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
               </div>
 
               <div className="fg">
@@ -468,7 +635,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
             <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14 }}>
               <div className="stitle">Links dos posts</div>
-              <div className="ssub" style={{ marginBottom: 10 }}>Clique em uma capa para adicionar o link do Drive, vídeo ou post.</div>
+              <div className="ssub" style={{ marginBottom: 10 }}>Clique em Adicionar Links para preencher tudo em lote.</div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
                 {sortedItems.length === 0 ? (
@@ -503,6 +670,59 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
           </aside>
         </div>
       </div>
+
+      {linksModal && (
+        <div className="modal-ov" onClick={() => setLinksModal(false)}>
+          <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <div>
+                <div className="modal-title">Adicionar links</div>
+                <div className="modal-sub">Preencha os links dos posts em sequência. Ideal para Drive, vídeo ou URL final.</div>
+              </div>
+              <button className="mclose" onClick={() => setLinksModal(false)}><i className="ti ti-x" /></button>
+            </div>
+
+            <form onSubmit={saveLinksBatch}>
+              <div className="modal-body" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {sortedItems.map((item, index) => (
+                    <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '58px 1fr', gap: 12, alignItems: 'start', background: 'var(--s2)', border: '0.5px solid var(--b1)', borderRadius: 12, padding: 10 }}>
+                      <div style={{ aspectRatio: '9 / 16', borderRadius: 8, overflow: 'hidden', background: '#111', position: 'relative' }}>
+                        {item.cover_url && <img src={item.cover_url} alt={item.title || 'Capa'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        <span style={{ position: 'absolute', top: 4, right: 4, padding: '2px 5px', borderRadius: 5, background: 'rgba(0,0,0,.78)', color: '#FFF', fontSize: 8 }}>{index + 1}</span>
+                      </div>
+
+                      <div>
+                        <div className="fg">
+                          <label className="fl">Título</label>
+                          <input className="fi" name={`title_${item.id}`} defaultValue={item.title || ''} />
+                        </div>
+
+                        <div className="fg">
+                          <label className="fl">Link do post/vídeo/Drive</label>
+                          <input className="fi" name={`content_url_${item.id}`} defaultValue={item.content_url || ''} placeholder="https://drive.google.com/..." />
+                        </div>
+
+                        <div className="fg">
+                          <label className="fl">Legenda / observação para o cliente</label>
+                          <textarea className="fi" name={`caption_${item.id}`} defaultValue={item.caption || ''} />
+                        </div>
+
+                        <input type="hidden" name={`internal_notes_${item.id}`} defaultValue={item.internal_notes || ''} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-foot">
+                <button type="button" className="bsec" onClick={() => setLinksModal(false)}>Cancelar</button>
+                <button className="bpri" disabled={saving}>{saving ? 'Salvando...' : 'Salvar links'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <div className="modal-ov" onClick={() => setSelected(null)}>
