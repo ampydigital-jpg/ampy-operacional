@@ -14,7 +14,7 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
 
   const boardResult = await supabase
     .from('feed_boards')
-    .select('id,client_id,title,period_month,status,visual_preset,share_token,notes,published_at,last_client_action_at,created_at,updated_at')
+    .select('id,client_id,title,period_month,status,visual_preset,share_token,notes,drive_folder_url,published_at,last_client_action_at,created_at,updated_at')
     .eq('id', boardId)
     .single()
 
@@ -28,7 +28,7 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
       .single(),
     supabase
       .from('feed_board_items')
-      .select('id,board_id,work_item_id,position,title,cover_url,storage_path,content_url,caption,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
+      .select('id,board_id,work_item_id,position,title,cover_url,storage_path,source_file_name,content_url,caption,scheduled_date,scheduled_time,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
       .eq('board_id', boardId)
       .order('position', { ascending: true }),
     supabase
@@ -52,3 +52,4 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
 
   return <FeedBoardEditor board={board} items={itemsResult.data || []} events={eventsResult.data || []} loadErrors={loadErrors} />
 }
+

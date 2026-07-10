@@ -14,7 +14,7 @@ export default async function PublicApprovalPage({ params }: { params: { token: 
 
   const boardResult = await supabase
     .from('feed_boards')
-    .select('id,client_id,title,period_month,status,visual_preset,share_token,notes,published_at,last_client_action_at,created_at,updated_at')
+    .select('id,client_id,title,period_month,status,visual_preset,share_token,notes,drive_folder_url,published_at,last_client_action_at,created_at,updated_at')
     .eq('share_token', token)
     .single()
 
@@ -28,7 +28,7 @@ export default async function PublicApprovalPage({ params }: { params: { token: 
       .single(),
     supabase
       .from('feed_board_items')
-      .select('id,board_id,position,title,cover_url,content_url,caption,approval_status,client_feedback,approved_at,created_at,updated_at')
+      .select('id,board_id,position,title,cover_url,source_file_name,content_url,caption,scheduled_date,scheduled_time,approval_status,client_feedback,approved_at,created_at,updated_at')
       .eq('board_id', boardResult.data.id)
       .order('position', { ascending: true }),
     supabase

@@ -168,6 +168,13 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                   <form onSubmit={(event) => submitDecision(event, item)} style={{ background: '#FFF', padding: 12 }}>
                     <div style={{ fontSize: 12, fontWeight: 900, marginBottom: 4 }}>{item.title || `Post ${index + 1}`}</div>
 
+                    {(item.source_file_name || item.scheduled_date || item.scheduled_time) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, color: '#64748B', fontSize: 10, marginBottom: 8 }}>
+                        {item.source_file_name && <span>Arquivo: {item.source_file_name}</span>}
+                        {(item.scheduled_date || item.scheduled_time) && <span>Programação: {item.scheduled_date || '--/--'} {item.scheduled_time || ''}</span>}
+                      </div>
+                    )}
+
                     {item.caption && (
                       <div style={{ color: '#475569', fontSize: 11, lineHeight: 1.45, marginBottom: 8 }}>{item.caption}</div>
                     )}

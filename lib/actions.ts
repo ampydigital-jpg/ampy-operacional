@@ -1030,3 +1030,73 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
   }
 }
 
+
+// =========================================================
+// HOTFIX 15D.1 — Aprovações: Drive manual, arquivo, data e hora
+// =========================================================
+
+export async function updateFeedBoardSettingsAction(boardId: string, formData: FormData) {
+  const supabase = createClient()
+  if (!boardId) return { error: 'Documento inválido.' }
+
+  const payload = {
+    title: feedActionValue(formData, 'title') || 'Aprovação',
+    status: feedValidBoardStatus(feedActionValue(formData, 'status')),
+    visual_preset: feedValidPreset(feedActionValue(formData, 'visual_preset')),
+    notes: feedActionNullable(formData, 'notes'),
+    drive_folder_url: feedActionNullable(formData, 'drive_folder_url'),
+  }
+
+  const { error } = await supabase
+    .from('feed_boards')
+    .update(payload)
+    .eq('id', boardId)
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    null,
+    'board_settings_updated',
+    'Ampy Digital atualizou as configurações da aprovação.'
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true }
+}
+
+export async function updateFeedBoardItemPlanningAction(itemId: string, formData: FormData) {
+  const supabase = createClient()
+  if (!itemId) return { error: 'Item inválido.' }
+
+  const payload = {
+    title: feedActionValue(formData, 'title') || 'Capa',
+    source_file_name: feedActionNullable(formData, 'source_file_name'),
+    content_url: feedActionNullable(formData, 'content_url'),
+    caption: feedActionNullable(formData, 'caption'),
+    scheduled_date: feedActionNullable(formData, 'scheduled_date'),
+    scheduled_time: feedActionNullable(formData, 'scheduled_time'),
+    internal_notes: feedActionNullable(formData, 'internal_notes'),
+  }
+
+  const { data, error } = await supabase
+    .from('feed_board_items')
+    .update(payload)
+    .eq('id', itemId)
+    .select('id,board_id,work_item_id,position,title,cover_url,storage_path,source_file_name,content_url,caption,scheduled_date,scheduled_time,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
+    .single()
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    data.board_id,
+    data.id,
+    'item_planning_updated',
+    `Ampy Digital atualizou arquivo, link, legenda ou programação do item "${data.title || 'Capa'}".`
+  )
+
+  revalidateFeedBoardPaths(data.board_id)
+  return { success: true, item: data }
+}

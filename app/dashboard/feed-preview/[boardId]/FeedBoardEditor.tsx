@@ -8,10 +8,9 @@ import {
   deleteFeedBoardItemAction,
   publishFeedBoardAction,
   reorderFeedBoardItemsAction,
-  updateFeedBoardAction,
-  updateFeedBoardItemSmoothAction,
+  updateFeedBoardSettingsAction,
+  updateFeedBoardItemPlanningAction,
 } from '@/lib/actions'
-
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Rascunho',
   in_progress: 'Em andamento',
@@ -202,7 +201,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     const formData = new FormData(event.currentTarget)
     formData.set('visual_preset', boardState.visual_preset || 'custom')
 
-    const result = await updateFeedBoardAction(boardState.id, formData)
+    const result = await updateFeedBoardSettingsAction(boardState.id, formData)
 
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar documento.')
@@ -233,8 +232,9 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     formData.set('status', boardState.status || 'draft')
     formData.set('visual_preset', preset)
     formData.set('notes', boardState.notes || '')
+    formData.set('drive_folder_url', boardState.drive_folder_url || '')
 
-    const result = await updateFeedBoardAction(boardState.id, formData)
+    const result = await updateFeedBoardSettingsAction(boardState.id, formData)
 
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar visual.')
@@ -256,7 +256,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     setError('')
     setMessage('')
 
-    const result = await updateFeedBoardItemSmoothAction(selected.id, new FormData(event.currentTarget))
+    const result = await updateFeedBoardItemPlanningAction(selected.id, new FormData(event.currentTarget))
 
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar item.')
@@ -287,13 +287,19 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     try {
       for (const item of sortedItems) {
         const nextTitle = String(formData.get(`title_${item.id}`) || item.title || '')
+        const nextSource = String(formData.get(`source_file_name_${item.id}`) || '')
         const nextUrl = String(formData.get(`content_url_${item.id}`) || '')
+        const nextDate = String(formData.get(`scheduled_date_${item.id}`) || '')
+        const nextTime = String(formData.get(`scheduled_time_${item.id}`) || '')
         const nextCaption = String(formData.get(`caption_${item.id}`) || item.caption || '')
         const nextNotes = String(formData.get(`internal_notes_${item.id}`) || item.internal_notes || '')
 
         const changed =
           nextTitle !== String(item.title || '') ||
+          nextSource !== String(item.source_file_name || '') ||
           nextUrl !== String(item.content_url || '') ||
+          nextDate !== String(item.scheduled_date || '') ||
+          nextTime !== String(item.scheduled_time || '') ||
           nextCaption !== String(item.caption || '') ||
           nextNotes !== String(item.internal_notes || '')
 
@@ -301,11 +307,14 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
         const itemForm = new FormData()
         itemForm.set('title', nextTitle || 'Capa')
+        itemForm.set('source_file_name', nextSource)
         itemForm.set('content_url', nextUrl)
+        itemForm.set('scheduled_date', nextDate)
+        itemForm.set('scheduled_time', nextTime)
         itemForm.set('caption', nextCaption)
         itemForm.set('internal_notes', nextNotes)
 
-        const result = await updateFeedBoardItemSmoothAction(item.id, itemForm)
+        const result = await updateFeedBoardItemPlanningAction(item.id, itemForm)
         if ('error' in result) throw new Error(result.error)
         if ('item' in result && result.item) updatedItems.push(result.item)
       }
@@ -624,6 +633,16 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
               </div>
 
               <div className="fg">
+                <label className="fl">Pasta do Drive</label>
+                <input className="fi" name="drive_folder_url" defaultValue={boardState.drive_folder_url || ''} placeholder="https://drive.google.com/drive/folders/..." />
+                {boardState.drive_folder_url && (
+                  <a className="bsec" href={boardState.drive_folder_url} target="_blank" rel="noreferrer" style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}>
+                    <i className="ti ti-folder-open" /> Abrir pasta do Drive
+                  </a>
+                )}
+              </div>
+
+              <div className="fg">
                 <label className="fl">Notas internas</label>
                 <textarea className="fi" name="notes" defaultValue={boardState.notes || ''} />
               </div>
@@ -699,6 +718,22 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                         </div>
 
                         <div className="fg">
+                          <label className="fl">Arquivo na pasta</label>
+                          <input className="fi" name={`source_file_name_${item.id}`} defaultValue={item.source_file_name || ''} placeholder="Ex.: Video_1, Capa_1, P01_VIDEO" />
+                        </div>
+
+                        <div className="frow">
+                          <div className="fg">
+                            <label className="fl">Data</label>
+                            <input className="fi" type="date" name={`scheduled_date_${item.id}`} defaultValue={item.scheduled_date || ''} />
+                          </div>
+                          <div className="fg">
+                            <label className="fl">Hora</label>
+                            <input className="fi" type="time" name={`scheduled_time_${item.id}`} defaultValue={item.scheduled_time || ''} />
+                          </div>
+                        </div>
+
+                        <div className="fg">
                           <label className="fl">Link do post/vídeo/Drive</label>
                           <input className="fi" name={`content_url_${item.id}`} defaultValue={item.content_url || ''} placeholder="https://drive.google.com/..." />
                         </div>
@@ -749,6 +784,22 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                     </div>
 
                     <div className="fg">
+                      <label className="fl">Arquivo na pasta</label>
+                      <input className="fi" name="source_file_name" defaultValue={selected.source_file_name || ''} placeholder="Ex.: Video_1, Capa_1, P01_VIDEO" />
+                    </div>
+
+                    <div className="frow">
+                      <div className="fg">
+                        <label className="fl">Data</label>
+                        <input className="fi" type="date" name="scheduled_date" defaultValue={selected.scheduled_date || ''} />
+                      </div>
+                      <div className="fg">
+                        <label className="fl">Hora</label>
+                        <input className="fi" type="time" name="scheduled_time" defaultValue={selected.scheduled_time || ''} />
+                      </div>
+                    </div>
+
+                    <div className="fg">
                       <label className="fl">Link do vídeo/post/Drive</label>
                       <input className="fi" name="content_url" defaultValue={selected.content_url || ''} placeholder="https://drive.google.com/..." />
                     </div>
@@ -778,5 +829,8 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     </div>
   )
 }
+
+
+
 
 
