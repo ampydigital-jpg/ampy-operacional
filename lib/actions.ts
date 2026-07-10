@@ -783,3 +783,158 @@ export async function deleteFeedBoardItemAction(itemId: string, boardId: string)
   revalidateFeedBoardPaths(boardId)
   return { success: true }
 }
+
+// =========================================================
+// HOTFIX 15B.1 — Aprovações: publicar, arquivar e excluir documento
+// =========================================================
+
+export async function publishFeedBoardAction(boardId: string) {
+  const supabase = createClient()
+  if (!boardId) return { error: 'Documento invalido.' }
+
+  const { error } = await supabase
+    .from('feed_boards')
+    .update({
+      status: 'in_progress',
+      published_at: new Date().toISOString(),
+    })
+    .eq('id', boardId)
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    null,
+    'board_published',
+    'Ampy Digital subiu o feed para aprovação.'
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true }
+}
+
+export async function archiveFeedBoardAction(boardId: string) {
+  const supabase = createClient()
+  if (!boardId) return { error: 'Documento invalido.' }
+
+  const { error } = await supabase
+    .from('feed_boards')
+    .update({ status: 'archived' })
+    .eq('id', boardId)
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    null,
+    'board_archived',
+    'Ampy Digital arquivou o documento.'
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true }
+}
+
+export async function deleteFeedBoardAction(boardId: string) {
+  const supabase = createClient()
+  if (!boardId) return { error: 'Documento invalido.' }
+
+  const { data: items } = await supabase
+    .from('feed_board_items')
+    .select('storage_path')
+    .eq('board_id', boardId)
+
+  const paths = (items || []).map((item: any) => item.storage_path).filter(Boolean)
+  if (paths.length > 0) {
+    await supabase.storage.from('feed-preview').remove(paths)
+  }
+
+  const { error } = await supabase
+    .from('feed_boards')
+    .delete()
+    .eq('id', boardId)
+
+  if (error) return { error: error.message }
+
+  revalidateFeedBoardPaths(null)
+  return { success: true }
+}
+
+// =========================================================
+// HOTFIX 15B.1 — Aprovações: itens com retorno para UI suave
+// =========================================================
+
+export async function createFeedBoardItemSmoothAction(formData: FormData) {
+  const supabase = createClient()
+
+  const boardId = feedActionValue(formData, 'board_id')
+  if (!boardId) return { error: 'Documento invalido.' }
+
+  const positionRaw = feedActionValue(formData, 'position')
+  const position = Number.isFinite(Number(positionRaw)) ? Number(positionRaw) : 0
+
+  const payload = {
+    board_id: boardId,
+    title: feedActionValue(formData, 'title') || 'Capa',
+    cover_url: feedActionNullable(formData, 'cover_url'),
+    storage_path: feedActionNullable(formData, 'storage_path'),
+    content_url: feedActionNullable(formData, 'content_url'),
+    caption: feedActionNullable(formData, 'caption'),
+    internal_notes: feedActionNullable(formData, 'internal_notes'),
+    position,
+    approval_status: 'pending',
+  }
+
+  const { data, error } = await supabase
+    .from('feed_board_items')
+    .insert(payload)
+    .select('id,board_id,work_item_id,position,title,cover_url,storage_path,content_url,caption,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
+    .single()
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    boardId,
+    data.id,
+    'item_created',
+    `Ampy Digital adicionou a capa "${data.title || 'Capa'}".`
+  )
+
+  revalidateFeedBoardPaths(boardId)
+  return { success: true, item: data }
+}
+
+export async function updateFeedBoardItemSmoothAction(itemId: string, formData: FormData) {
+  const supabase = createClient()
+  if (!itemId) return { error: 'Item invalido.' }
+
+  const payload = {
+    title: feedActionValue(formData, 'title') || 'Capa',
+    content_url: feedActionNullable(formData, 'content_url'),
+    caption: feedActionNullable(formData, 'caption'),
+    internal_notes: feedActionNullable(formData, 'internal_notes'),
+  }
+
+  const { data, error } = await supabase
+    .from('feed_board_items')
+    .update(payload)
+    .eq('id', itemId)
+    .select('id,board_id,work_item_id,position,title,cover_url,storage_path,content_url,caption,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
+    .single()
+
+  if (error) return { error: error.message }
+
+  await addFeedBoardEventInternal(
+    supabase,
+    data.board_id,
+    data.id,
+    'item_updated',
+    `Ampy Digital atualizou a capa "${data.title || 'Capa'}".`
+  )
+
+  revalidateFeedBoardPaths(data.board_id)
+  return { success: true, item: data }
+}

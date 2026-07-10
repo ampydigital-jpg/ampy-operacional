@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  createFeedBoardItemAction,
+  createFeedBoardItemSmoothAction,
   deleteFeedBoardItemAction,
+  publishFeedBoardAction,
   reorderFeedBoardItemsAction,
   updateFeedBoardAction,
-  updateFeedBoardItemAction,
+  updateFeedBoardItemSmoothAction,
 } from '@/lib/actions'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -22,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const PRESET_LABEL: Record<string, string> = {
   custom: 'Personalizado',
-  standard: 'Padrao',
+  standard: 'Padrão',
   minimalist: 'Minimalista',
   creative: 'Criativo',
   neutral: 'Neutro',
@@ -30,7 +31,7 @@ const PRESET_LABEL: Record<string, string> = {
 }
 
 function formatMonth(value: string) {
-  if (!value) return 'Sem periodo'
+  if (!value) return 'Sem período'
   const key = String(value).slice(0, 7)
   const [year, month] = key.split('-')
   return `${month}/${year}`
@@ -53,16 +54,20 @@ function safeFileName(name: string) {
 function statusTone(status: string) {
   if (status === 'approved') return 'bok'
   if (status === 'changes_requested' || status === 'rejected') return 'berr'
-  return 'bwarn'
+  if (status === 'pending') return 'bwarn'
+  return 'bblue'
 }
 
 export default function FeedBoardEditor({ board, items = [], events = [], loadErrors = [] }: any) {
+  const [boardState, setBoardState] = useState<any>(board)
   const [gridItems, setGridItems] = useState<any[]>(Array.isArray(items) ? items : [])
+  const [localEvents, setLocalEvents] = useState<any[]>(Array.isArray(events) ? events : [])
   const [selected, setSelected] = useState<any>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [orderDirty, setOrderDirty] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -70,23 +75,39 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     return [...gridItems].sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
   }, [gridItems])
 
-  const fillerCount = sortedItems.length === 0 ? 9 : (3 - (sortedItems.length % 3)) % 3
+  const fillerCount = sortedItems.length === 0 ? 12 : Math.max(0, Math.min(12 - sortedItems.length, (3 - (sortedItems.length % 3)) % 3))
+
+  function addLocalEvent(text: string) {
+    setLocalEvents((current) => [
+      {
+        id: `local-${Date.now()}`,
+        message: text,
+        actor_name: 'Ampy Digital',
+        created_at: new Date().toISOString(),
+      },
+      ...current,
+    ])
+  }
 
   async function uploadFiles(event: any) {
     const files = Array.from(event.target.files || []) as File[]
+    event.target.value = ''
+
     if (!files.length) return
 
     setUploading(true)
     setError('')
+    setMessage('')
 
     try {
       const supabase = createClient()
+      const createdItems: any[] = []
 
       for (let index = 0; index < files.length; index++) {
         const file = files[index]
         if (!file.type.startsWith('image/')) continue
 
-        const path = `${board.id}/${Date.now()}-${index}-${safeFileName(file.name)}`
+        const path = `${boardState.id}/${Date.now()}-${index}-${safeFileName(file.name)}`
         const { error: uploadError } = await supabase.storage
           .from('feed-preview')
           .upload(path, file, { cacheControl: '3600', upsert: false })
@@ -96,19 +117,28 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
         const { data } = supabase.storage.from('feed-preview').getPublicUrl(path)
 
         const formData = new FormData()
-        formData.set('board_id', board.id)
+        formData.set('board_id', boardState.id)
         formData.set('title', file.name.replace(/\.[^/.]+$/, ''))
         formData.set('storage_path', path)
         formData.set('cover_url', data.publicUrl)
-        formData.set('position', String(sortedItems.length + index))
+        formData.set('position', String(sortedItems.length + createdItems.length))
 
-        const result = await createFeedBoardItemAction(formData)
+        const result = await createFeedBoardItemSmoothAction(formData)
         if ('error' in result) throw new Error(result.error)
+
+        if ('item' in result && result.item) {
+          createdItems.push(result.item)
+        }
       }
 
-      window.location.reload()
+      if (createdItems.length > 0) {
+        setGridItems((current) => [...current, ...createdItems])
+        setMessage(`${createdItems.length} capa(s) adicionada(s).`)
+        addLocalEvent(`Ampy Digital adicionou ${createdItems.length} capa(s).`)
+      }
     } catch (err: any) {
       setError(err?.message || 'Erro ao subir capas.')
+    } finally {
       setUploading(false)
     }
   }
@@ -131,27 +161,48 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
   async function saveOrder() {
     setSaving(true)
     setError('')
-    const result = await reorderFeedBoardItemsAction(board.id, sortedItems.map((item) => item.id))
+    setMessage('')
+
+    const result = await reorderFeedBoardItemsAction(boardState.id, sortedItems.map((item) => item.id))
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar ordem.')
       setSaving(false)
       return
     }
+
     setOrderDirty(false)
     setSaving(false)
+    setMessage('Sequência salva.')
+    addLocalEvent('Ampy Digital salvou a sequência da grade.')
   }
 
   async function updateBoard(event: any) {
     event.preventDefault()
     setSaving(true)
     setError('')
-    const result = await updateFeedBoardAction(board.id, new FormData(event.currentTarget))
+    setMessage('')
+
+    const formData = new FormData(event.currentTarget)
+    const result = await updateFeedBoardAction(boardState.id, formData)
+
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar documento.')
       setSaving(false)
       return
     }
-    window.location.reload()
+
+    setBoardState((current: any) => ({
+      ...current,
+      title: String(formData.get('title') || current.title),
+      status: String(formData.get('status') || current.status),
+      visual_preset: String(formData.get('visual_preset') || current.visual_preset),
+      notes: String(formData.get('notes') || ''),
+      updated_at: new Date().toISOString(),
+    }))
+
+    setMessage('Configurações da aprovação salvas.')
+    addLocalEvent('Ampy Digital atualizou as configurações da aprovação.')
+    setSaving(false)
   }
 
   async function updateItem(event: any) {
@@ -160,27 +211,49 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
     setSaving(true)
     setError('')
-    const result = await updateFeedBoardItemAction(selected.id, new FormData(event.currentTarget))
+    setMessage('')
+
+    const result = await updateFeedBoardItemSmoothAction(selected.id, new FormData(event.currentTarget))
+
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar item.')
       setSaving(false)
       return
     }
-    window.location.reload()
+
+    if ('item' in result && result.item) {
+      setGridItems((current) => current.map((item) => item.id === result.item.id ? result.item : item))
+      setSelected(result.item)
+    }
+
+    setMessage('Item atualizado.')
+    addLocalEvent('Ampy Digital atualizou um item da grade.')
+    setSaving(false)
+    setSelected(null)
   }
 
   async function deleteItem() {
     if (!selected) return
-    if (!confirm('Remover esta capa da grade?')) return
 
     setSaving(true)
-    const result = await deleteFeedBoardItemAction(selected.id, board.id)
+    setError('')
+    setMessage('')
+
+    const itemId = selected.id
+    const result = await deleteFeedBoardItemAction(itemId, boardState.id)
+
     if ('error' in result) {
       setError(result.error || 'Erro ao remover item.')
       setSaving(false)
       return
     }
-    window.location.reload()
+
+    setGridItems((current) => current.filter((item) => item.id !== itemId).map((item, pos) => ({ ...item, position: pos })))
+    setSelected(null)
+    setSaving(false)
+    setOrderDirty(true)
+    setMessage('Capa removida.')
+    addLocalEvent('Ampy Digital removeu uma capa da grade.')
   }
 
   function openFirstWithoutLink() {
@@ -188,52 +261,112 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     if (item) setSelected(item)
   }
 
+  async function publishBoard() {
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    if (orderDirty) {
+      const orderResult = await reorderFeedBoardItemsAction(boardState.id, sortedItems.map((item) => item.id))
+      if ('error' in orderResult) {
+        setError(orderResult.error || 'Erro ao salvar sequência antes de subir o feed.')
+        setSaving(false)
+        return
+      }
+      setOrderDirty(false)
+    }
+
+    const result = await publishFeedBoardAction(boardState.id)
+    if ('error' in result) {
+      setError(result.error || 'Erro ao subir feed.')
+      setSaving(false)
+      return
+    }
+
+    setBoardState((current: any) => ({
+      ...current,
+      status: 'in_progress',
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }))
+
+    setMessage('Feed marcado como Em andamento. O link público de aprovação entra na próxima etapa.')
+    addLocalEvent('Ampy Digital subiu o feed para aprovação.')
+    setSaving(false)
+  }
+
   return (
     <div className="page-wrap">
       <div className="topbar">
-        <Link className="bsec" href="/dashboard/feed-preview"><i className="ti ti-arrow-left" /> Feed Preview</Link>
+        <Link className="bsec" href="/dashboard/feed-preview">
+          <i className="ti ti-arrow-left" /> Aprovações
+        </Link>
+
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="tb-title">{board.title}</div>
-          <div className="tb-sub">{board.client?.name || 'Cliente'} · {formatMonth(board.period_month)} · {PRESET_LABEL[board.visual_preset] || 'Personalizado'}</div>
+          <div className="tb-title">{boardState.title}</div>
+          <div className="tb-sub">
+            {boardState.client?.name || 'Cliente'} · {formatMonth(boardState.period_month)} · {STATUS_LABEL[boardState.status] || 'Rascunho'}
+          </div>
         </div>
-        <button className="bsec" onClick={() => inputRef.current?.click()} disabled={uploading}>
-          <i className="ti ti-upload" /> {uploading ? 'Subindo...' : 'Subir capas'}
+
+        <button className="bsec" onClick={() => inputRef.current?.click()} disabled={uploading || saving}>
+          <i className="ti ti-upload" /> {uploading ? 'Subindo...' : 'Subir Capas'}
         </button>
-        <button className="bsec" onClick={openFirstWithoutLink} disabled={!sortedItems.length}>
-          <i className="ti ti-link" /> Adicionar links
+
+        <button className="bsec" onClick={openFirstWithoutLink} disabled={!sortedItems.length || saving}>
+          <i className="ti ti-link" /> Adicionar Links
         </button>
-        <button className="bpri" onClick={saveOrder} disabled={!orderDirty || saving}>
-          <i className="ti ti-device-floppy" /> {saving ? 'Salvando...' : orderDirty ? 'Salvar ordem' : 'Ordem salva'}
+
+        {orderDirty && (
+          <button className="bsec" onClick={saveOrder} disabled={saving}>
+            <i className="ti ti-device-floppy" /> Salvar sequência
+          </button>
+        )}
+
+        <button className="bpri" onClick={publishBoard} disabled={saving || uploading || !sortedItems.length}>
+          <i className="ti ti-send" /> Subir Feed
         </button>
+
         <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={uploadFiles} />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
         {error && <div className="notice notice-err" style={{ marginBottom: 14 }}><i className="ti ti-alert-circle" /><span>{error}</span></div>}
+        {message && <div className="notice" style={{ marginBottom: 14 }}><i className="ti ti-check" /><span>{message}</span></div>}
         {loadErrors.length > 0 && <div className="notice notice-err" style={{ marginBottom: 14 }}><i className="ti ti-alert-circle" /><span>{loadErrors.join(' | ')}</span></div>}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 16, alignItems: 'start' }}>
           <section>
             <div className="sh">
               <div>
-                <div className="stitle">Grade visual</div>
-                <div className="ssub">{sortedItems.length} capa(s). Arraste para definir a sequencia do documento.</div>
+                <div className="stitle">Grade da aprovação</div>
+                <div className="ssub">Capas em 1080x1920. Arraste para definir a sequência do feed.</div>
               </div>
-              <span className="badge bblue">3 colunas</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span className="badge bblue">3 colunas</span>
+                <span className="badge bmut">{sortedItems.length} item(ns)</span>
+              </div>
             </div>
 
-            <div style={{ background: '#0A0A0A', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 14, marginBottom: 14, borderBottom: '0.5px solid #1A1A1A' }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#151515', color: '#DDD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>
-                  {String(board.client?.name || 'A').slice(0, 1).toUpperCase()}
+            <div style={{ background: '#0A0A0A', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, marginBottom: 12, borderBottom: '0.5px solid #1A1A1A' }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#151515', color: '#DDD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>
+                  {String(boardState.client?.name || 'A').slice(0, 1).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#FFF' }}>{board.client?.name || 'Cliente'}</div>
-                  <div style={{ fontSize: 10, color: '#888' }}>{formatMonth(board.period_month)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#FFF' }}>{boardState.client?.name || 'Cliente'}</div>
+                  <div style={{ fontSize: 10, color: '#888' }}>{formatMonth(boardState.period_month)}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(82px, 112px))',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
                 {sortedItems.map((item, index) => (
                   <button
                     key={item.id}
@@ -245,10 +378,10 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                     onDragEnd={() => setDragIndex(null)}
                     onClick={() => setSelected(item)}
                     style={{
-                      aspectRatio: '1',
+                      aspectRatio: '9 / 16',
                       background: '#151515',
                       border: dragIndex === index ? '2px solid var(--blue)' : '1px solid #222',
-                      borderRadius: 6,
+                      borderRadius: 8,
                       overflow: 'hidden',
                       position: 'relative',
                       padding: 0,
@@ -262,14 +395,35 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                         <i className="ti ti-photo" />
                       </div>
                     )}
-                    <span style={{ position: 'absolute', top: 6, right: 6, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.78)', color: '#FFF', fontSize: 9, fontWeight: 800 }}>{index + 1}</span>
-                    <span className={`badge ${statusTone(item.approval_status)}`} style={{ position: 'absolute', left: 6, bottom: 6, fontSize: 9 }}>{item.approval_status === 'approved' ? 'Aprovado' : item.approval_status === 'changes_requested' ? 'Ajuste' : 'Pendente'}</span>
-                    {item.content_url && <span style={{ position: 'absolute', right: 6, bottom: 6, color: '#FFF', background: 'rgba(0,0,0,.78)', borderRadius: 6, padding: '3px 6px', fontSize: 9 }}><i className="ti ti-link" /></span>}
+
+                    <span style={{ position: 'absolute', top: 5, right: 5, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.78)', color: '#FFF', fontSize: 9, fontWeight: 800 }}>{index + 1}</span>
+
+                    <span className={`badge ${statusTone(item.approval_status)}`} style={{ position: 'absolute', left: 5, bottom: 5, fontSize: 8 }}>
+                      {item.approval_status === 'approved' ? 'Aprovado' : item.approval_status === 'changes_requested' ? 'Ajuste' : 'Pendente'}
+                    </span>
+
+                    {item.content_url && (
+                      <span style={{ position: 'absolute', right: 5, bottom: 5, color: '#FFF', background: 'rgba(0,0,0,.78)', borderRadius: 6, padding: '3px 6px', fontSize: 9 }}>
+                        <i className="ti ti-link" />
+                      </span>
+                    )}
                   </button>
                 ))}
 
                 {Array.from({ length: fillerCount }).map((_, index) => (
-                  <button key={`empty-${index}`} type="button" onClick={() => inputRef.current?.click()} style={{ aspectRatio: '1', background: '#111', border: '1px dashed #252525', borderRadius: 6, color: '#333', fontSize: 22 }}>
+                  <button
+                    key={`empty-${index}`}
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    style={{
+                      aspectRatio: '9 / 16',
+                      background: '#111',
+                      border: '1px dashed #252525',
+                      borderRadius: 8,
+                      color: '#333',
+                      fontSize: 20,
+                    }}
+                  >
                     +
                   </button>
                 ))}
@@ -279,35 +433,51 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
           <aside style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <form onSubmit={updateBoard} style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14 }}>
-              <div className="stitle" style={{ marginBottom: 10 }}>Documento</div>
-              <div className="fg"><label className="fl">Nome</label><input className="fi" name="title" defaultValue={board.title || ''} /></div>
+              <div className="stitle" style={{ marginBottom: 10 }}>Configurações</div>
+
+              <div className="fg">
+                <label className="fl">Nome da aprovação</label>
+                <input className="fi" name="title" defaultValue={boardState.title || ''} />
+              </div>
+
               <div className="frow">
                 <div className="fg">
                   <label className="fl">Status</label>
-                  <select className="fi" name="status" defaultValue={board.status || 'draft'}>
+                  <select className="fi" name="status" defaultValue={boardState.status || 'draft'}>
                     {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </div>
+
                 <div className="fg">
                   <label className="fl">Visual</label>
-                  <select className="fi" name="visual_preset" defaultValue={board.visual_preset || 'custom'}>
+                  <select className="fi" name="visual_preset" defaultValue={boardState.visual_preset || 'custom'}>
                     {Object.entries(PRESET_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="fg"><label className="fl">Notas internas</label><textarea className="fi" name="notes" defaultValue={board.notes || ''} /></div>
-              <button className="bpri" disabled={saving} style={{ width: '100%', justifyContent: 'center' }}>{saving ? 'Salvando...' : 'Salvar documento'}</button>
+
+              <div className="fg">
+                <label className="fl">Notas internas</label>
+                <textarea className="fi" name="notes" defaultValue={boardState.notes || ''} />
+              </div>
+
+              <button className="bsec" disabled={saving} style={{ width: '100%', justifyContent: 'center' }}>
+                {saving ? 'Salvando...' : 'Salvar configurações'}
+              </button>
             </form>
 
             <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14 }}>
-              <div className="stitle">Itens</div>
-              <div className="ssub" style={{ marginBottom: 10 }}>Clique em uma capa para adicionar link ou observacao.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
-                {sortedItems.length === 0 ? <div className="empty-inline">Nenhuma capa adicionada.</div> : sortedItems.map((item, index) => (
+              <div className="stitle">Links dos posts</div>
+              <div className="ssub" style={{ marginBottom: 10 }}>Clique em uma capa para adicionar o link do Drive, vídeo ou post.</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
+                {sortedItems.length === 0 ? (
+                  <div className="empty-inline">Nenhuma capa adicionada.</div>
+                ) : sortedItems.map((item, index) => (
                   <button key={item.id} type="button" onClick={() => setSelected(item)} style={{ textAlign: 'left', background: 'var(--s2)', border: '0.5px solid var(--b1)', borderRadius: 10, padding: 10, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <b style={{ color: 'var(--t2)', fontSize: 11 }}>{index + 1}</b>
-                      <span style={{ color: 'var(--t1)', fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || 'Sem titulo'}</span>
+                      <span style={{ color: 'var(--t1)', fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || 'Sem título'}</span>
                     </div>
                     <small style={{ color: item.content_url ? 'var(--ok)' : 'var(--t4)' }}>{item.content_url ? 'Link adicionado' : 'Sem link'}</small>
                   </button>
@@ -316,10 +486,13 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
             </div>
 
             <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14 }}>
-              <div className="stitle">Historico</div>
-              <div className="ssub" style={{ marginBottom: 10 }}>Registro vivo do documento.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
-                {events.length === 0 ? <div className="empty-inline">Sem historico ainda.</div> : events.map((event: any) => (
+              <div className="stitle">Histórico</div>
+              <div className="ssub" style={{ marginBottom: 10 }}>Registro vivo da aprovação.</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 230, overflowY: 'auto' }}>
+                {localEvents.length === 0 ? (
+                  <div className="empty-inline">Sem histórico ainda.</div>
+                ) : localEvents.map((event: any) => (
                   <div key={event.id} style={{ borderLeft: '3px solid var(--blue)', paddingLeft: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)' }}>{event.message}</div>
                     <div style={{ fontSize: 10, color: 'var(--t4)' }}>{event.actor_name || 'Ampy Digital'} · {formatDateTime(event.created_at)}</div>
@@ -336,29 +509,45 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
           <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head">
               <div>
-                <div className="modal-title">Editar item da grade</div>
-                <div className="modal-sub">Adicione o link do video/post/Drive e observacoes.</div>
+                <div className="modal-title">Editar post da aprovação</div>
+                <div className="modal-sub">Adicione o link do vídeo/post/Drive e observações.</div>
               </div>
               <button className="mclose" onClick={() => setSelected(null)}><i className="ti ti-x" /></button>
             </div>
 
             <form onSubmit={updateItem}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16 }}>
-                  <div style={{ aspectRatio: '1', background: '#111', borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--b1)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16 }}>
+                  <div style={{ aspectRatio: '9 / 16', background: '#111', borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--b1)' }}>
                     {selected.cover_url && <img src={selected.cover_url} alt={selected.title || 'Capa'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </div>
+
                   <div>
-                    <div className="fg"><label className="fl">Titulo / referencia</label><input className="fi" name="title" defaultValue={selected.title || ''} /></div>
-                    <div className="fg"><label className="fl">Link do video/post/Drive</label><input className="fi" name="content_url" defaultValue={selected.content_url || ''} placeholder="https://drive.google.com/..." /></div>
-                    <div className="fg"><label className="fl">Legenda / texto de apoio</label><textarea className="fi" name="caption" defaultValue={selected.caption || ''} /></div>
-                    <div className="fg"><label className="fl">Observacoes internas</label><textarea className="fi" name="internal_notes" defaultValue={selected.internal_notes || ''} /></div>
+                    <div className="fg">
+                      <label className="fl">Título / referência</label>
+                      <input className="fi" name="title" defaultValue={selected.title || ''} />
+                    </div>
+
+                    <div className="fg">
+                      <label className="fl">Link do vídeo/post/Drive</label>
+                      <input className="fi" name="content_url" defaultValue={selected.content_url || ''} placeholder="https://drive.google.com/..." />
+                    </div>
+
+                    <div className="fg">
+                      <label className="fl">Legenda / texto de apoio</label>
+                      <textarea className="fi" name="caption" defaultValue={selected.caption || ''} />
+                    </div>
+
+                    <div className="fg">
+                      <label className="fl">Observações internas</label>
+                      <textarea className="fi" name="internal_notes" defaultValue={selected.internal_notes || ''} />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="modal-foot">
-                <button type="button" className="bsec danger-action" onClick={deleteItem}>Remover capa</button>
+                <button type="button" className="bsec danger-action" onClick={deleteItem} disabled={saving}>Remover capa</button>
                 <button type="button" className="bsec" onClick={() => setSelected(null)}>Cancelar</button>
                 <button className="bpri" disabled={saving}>{saving ? 'Salvando...' : 'Salvar item'}</button>
               </div>
