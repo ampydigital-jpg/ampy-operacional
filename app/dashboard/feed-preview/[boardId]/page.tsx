@@ -28,7 +28,7 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
       .single(),
     supabase
       .from('feed_board_items')
-      .select('id,board_id,work_item_id,position,title,cover_url,storage_path,source_file_name,content_url,caption,scheduled_date,scheduled_time,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
+      .select('id,board_id,work_item_id,position,title,cover_url,storage_path,content_type,source_file_name,content_url,caption,scheduled_date,scheduled_time,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
       .eq('board_id', boardId)
       .order('position', { ascending: true }),
     supabase
@@ -52,4 +52,5 @@ export default async function FeedBoardPage({ params }: { params: { boardId: str
 
   return <FeedBoardEditor board={board} items={itemsResult.data || []} events={eventsResult.data || []} loadErrors={loadErrors} />
 }
+
 

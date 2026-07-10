@@ -29,6 +29,12 @@ const PRESET_LABEL: Record<string, string> = {
   bold: 'Arrojado',
 }
 
+const CONTENT_TYPE_LABEL: Record<string, string> = {
+  post: 'Post',
+  video: 'Vídeo',
+  carousel: 'Carrossel',
+}
+
 const VIEW_LABEL: Record<string, string> = {
   grid: 'Grade',
   mobile: 'Celular',
@@ -294,8 +300,12 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
         const nextCaption = String(formData.get(`caption_${item.id}`) || item.caption || '')
         const nextNotes = String(formData.get(`internal_notes_${item.id}`) || item.internal_notes || '')
 
+        const nextType = String(formData.get(`content_type_${item.id}`) || item.content_type || 'post')
+
+
         const changed =
           nextTitle !== String(item.title || '') ||
+          nextType !== String(item.content_type || 'post') ||
           nextSource !== String(item.source_file_name || '') ||
           nextUrl !== String(item.content_url || '') ||
           nextDate !== String(item.scheduled_date || '') ||
@@ -307,6 +317,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
 
         const itemForm = new FormData()
         itemForm.set('title', nextTitle || 'Capa')
+        itemForm.set('content_type', ['post', 'video', 'carousel'].includes(nextType) ? nextType : 'post')
         itemForm.set('source_file_name', nextSource)
         itemForm.set('content_url', nextUrl)
         itemForm.set('scheduled_date', nextDate)
@@ -424,6 +435,20 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
             <i className="ti ti-photo" />
           </div>
+        )}
+
+        {item.content_type === 'video' && (
+          <span className="content-type-play-overlay" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <span style={{ width: compact ? 34 : 42, height: compact ? 34 : 42, borderRadius: '50%', background: 'rgba(0,0,0,.48)', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: compact ? 18 : 22, boxShadow: '0 10px 30px rgba(0,0,0,.35)' }}>
+              ▶
+            </span>
+          </span>
+        )}
+
+        {item.content_type === 'carousel' && (
+          <span style={{ position: 'absolute', top: 5, left: 5, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.72)', color: '#FFF', fontSize: compact ? 7 : 8, fontWeight: 900 }}>
+            Carrossel
+          </span>
         )}
 
         <span style={{ position: 'absolute', top: 5, right: 5, padding: '3px 6px', borderRadius: 6, background: 'rgba(0,0,0,.78)', color: '#FFF', fontSize: compact ? 8 : 9, fontWeight: 800 }}>
@@ -665,7 +690,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                       <b style={{ color: 'var(--t2)', fontSize: 11 }}>{index + 1}</b>
                       <span style={{ color: 'var(--t1)', fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || 'Sem título'}</span>
                     </div>
-                    <small style={{ color: item.content_url ? 'var(--ok)' : 'var(--t4)' }}>{item.content_url ? 'Link adicionado' : 'Sem link'}</small>
+                    <small style={{ color: 'var(--t4)' }}>{CONTENT_TYPE_LABEL[item.content_type || 'post'] || 'Post'} · {item.content_url ? 'Link adicionado' : 'Sem link'}</small>
                   </button>
                 ))}
               </div>
@@ -715,6 +740,15 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                         <div className="fg">
                           <label className="fl">Título</label>
                           <input className="fi" name={`title_${item.id}`} defaultValue={item.title || ''} />
+                        </div>
+
+                        <div className="fg">
+                          <label className="fl">Tipo do conteúdo</label>
+                          <select className="fi" name={`content_type_${item.id}`} defaultValue={item.content_type || 'post'}>
+                            <option value="post">Post</option>
+                            <option value="video">Vídeo</option>
+                            <option value="carousel">Carrossel</option>
+                          </select>
                         </div>
 
                         <div className="fg">
@@ -784,6 +818,15 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
                     </div>
 
                     <div className="fg">
+                      <label className="fl">Tipo do conteúdo</label>
+                      <select className="fi" name="content_type" defaultValue={selected.content_type || 'post'}>
+                        <option value="post">Post</option>
+                        <option value="video">Vídeo</option>
+                        <option value="carousel">Carrossel</option>
+                      </select>
+                    </div>
+
+                    <div className="fg">
                       <label className="fl">Arquivo na pasta</label>
                       <input className="fi" name="source_file_name" defaultValue={selected.source_file_name || ''} placeholder="Ex.: Video_1, Capa_1, P01_VIDEO" />
                     </div>
@@ -829,6 +872,8 @@ export default function FeedBoardEditor({ board, items = [], events = [], loadEr
     </div>
   )
 }
+
+
 
 
 

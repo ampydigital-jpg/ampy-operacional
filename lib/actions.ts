@@ -1072,6 +1072,7 @@ export async function updateFeedBoardItemPlanningAction(itemId: string, formData
 
   const payload = {
     title: feedActionValue(formData, 'title') || 'Capa',
+    content_type: ['post', 'video', 'carousel'].includes(feedActionValue(formData, 'content_type')) ? feedActionValue(formData, 'content_type') : 'post',
     source_file_name: feedActionNullable(formData, 'source_file_name'),
     content_url: feedActionNullable(formData, 'content_url'),
     caption: feedActionNullable(formData, 'caption'),
@@ -1084,7 +1085,7 @@ export async function updateFeedBoardItemPlanningAction(itemId: string, formData
     .from('feed_board_items')
     .update(payload)
     .eq('id', itemId)
-    .select('id,board_id,work_item_id,position,title,cover_url,storage_path,source_file_name,content_url,caption,scheduled_date,scheduled_time,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
+    .select('id,board_id,work_item_id,position,title,cover_url,storage_path,content_type,source_file_name,content_url,caption,scheduled_date,scheduled_time,internal_notes,approval_status,client_feedback,approved_at,created_at,updated_at')
     .single()
 
   if (error) return { error: error.message }
@@ -1100,3 +1101,4 @@ export async function updateFeedBoardItemPlanningAction(itemId: string, formData
   revalidateFeedBoardPaths(data.board_id)
   return { success: true, item: data }
 }
+

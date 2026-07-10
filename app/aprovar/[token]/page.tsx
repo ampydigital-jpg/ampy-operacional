@@ -28,7 +28,7 @@ export default async function PublicApprovalPage({ params }: { params: { token: 
       .single(),
     supabase
       .from('feed_board_items')
-      .select('id,board_id,position,title,cover_url,source_file_name,content_url,caption,scheduled_date,scheduled_time,approval_status,client_feedback,approved_at,created_at,updated_at')
+      .select('id,board_id,position,title,cover_url,content_type,source_file_name,content_url,caption,scheduled_date,scheduled_time,approval_status,client_feedback,approved_at,created_at,updated_at')
       .eq('board_id', boardResult.data.id)
       .order('position', { ascending: true }),
     supabase
@@ -53,3 +53,4 @@ export default async function PublicApprovalPage({ params }: { params: { token: 
     />
   )
 }
+

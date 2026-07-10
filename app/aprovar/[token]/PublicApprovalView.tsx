@@ -32,6 +32,12 @@ function itemTone(status: string) {
   return '#F59E0B'
 }
 
+function contentTypeLabel(type: string) {
+  if (type === 'video') return 'Vídeo'
+  if (type === 'carousel') return 'Carrossel'
+  return 'Post'
+}
+
 export default function PublicApprovalView({ token, board, items = [], events = [] }: any) {
   const [boardStatus, setBoardStatus] = useState(board.status || 'in_progress')
   const [approvalItems, setApprovalItems] = useState<any[]>(Array.isArray(items) ? items : [])
@@ -156,6 +162,20 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                       <img src={item.cover_url} alt={item.title || 'Capa'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     )}
 
+                    {item.content_type === 'video' && (
+                      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                        <span style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(0,0,0,.48)', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 10px 30px rgba(0,0,0,.35)' }}>
+                          ▶
+                        </span>
+                      </span>
+                    )}
+
+                    {item.content_type === 'carousel' && (
+                      <span style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,.78)', color: '#FFF', borderRadius: 8, padding: '4px 7px', fontSize: 10, fontWeight: 900 }}>
+                        Carrossel
+                      </span>
+                    )}
+
                     <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,.78)', color: '#FFF', borderRadius: 8, padding: '4px 7px', fontSize: 11, fontWeight: 900 }}>
                       {index + 1}
                     </span>
@@ -276,3 +296,4 @@ export default function PublicApprovalView({ token, board, items = [], events = 
     </main>
   )
 }
+
