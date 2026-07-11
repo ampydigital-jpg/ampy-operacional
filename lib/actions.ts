@@ -1017,7 +1017,7 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
     decision === 'approved' ? 'client_item_approved' : 'client_item_changes_requested',
     decision === 'approved'
       ? `${actorName} aprovou o item "${updatedItem.title || 'Capa'}".`
-      : `${actorName} solicitou ajuste no item "${updatedItem.title || 'Capa'}".`,
+      : `${actorName} solicitou ajuste no item "${updatedItem.title || 'Capa'}"${feedback ? `: ${feedback}` : ''}.`,
     { feedback }
   )
 

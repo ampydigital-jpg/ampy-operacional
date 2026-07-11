@@ -454,6 +454,63 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
     }
   }
 
+
+  async function resendItemForApproval() {
+    if (!selected?.id) return
+
+    const note = typeof window !== 'undefined'
+      ? window.prompt('Comentário interno do reenvio para aprovação (opcional):') || ''
+      : ''
+
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const supabase = createClient()
+
+      const { data: updatedItem, error: updateError } = await supabase
+        .from('feed_board_items')
+        .update({
+          approval_status: 'pending',
+          workflow_status: 'awaiting_approval',
+          client_feedback: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selected.id)
+        .select('*')
+        .single()
+
+      if (updateError) throw updateError
+
+      const baseMessage = `Ampy Digital ajustou e reenviou "${selected.title || 'Post'}" para aprovação.`
+      const fullMessage = note ? `${baseMessage} Comentário interno: ${note}` : baseMessage
+
+      await supabase
+        .from('feed_board_events')
+        .insert({
+          board_id: boardState.id,
+          item_id: selected.id,
+          actor_type: 'internal',
+          actor_name: 'Ampy Digital',
+          event_type: 'internal_item_resent',
+          message: fullMessage,
+        })
+
+      if (updatedItem) {
+        setGridItems((current) => current.map((item) => item.id === updatedItem.id ? updatedItem : item))
+        setSelected(updatedItem)
+      }
+
+      addLocalEvent(fullMessage)
+      setMessage('Post reenviado para aprovação.')
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao reenviar post para aprovação.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function updateItem(event: any) {
     event.preventDefault()
     if (!selected) return
@@ -1081,7 +1138,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
               {selected && (
                 <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12, background: '#F8FAFC', display: 'grid', gap: 10 }}>
                   <div>
-                    <strong style={{ display: 'block', color: 'var(--ink)' }}>Histórico deste post</strong>
+                    <strong style={{ display: 'block', color: 'var(--ink)' }}>Histórico de ajustes e decisões deste post</strong>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>
                       Ajustes, aprovações e comentÃ¡rios registrados pelo cliente.
                     </span>
@@ -1100,7 +1157,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
 
                   {getEventsForItem(selected).length === 0 ? (
                     <div style={{ color: 'var(--muted)', fontSize: 12 }}>
-                      Nenhum histÃ³rico especÃ­fico deste post ainda.
+                      Nenhum histórico específico deste post ainda.
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
@@ -1119,7 +1176,10 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
                 </div>
               )}
 <div className="modal-foot">
-                <button type="button" className="bsec danger-action" onClick={deleteItem} disabled={saving}>Remover capa</button>
+                                <button type="button" className="bsec" onClick={resendItemForApproval} disabled={saving}>
+                  Reenviar para aprovação
+                </button>
+<button type="button" className="bsec danger-action" onClick={deleteItem} disabled={saving}>Remover capa</button>
                 <button type="button" className="bsec" onClick={() => setSelected(null)}>Cancelar</button>
                 <button className="bpri" disabled={saving}>{saving ? 'Salvando...' : 'Salvar item'}</button>
               </div>
