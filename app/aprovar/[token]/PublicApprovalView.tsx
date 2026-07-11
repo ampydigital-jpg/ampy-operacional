@@ -125,6 +125,69 @@ export default function PublicApprovalView({ token, board, items = [], events = 
     setAdjustmentDraft('')
   }, [selected?.id])
 
+
+  function publicEventsForItem(item: any) {
+    if (!item?.id) return []
+
+    const title = String(item.title || '')
+
+    return (events || [])
+      .filter((event: any) =>
+        event.item_id === item.id ||
+        event.feed_board_item_id === item.id ||
+        (title && String(event.message || '').includes(title))
+      )
+      .filter((event: any) => {
+        const type = String(event.event_type || '').toLowerCase()
+        const message = String(event.message || '').toLowerCase()
+
+        return (
+          type.includes('client_item_changes_requested') ||
+          type.includes('client_item_approved') ||
+          type.includes('internal_item_resent') ||
+          message.includes('solicitou ajuste') ||
+          message.includes('reenviou') ||
+          message.includes('aprovou')
+        )
+      })
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+  }
+
+  function publicEventTone(event: any) {
+    const type = String(event?.event_type || '').toLowerCase()
+    const message = String(event?.message || '').toLowerCase()
+
+    if (type.includes('approved') || message.includes('aprovou')) return '#16A34A'
+    if (type.includes('changes') || message.includes('ajuste') || message.includes('solicitou')) return '#DC2626'
+    return '#2563EB'
+  }
+
+  function publicEventActor(event: any) {
+    const actorType = String(event?.actor_type || '').toLowerCase()
+    const actorName = String(event?.actor_name || '').trim()
+
+    if (actorName) return actorName
+    if (actorType === 'client') return 'Cliente'
+    if (actorType === 'internal') return 'Ampy Digital'
+    return 'Sistema'
+  }
+
+  function publicEventDate(value: any) {
+    if (!value) return ''
+
+    try {
+      return new Date(value).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return ''
+    }
+  }
+
 return (
     <main style={{ minHeight: '100vh', background: '#E8EDF5', color: '#07111F', fontFamily: 'Poppins, Arial, sans-serif' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px 44px' }}>
@@ -293,8 +356,37 @@ return (
                 </div>
               )}
 
-<label style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
-                    Comentário para ajuste
+              {selected && publicEventsForItem(selected).length > 0 && (
+                <div style={{ border: '1px solid #D5DFEC', background: '#FFFFFF', borderRadius: 18, padding: 14, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1, color: '#607089', marginBottom: 10 }}>
+                    Histórico deste post para o cliente
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {publicEventsForItem(selected).map((event: any) => (
+                      <div key={event.id || event.created_at} style={{ borderLeft: '3px solid ' + publicEventTone(event), paddingLeft: 10 }}>
+                        <div style={{ fontSize: 13, fontWeight: 850, color: '#061328', lineHeight: 1.4 }}>
+                          {event.message}
+                        </div>
+
+                        {event?.metadata?.feedback && (
+                          <div style={{ fontSize: 13, color: '#3F4D63', marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                            {event.metadata.feedback}
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: 11, color: '#607089', marginTop: 4 }}>
+                          {publicEventActor(event)} · {publicEventDate(event.created_at)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
+Comentário para ajuste
                   </label>
 
                   <textarea
@@ -362,7 +454,7 @@ return (
               </div>
             )}
 
-            <div style={{ background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18 }}>
+            <div style={{ display: 'none', background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18 }}>
               <div style={{ fontWeight: 950, marginBottom: 8 }}>Como aprovar</div>
               <div style={{ color: '#475569', fontSize: 13, lineHeight: 1.55 }}>
                 Toque em um conteúdo no mockup de celular. Se estiver correto, clique em Aprovar. Se precisar de ajuste, descreva o pedido e clique em Solicitar ajuste.
