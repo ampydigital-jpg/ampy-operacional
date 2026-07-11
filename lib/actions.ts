@@ -10,7 +10,7 @@ import { ampyLocalDateTimeToIso } from '@/lib/date'
 const ALL_PATHS = [
   '/dashboard', '/dashboard/demandas', '/dashboard/quadro', '/dashboard/kanban',
   '/dashboard/projetos', '/dashboard/agenda', '/dashboard/meu-dia',
-  '/dashboard/minha-semana', '/dashboard/semana-equipe', '/dashboard/alertas',
+  '/dashboard/minha-semana', '/dashboard/semana-equipe', '/dashboard/avisos',
   '/dashboard/clientes', '/dashboard/equipe', '/dashboard/feed-preview',
 ]
 

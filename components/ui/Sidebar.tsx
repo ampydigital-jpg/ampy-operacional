@@ -17,7 +17,7 @@ const groups = [
     { href: '/dashboard/quadro', label: 'Quadro', icon: 'ti-layout-kanban' },
     { href: '/dashboard/projetos', label: 'Projetos', icon: 'ti-route' },
     { href: '/dashboard/agenda', label: 'Agenda', icon: 'ti-calendar-event' },
-    { href: '/dashboard/alertas', label: 'Avisos', icon: 'ti-bell-ringing' },
+    { href: '/dashboard/avisos', label: 'Avisos', icon: 'ti-bell-ringing' },
     { href: '/dashboard/feed-preview', label: 'Aprovações', icon: 'ti-grid-dots' },
   ]},
   { label: 'Equipe', items: [
@@ -56,7 +56,7 @@ export default function Sidebar({ profile }: { profile: any }) {
               return (
                 <Link href={item.href} className={`nav-item ${active ? 'active' : ''}`} key={item.href}>
                   <i className={`ti ${item.icon}`} /><span>{item.label}</span>
-                  {item.href === '/dashboard/alertas' && <span className="nav-badge">!</span>}
+                  {item.href === '/dashboard/avisos' && <span className="nav-badge">!</span>}
                 </Link>
               )
             })}
