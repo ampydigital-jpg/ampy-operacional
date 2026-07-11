@@ -56,7 +56,6 @@ export default function Sidebar({ profile }: { profile: any }) {
               return (
                 <Link href={item.href} className={`nav-item ${active ? 'active' : ''}`} key={item.href}>
                   <i className={`ti ${item.icon}`} /><span>{item.label}</span>
-                  {item.href === '/dashboard/avisos' && <span className="nav-badge">!</span>}
                 </Link>
               )
             })}

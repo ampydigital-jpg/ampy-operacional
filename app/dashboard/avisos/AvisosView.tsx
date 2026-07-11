@@ -139,6 +139,8 @@ function normalizeCanonicalAviso(row: any, clientById: Map<any, any>, itemById: 
     id: row.id,
     dbId: row.id,
     dedupe_key: row.dedupe_key,
+    source_table: row.source_table || null,
+    feed_board_item_id: row.feed_board_item_id || null,
     canonical: true,
     category: row.category || 'operational',
     priority: row.priority || 'medium',
@@ -205,6 +207,12 @@ function buildGeneratedAlerts({ manualAvisos, boards, items, events, workItems, 
   for (const event of events || []) {
     const board: any = boardById.get(event.board_id)
     const item: any = itemById.get(event.item_id)
+    const eventType = String(event.event_type || '').toLowerCase()
+
+    if (['client_item_changes_requested', 'client_item_approved', 'internal_item_resent'].includes(eventType)) {
+      continue
+    }
+
     const message = String(event.message || '')
     const lower = message.toLowerCase()
 
@@ -539,13 +547,44 @@ export default function AvisosView({
     const canonicalKeys = new Set((canonicalAlerts || []).map((alert: any) => alert.dedupe_key).filter(Boolean))
     const onlyGenerated = generatedAlerts.filter((alert: any) => !alert.dedupe_key || !canonicalKeys.has(alert.dedupe_key))
 
-    return [...canonicalAlerts, ...onlyGenerated]
-      .sort((a: any, b: any) => {
-        const pa = a.priority === 'urgent' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1
-        const pb = b.priority === 'urgent' ? 4 : b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1
-        if (pb !== pa) return pb - pa
-        return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-      })
+    const combined = [...canonicalAlerts, ...onlyGenerated]
+
+    const sorted = combined.sort((a: any, b: any) => {
+      const pa = a.priority === 'urgent' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1
+      const pb = b.priority === 'urgent' ? 4 : b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1
+      if (pb !== pa) return pb - pa
+
+      const aSource = String(a.source_table || a.source?.source_table || '')
+      const bSource = String(b.source_table || b.source?.source_table || '')
+
+      if (a.category === b.category && a.category === 'adjustment') {
+        if (aSource === 'feed_board_items' && bSource !== 'feed_board_items') return -1
+        if (bSource === 'feed_board_items' && aSource !== 'feed_board_items') return 1
+      }
+
+      return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    })
+
+    const seen = new Set()
+
+    return sorted.filter((alert: any) => {
+      const isClosed = ['archived', 'deleted', 'done'].includes(alert.status)
+      const itemId = alert.feed_board_item_id || alert.source?.feed_board_item_id
+
+      if (!isClosed && alert.category === 'adjustment' && itemId) {
+        const key = `adjustment-${itemId}`
+        if (seen.has(key)) return false
+        seen.add(key)
+      }
+
+      if (!isClosed && alert.category === 'approval' && itemId) {
+        const key = `approval-${itemId}`
+        if (seen.has(key)) return false
+        seen.add(key)
+      }
+
+      return true
+    })
   }, [canonicalAlerts, generatedAlerts])
 
   const counts = useMemo(() => {
@@ -698,6 +737,74 @@ export default function AvisosView({
     }
   }
 
+
+  async function deleteVisibleAvisos() {
+    const deletable = visible.filter((alert: any) => !['archived', 'deleted', 'done'].includes(alert.status))
+
+    if (deletable.length === 0) {
+      setNotice('Nenhum aviso visível para apagar.')
+      return
+    }
+
+    const ok = window.confirm(`Apagar ${deletable.length} aviso(s) visível(is)? Eles sairão da fila ativa e irão para Apagados.`)
+    if (!ok) return
+
+    setBusyId('delete-visible')
+    setNotice('')
+
+    try {
+      const ids: string[] = []
+
+      for (const alert of deletable) {
+        const id = await persistGenerated(alert)
+        if (id) ids.push(id)
+      }
+
+      if (ids.length > 0) {
+        const { error } = await supabase
+          .from('avisos')
+          .update({
+            status: 'deleted',
+            deleted_at: new Date().toISOString(),
+          })
+          .in('id', ids)
+
+        if (error) throw error
+      }
+
+      setNotice('Avisos visíveis apagados.')
+      await reloadAvisos()
+    } catch (err: any) {
+      setNotice(err?.message || 'Erro ao apagar avisos visíveis.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function purgeDeletedAvisos() {
+    const ok = window.confirm('Excluir definitivamente todos os avisos apagados? Esta ação limpa a lixeira de avisos.')
+    if (!ok) return
+
+    setBusyId('purge-deleted')
+    setNotice('')
+
+    try {
+      const { error } = await supabase
+        .from('avisos')
+        .delete()
+        .eq('status', 'deleted')
+
+      if (error) throw error
+
+      setNotice('Avisos apagados foram limpos definitivamente.')
+      await reloadAvisos()
+    } catch (err: any) {
+      setNotice(err?.message || 'Erro ao limpar avisos apagados.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
   const filters = [
     ['active', 'Ativos', counts.active],
     ['unread', 'Não lidos', counts.unread],
@@ -722,6 +829,12 @@ export default function AvisosView({
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button type="button" className="bsec" onClick={markAllRead} disabled={busyId === 'all-read'}>
             {busyId === 'all-read' ? 'Marcando...' : 'Marcar visíveis como lidos'}
+          </button>
+          <button type="button" className="bsec" onClick={deleteVisibleAvisos} disabled={busyId === 'delete-visible'}>
+            {busyId === 'delete-visible' ? 'Apagando...' : 'Apagar visíveis'}
+          </button>
+          <button type="button" className="bsec danger-action" onClick={purgeDeletedAvisos} disabled={busyId === 'purge-deleted'}>
+            {busyId === 'purge-deleted' ? 'Limpando...' : 'Limpar apagados'}
           </button>
           <div style={{ color: 'var(--t3)', fontSize: 12, fontWeight: 800 }}>
             {currentProfile?.full_name || 'Equipe Ampy'}
