@@ -215,6 +215,19 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
     ])
   }
 
+  function getEventsForItem(item: any) {
+    if (!item?.id) return []
+
+    const title = String(item.title || '')
+
+    return localEvents
+      .filter((event: any) =>
+        event.item_id === item.id ||
+        event.feed_board_item_id === item.id ||
+        (title && String(event.message || '').includes(title))
+      )
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+  }
   async function uploadFiles(event: any) {
     const files = Array.from(event.target.files || []) as File[]
     event.target.value = ''
@@ -966,7 +979,48 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
                 </div>
               </div>
 
-              <div className="modal-foot">
+              
+              {selected && (
+                <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12, background: '#F8FAFC', display: 'grid', gap: 10 }}>
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--ink)' }}>HistÃ³rico deste post</strong>
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      Ajustes, aprovaÃ§Ãµes e comentÃ¡rios registrados pelo cliente.
+                    </span>
+                  </div>
+
+                  {selected.client_feedback && (
+                    <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#991B1B', borderRadius: 12, padding: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+                        Ãšltimo ajuste solicitado pelo cliente
+                      </div>
+                      <div style={{ fontSize: 13, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                        {selected.client_feedback}
+                      </div>
+                    </div>
+                  )}
+
+                  {getEventsForItem(selected).length === 0 ? (
+                    <div style={{ color: 'var(--muted)', fontSize: 12 }}>
+                      Nenhum histÃ³rico especÃ­fico deste post ainda.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
+                      {getEventsForItem(selected).map((event: any) => (
+                        <div key={event.id} style={{ borderLeft: '3px solid var(--blue)', paddingLeft: 10 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink)', lineHeight: 1.4 }}>
+                            {event.message}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>
+                            {event.actor_name || 'Cliente'} Â· {formatDateTime(event.created_at)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+<div className="modal-foot">
                 <button type="button" className="bsec danger-action" onClick={deleteItem} disabled={saving}>Remover capa</button>
                 <button type="button" className="bsec" onClick={() => setSelected(null)}>Cancelar</button>
                 <button className="bpri" disabled={saving}>{saving ? 'Salvando...' : 'Salvar item'}</button>
@@ -978,6 +1032,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
     </div>
   )
 }
+
 
 
 
