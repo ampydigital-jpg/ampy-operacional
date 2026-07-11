@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { submitFeedBoardClientDecisionAction } from '@/lib/actions'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -50,6 +50,7 @@ export default function PublicApprovalView({ token, board, items = [], events = 
   const [localEvents, setLocalEvents] = useState<any[]>(Array.isArray(events) ? events : [])
   const [selectedId, setSelectedId] = useState(String((Array.isArray(items) && items[0]?.id) || ''))
   const [savingId, setSavingId] = useState('')
+  const [adjustmentDraft, setAdjustmentDraft] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -115,11 +116,16 @@ export default function PublicApprovalView({ token, board, items = [], events = 
       ...current,
     ])
 
-    setMessage(decision === 'approved' ? 'AprovaÃ§Ã£o registrada.' : 'SolicitaÃ§Ã£o de ajuste registrada.')
+    setMessage(decision === 'approved' ? 'Aprovação registrada.' : 'Solicitação de ajuste registrada.')
     setSavingId('')
   }
 
-  return (
+  
+  useEffect(() => {
+    setAdjustmentDraft('')
+  }, [selected?.id])
+
+return (
     <main style={{ minHeight: '100vh', background: '#E8EDF5', color: '#07111F', fontFamily: 'Poppins, Arial, sans-serif' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px 44px' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 18 }}>
@@ -275,14 +281,27 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                 <form onSubmit={(event) => submitDecision(event, selected)}>
                   <input type="hidden" name="actor_name" value="Cliente" />
 
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
+                  
+              {selected.client_feedback && (
+                <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#991B1B', borderRadius: 14, padding: 12, marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+                    Ajuste registrado neste post
+                  </div>
+                  <div style={{ fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                    {selected.client_feedback}
+                  </div>
+                </div>
+              )}
+
+<label style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
                     Comentário para ajuste
                   </label>
 
                   <textarea
+                    value={adjustmentDraft}
+                    onChange={(event) => setAdjustmentDraft(event.target.value)}
                     id={`feedback-${selected.id}`}
                     name="client_feedback"
-                    defaultValue=""
                     placeholder="Descreva o que precisa ser ajustado. Para aprovar, o comentÃ¡rio Ã© opcional."
                     style={{
                       width: '100%',
@@ -350,8 +369,8 @@ export default function PublicApprovalView({ token, board, items = [], events = 
               </div>
             </div>
 
-            <div style={{ background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18 }}>
-              <div style={{ fontWeight: 950, marginBottom: 12 }}>HistÃ³rico</div>
+            <div style={{ display: 'none', background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18 }}>
+              <div style={{ fontWeight: 950, marginBottom: 12 }}>Histórico</div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
                 {localEvents.length === 0 ? (

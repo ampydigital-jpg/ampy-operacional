@@ -968,7 +968,7 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
   const itemPayload: any = {
     approval_status: decision,
       workflow_status: decision === 'approved' ? 'approved' : 'changes_requested',
-    client_feedback: feedback,
+    client_feedback: decision === 'changes_requested' ? (feedback || null) : null,
   }
 
   if (decision === 'approved') {
