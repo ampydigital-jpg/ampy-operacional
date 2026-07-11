@@ -8,22 +8,22 @@ const STATUS_LABEL: Record<string, string> = {
   in_progress: 'Em andamento',
   sent: 'Enviado',
   approved: 'Aprovado',
-  changes_requested: 'Ajustes solicitados',
+  changes_requested: 'Ajuste solicitado',
   archived: 'Arquivado',
-  pending: 'Pendente',
+  pending: 'Pendente aprovação',
 }
 
 function formatMonth(value: string) {
-  if (!value) return 'Sem perÃ­odo'
+  if (!value) return 'Sem período'
   const key = String(value).slice(0, 7)
   const [year, month] = key.split('-')
   return `${month}/${year}`
 }
 
 function formatDateTime(value: string) {
-  if (!value) return 'â€”'
+  if (!value) return '—'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? 'â€”' : date.toLocaleString('pt-BR')
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR')
 }
 
 function itemTone(status: string) {
@@ -34,8 +34,8 @@ function itemTone(status: string) {
 
 function statusText(status: string) {
   if (status === 'approved') return 'Aprovado'
-  if (status === 'changes_requested') return 'Ajuste'
-  return 'Pendente'
+  if (status === 'changes_requested') return 'Ajuste solicitado'
+  return 'Pendente aprovação'
 }
 
 function contentTypeLabel(type: string) {
@@ -79,7 +79,7 @@ export default function PublicApprovalView({ token, board, items = [], events = 
     const feedback = String(formData.get('client_feedback') || '').trim()
 
     if (decision === 'changes_requested' && !feedback) {
-      setError('Descreva o ajuste necessÃ¡rio antes de enviar.')
+      setError('Descreva o ajuste necessário antes de enviar.')
       return
     }
 
@@ -116,7 +116,7 @@ export default function PublicApprovalView({ token, board, items = [], events = 
       ...current,
     ])
 
-    setMessage(decision === 'approved' ? 'Aprovação registrada.' : 'Solicitação de ajuste registrada.')
+    setMessage(decision === 'approved' ? 'Post aprovado com sucesso.' : 'Solicitação de ajuste enviada para a equipe.')
     setSavingId('')
   }
 
@@ -193,7 +193,7 @@ return (
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px 44px' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 2, color: '#64748B', fontWeight: 900 }}>AprovaÃ§Ã£o de conteúdo</div>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 2, color: '#64748B', fontWeight: 900 }}>Aprovação de conteúdoss</div>
             <h1 style={{ margin: '8px 0 6px', fontSize: 26, lineHeight: 1.1 }}>{board.title}</h1>
             <div style={{ color: '#475569', fontSize: 13 }}>
               {board.client?.name || 'Cliente'} · {formatMonth(board.period_month)}
@@ -256,7 +256,7 @@ return (
 
               {approvalItems.length === 0 ? (
                 <div style={{ minHeight: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: 12, textAlign: 'center', padding: 20 }}>
-                  Nenhum conteúdo disponÃ­vel para aprovaÃ§Ã£o.
+                  Nenhum conteúdo disponível para aprovação neste documento.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
@@ -283,7 +283,7 @@ return (
                       {item.content_type === 'video' && (
                         <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                           <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,.48)', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                            â–¶
+                            ▶
                           </span>
                         </span>
                       )}
@@ -331,11 +331,11 @@ return (
 
                   <div style={{ display: 'grid', gap: 8 }}>
                     {selected.source_file_name && <div style={{ fontSize: 12, color: '#475569' }}><strong>Arquivo:</strong> {selected.source_file_name}</div>}
-                    {(selected.scheduled_date || selected.scheduled_time) && <div style={{ fontSize: 12, color: '#475569' }}><strong>ProgramaÃ§Ã£o:</strong> {selected.scheduled_date || '--/--'} {selected.scheduled_time || ''}</div>}
+                    {(selected.scheduled_date || selected.scheduled_time) && <div style={{ fontSize: 12, color: '#475569' }}><strong>Programação:</strong> {selected.scheduled_date || '--/--'} {selected.scheduled_time || ''}</div>}
                     {selected.caption && <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}><strong>Legenda:</strong> {selected.caption}</div>}
                     {selected.content_url && (
                       <a href={selected.content_url} target="_blank" rel="noreferrer" style={{ color: '#2563EB', fontSize: 12, fontWeight: 900, textDecoration: 'none' }}>
-                        Abrir link do conteúdo
+                        Abrir conteúdo
                       </a>
                     )}
                   </div>
@@ -348,7 +348,7 @@ return (
               {selected.client_feedback && (
                 <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#991B1B', borderRadius: 14, padding: 12, marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                    Ajuste registrado neste post
+                    Ajuste solicitado neste post
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
                     {selected.client_feedback}
@@ -359,7 +359,7 @@ return (
               {selected && publicEventsForItem(selected).length > 0 && (
                 <div style={{ border: '1px solid #D5DFEC', background: '#FFFFFF', borderRadius: 18, padding: 14, marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1, color: '#607089', marginBottom: 10 }}>
-                    Histórico deste post para o cliente
+                    Histórico do post
                   </div>
 
                   <div style={{ display: 'grid', gap: 10 }}>
@@ -386,7 +386,7 @@ return (
 
 
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
-Comentário para ajuste
+Comentário do ajuste
                   </label>
 
                   <textarea
@@ -394,7 +394,7 @@ Comentário para ajuste
                     onChange={(event) => setAdjustmentDraft(event.target.value)}
                     id={`feedback-${selected.id}`}
                     name="client_feedback"
-                    placeholder="Descreva o que precisa ser ajustado. Para aprovar, o comentÃ¡rio Ã© opcional."
+                    placeholder="Descreva o ajuste necessário para este post. Para aprovar, o comentário é opcional."
                     style={{
                       width: '100%',
                       minHeight: 118,
@@ -442,22 +442,20 @@ Comentário para ajuste
                         fontWeight: 950,
                         cursor: 'pointer',
                       }}
-                    >
-                      Aprovar
-                    </button>
+                    >Aprovar post</button>
                   </div>
                 </form>
               </div>
             ) : (
               <div style={{ background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18, color: '#64748B', fontSize: 13 }}>
-                Selecione um conteúdo no celular para revisar.
+                Selecione um post no mockup para revisar.
               </div>
             )}
 
             <div style={{ display: 'none', background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18 }}>
               <div style={{ fontWeight: 950, marginBottom: 8 }}>Como aprovar</div>
               <div style={{ color: '#475569', fontSize: 13, lineHeight: 1.55 }}>
-                Toque em um conteúdo no mockup de celular. Se estiver correto, clique em Aprovar. Se precisar de ajuste, descreva o pedido e clique em Solicitar ajuste.
+                Toque em um post no mockup. Se estiver correto, aprove. Se precisar de ajuste, descreva o pedido e solicite a correção.
               </div>
             </div>
 
@@ -466,7 +464,7 @@ Comentário para ajuste
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
                 {localEvents.length === 0 ? (
-                  <div style={{ color: '#94A3B8', fontSize: 12 }}>Nenhuma aÃ§Ã£o registrada ainda.</div>
+                  <div style={{ color: '#94A3B8', fontSize: 12 }}>Nenhuma ação registrada ainda.</div>
                 ) : localEvents.map((event: any) => (
                   <div key={event.id} style={{ borderLeft: '3px solid #2563EB', paddingLeft: 10 }}>
                     <div style={{ fontSize: 12, fontWeight: 850 }}>{event.message}</div>
