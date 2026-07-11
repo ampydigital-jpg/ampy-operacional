@@ -82,7 +82,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
   const [boardState, setBoardState] = useState<any>(board)
   const [gridItems, setGridItems] = useState<any[]>(Array.isArray(items) ? items : [])
   const [localEvents, setLocalEvents] = useState<any[]>(Array.isArray(events) ? events : [])
-  const [carouselAssets] = useState<any[]>(Array.isArray(assets) ? assets : [])
+  const [carouselAssets, setCarouselAssets] = useState<any[]>(Array.isArray(assets) ? assets : [])
   const [selected, setSelected] = useState<any>(null)
   const [linksModal, setLinksModal] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'mobile' | 'desktop'>('grid')
@@ -93,6 +93,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const carouselInputRef = useRef<HTMLInputElement | null>(null)
 
   const sortedItems = useMemo(() => {
     return [...gridItems].sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
@@ -104,6 +105,102 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
     return carouselAssets
       .filter((asset) => asset.item_id === itemId)
       .sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
+  }
+
+  async function uploadCarouselSlides(event: any) {
+    const files = Array.from(event.target.files || []) as File[]
+    event.target.value = ''
+
+    if (!selected || !files.length) return
+
+    if ((selected.content_type || 'post') !== 'carousel') {
+      setError('Marque este item como Carrossel antes de adicionar slides.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const supabase = createClient()
+      const existingCount = getAssetsForItem(selected.id).length
+      const createdAssets: any[] = []
+
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index]
+        if (!file.type.startsWith('image/')) continue
+
+        const path = boardState.id + '/' + selected.id + '/carousel/' + Date.now() + '-' + index + '-' + safeFileName(file.name)
+
+        const { error: uploadError } = await supabase.storage
+          .from('feed-preview')
+          .upload(path, file, { cacheControl: '3600', upsert: false })
+
+        if (uploadError) throw uploadError
+
+        const { data } = supabase.storage.from('feed-preview').getPublicUrl(path)
+
+        const { data: asset, error: insertError } = await supabase
+          .from('feed_board_item_assets')
+          .insert({
+            board_id: boardState.id,
+            item_id: selected.id,
+            asset_type: 'slide',
+            position: existingCount + createdAssets.length,
+            title: file.name.replace(/\.[^/.]+$/, ''),
+            storage_path: path,
+            file_url: data.publicUrl,
+            mime_type: file.type || null,
+          })
+          .select('*')
+          .single()
+
+        if (insertError) throw insertError
+        if (asset) createdAssets.push(asset)
+      }
+
+      if (createdAssets.length > 0) {
+        setCarouselAssets((current) => [...current, ...createdAssets])
+        setMessage(String(createdAssets.length) + ' slide(s) adicionados ao carrossel.')
+        addLocalEvent('Ampy Digital adicionou ' + createdAssets.length + ' slide(s) ao carrossel.')
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao adicionar slides do carrossel.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeCarouselSlide(asset: any) {
+    if (!asset?.id) return
+
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const supabase = createClient()
+
+      const { error: deleteError } = await supabase
+        .from('feed_board_item_assets')
+        .delete()
+        .eq('id', asset.id)
+
+      if (deleteError) throw deleteError
+
+      if (asset.storage_path) {
+        await supabase.storage.from('feed-preview').remove([asset.storage_path])
+      }
+
+      setCarouselAssets((current) => current.filter((item) => item.id !== asset.id))
+      setMessage('Slide removido.')
+      addLocalEvent('Ampy Digital removeu um slide do carrossel.')
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao remover slide.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function addLocalEvent(text: string) {
@@ -881,6 +978,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
     </div>
   )
 }
+
 
 
 
