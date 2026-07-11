@@ -41,6 +41,37 @@ const VIEW_LABEL: Record<string, string> = {
   desktop: 'Desktop',
 }
 
+
+function workflowStatusValue(item: any) {
+  if (item?.workflow_status) return item.workflow_status
+  if (item?.approval_status === 'approved') return 'approved'
+  if (item?.approval_status === 'changes_requested') return 'changes_requested'
+  return 'awaiting_approval'
+}
+
+function workflowStatusLabel(status: string) {
+  if (status === 'approved') return 'Aprovado'
+  if (status === 'changes_requested') return 'Ajustes'
+  if (status === 'scheduled') return 'Programado'
+  return 'Pendente aprovação'
+}
+
+function workflowStatusTone(status: string) {
+  if (status === 'approved') return 'bok'
+  if (status === 'changes_requested') return 'berr'
+  if (status === 'scheduled') return 'bblue'
+  return 'bwarn'
+}
+
+function eventTone(event: any) {
+  const type = String(event?.event_type || '').toLowerCase()
+  const msg = String(event?.message || '').toLowerCase()
+
+  if (type.includes('approved') || msg.includes('aprovou') || msg.includes('aprovado')) return '#16A34A'
+  if (type.includes('changes') || msg.includes('ajuste') || msg.includes('solicitou')) return '#DC2626'
+  return '#2563EB'
+}
+
 function formatMonth(value: string) {
   if (!value) return 'Sem período'
   const key = String(value).slice(0, 7)
@@ -371,6 +402,58 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
     setSaving(false)
   }
 
+
+  async function updateWorkflowStatus(nextStatus: string) {
+    if (!selected?.id) return
+
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const allowed = ['awaiting_approval', 'approved', 'changes_requested', 'scheduled']
+      const safeStatus = allowed.includes(nextStatus) ? nextStatus : 'awaiting_approval'
+      const supabase = createClient()
+
+      const { data: updatedItem, error: updateError } = await supabase
+        .from('feed_board_items')
+        .update({
+          workflow_status: safeStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selected.id)
+        .select('*')
+        .single()
+
+      if (updateError) throw updateError
+
+      const label = workflowStatusLabel(safeStatus)
+
+      await supabase
+        .from('feed_board_events')
+        .insert({
+          board_id: boardState.id,
+          item_id: selected.id,
+          actor_type: 'internal',
+          actor_name: 'Ampy Digital',
+          event_type: 'internal_status_changed',
+          message: `Ampy Digital alterou o status interno de "${selected.title || 'Post'}" para ${label}.`,
+        })
+
+      if (updatedItem) {
+        setGridItems((current) => current.map((item) => item.id === updatedItem.id ? updatedItem : item))
+        setSelected(updatedItem)
+      }
+
+      addLocalEvent(`Ampy Digital alterou o status interno de "${selected.title || 'Post'}" para ${label}.`)
+      setMessage('Status interno atualizado.')
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao alterar status interno.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function updateItem(event: any) {
     event.preventDefault()
     if (!selected) return
@@ -574,8 +657,8 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
           {index + 1}
         </span>
 
-        <span className={`badge ${statusTone(item.approval_status)}`} style={{ position: 'absolute', left: 5, bottom: 5, fontSize: compact ? 7 : 8 }}>
-          {item.approval_status === 'approved' ? 'Aprovado' : item.approval_status === 'changes_requested' ? 'Ajuste' : 'Pendente'}
+        <span className={`badge ${workflowStatusTone(workflowStatusValue(item))}`} style={{ position: 'absolute', left: 5, bottom: 5, fontSize: compact ? 7 : 8 }}>
+          {workflowStatusLabel(workflowStatusValue(item))}
         </span>
 
         {item.content_url && (
@@ -823,7 +906,7 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
                 {localEvents.length === 0 ? (
                   <div className="empty-inline">Sem histórico ainda.</div>
                 ) : localEvents.map((event: any) => (
-                  <div key={event.id} style={{ borderLeft: '3px solid var(--blue)', paddingLeft: 10 }}>
+                  <div key={event.id} style={{ borderLeft: `3px solid ${eventTone(event)}`, paddingLeft: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)' }}>{event.message}</div>
                     <div style={{ fontSize: 10, color: 'var(--t4)' }}>{event.actor_name || 'Ampy Digital'} · {formatDateTime(event.created_at)}</div>
                   </div>
@@ -946,7 +1029,22 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
                     </div>
 
                     <div className="fg">
-                      <label className="fl">Arquivo na pasta</label>
+                                          <label className="form-field">
+                      <span>Status interno do post</span>
+                      <select
+                        className="fi"
+                        value={workflowStatusValue(selected)}
+                        onChange={(event) => updateWorkflowStatus(event.target.value)}
+                        disabled={saving}
+                      >
+                        <option value="awaiting_approval">Pendente aprovação</option>
+                        <option value="approved">Aprovado</option>
+                        <option value="changes_requested">Ajustes</option>
+                        <option value="scheduled">Programado</option>
+                      </select>
+                    </label>
+
+<label className="fl">Arquivo na pasta</label>
                       <input className="fi" name="source_file_name" defaultValue={selected.source_file_name || ''} placeholder="Ex.: Video_1, Capa_1, P01_VIDEO" />
                     </div>
 
@@ -983,9 +1081,9 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
               {selected && (
                 <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12, background: '#F8FAFC', display: 'grid', gap: 10 }}>
                   <div>
-                    <strong style={{ display: 'block', color: 'var(--ink)' }}>HistÃ³rico deste post</strong>
+                    <strong style={{ display: 'block', color: 'var(--ink)' }}>Histórico deste post</strong>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      Ajustes, aprovaÃ§Ãµes e comentÃ¡rios registrados pelo cliente.
+                      Ajustes, aprovações e comentÃ¡rios registrados pelo cliente.
                     </span>
                   </div>
 
@@ -1007,12 +1105,12 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
                   ) : (
                     <div style={{ display: 'grid', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
                       {getEventsForItem(selected).map((event: any) => (
-                        <div key={event.id} style={{ borderLeft: '3px solid var(--blue)', paddingLeft: 10 }}>
+                        <div key={event.id} style={{ borderLeft: `3px solid ${eventTone(event)}`, paddingLeft: 10 }}>
                           <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink)', lineHeight: 1.4 }}>
                             {event.message}
                           </div>
                           <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>
-                            {event.actor_name || 'Cliente'} Â· {formatDateTime(event.created_at)}
+                            {event.actor_name || 'Cliente'} · {formatDateTime(event.created_at)}
                           </div>
                         </div>
                       ))}

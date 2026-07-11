@@ -39,7 +39,7 @@ function statusText(status: string) {
 }
 
 function contentTypeLabel(type: string) {
-  if (type === 'video') return 'VÃ­deo'
+  if (type === 'video') return 'Vídeo'
   if (type === 'carousel') return 'Carrossel'
   return 'Post'
 }
@@ -124,10 +124,10 @@ export default function PublicApprovalView({ token, board, items = [], events = 
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px 44px' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 2, color: '#64748B', fontWeight: 900 }}>AprovaÃ§Ã£o de conteÃºdo</div>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 2, color: '#64748B', fontWeight: 900 }}>AprovaÃ§Ã£o de conteúdo</div>
             <h1 style={{ margin: '8px 0 6px', fontSize: 26, lineHeight: 1.1 }}>{board.title}</h1>
             <div style={{ color: '#475569', fontSize: 13 }}>
-              {board.client?.name || 'Cliente'} Â· {formatMonth(board.period_month)}
+              {board.client?.name || 'Cliente'} · {formatMonth(board.period_month)}
             </div>
           </div>
 
@@ -181,13 +181,13 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 900, color: '#FFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{board.client?.name || 'Cliente'}</div>
-                  <div style={{ fontSize: 10, color: '#9CA3AF' }}>{formatMonth(board.period_month)} Â· toque no post para revisar</div>
+                  <div style={{ fontSize: 10, color: '#9CA3AF' }}>{formatMonth(board.period_month)} · toque no post para revisar</div>
                 </div>
               </div>
 
               {approvalItems.length === 0 ? (
                 <div style={{ minHeight: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: 12, textAlign: 'center', padding: 20 }}>
-                  Nenhum conteÃºdo disponÃ­vel para aprovaÃ§Ã£o.
+                  Nenhum conteúdo disponÃ­vel para aprovaÃ§Ã£o.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
@@ -245,7 +245,7 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 14 }}>
                   <div>
                     <div style={{ color: '#64748B', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-                      {contentTypeLabel(selected.content_type)} Â· {statusText(selected.approval_status)}
+                      {contentTypeLabel(selected.content_type)} · {statusText(selected.approval_status)}
                     </div>
                     <h2 style={{ margin: '6px 0 0', fontSize: 20 }}>{selected.title || 'Post selecionado'}</h2>
                   </div>
@@ -266,7 +266,7 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                     {selected.caption && <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}><strong>Legenda:</strong> {selected.caption}</div>}
                     {selected.content_url && (
                       <a href={selected.content_url} target="_blank" rel="noreferrer" style={{ color: '#2563EB', fontSize: 12, fontWeight: 900, textDecoration: 'none' }}>
-                        Abrir link do conteÃºdo
+                        Abrir link do conteúdo
                       </a>
                     )}
                   </div>
@@ -276,13 +276,13 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                   <input type="hidden" name="actor_name" value="Cliente" />
 
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
-                    ComentÃ¡rio para ajuste
+                    Comentário para ajuste
                   </label>
 
                   <textarea
                     id={`feedback-${selected.id}`}
                     name="client_feedback"
-                    defaultValue={selected.client_feedback || ''}
+                    defaultValue=""
                     placeholder="Descreva o que precisa ser ajustado. Para aprovar, o comentÃ¡rio Ã© opcional."
                     style={{
                       width: '100%',
@@ -339,14 +339,14 @@ export default function PublicApprovalView({ token, board, items = [], events = 
               </div>
             ) : (
               <div style={{ background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18, color: '#64748B', fontSize: 13 }}>
-                Selecione um conteÃºdo no celular para revisar.
+                Selecione um conteúdo no celular para revisar.
               </div>
             )}
 
             <div style={{ background: '#FFF', border: '1px solid #D5DFEC', borderRadius: 22, padding: 18 }}>
               <div style={{ fontWeight: 950, marginBottom: 8 }}>Como aprovar</div>
               <div style={{ color: '#475569', fontSize: 13, lineHeight: 1.55 }}>
-                Toque em um conteÃºdo no mockup de celular. Se estiver correto, clique em Aprovar. Se precisar de ajuste, descreva o pedido e clique em Solicitar ajuste.
+                Toque em um conteúdo no mockup de celular. Se estiver correto, clique em Aprovar. Se precisar de ajuste, descreva o pedido e clique em Solicitar ajuste.
               </div>
             </div>
 
@@ -359,7 +359,7 @@ export default function PublicApprovalView({ token, board, items = [], events = 
                 ) : localEvents.map((event: any) => (
                   <div key={event.id} style={{ borderLeft: '3px solid #2563EB', paddingLeft: 10 }}>
                     <div style={{ fontSize: 12, fontWeight: 850 }}>{event.message}</div>
-                    <div style={{ fontSize: 10, color: '#64748B' }}>{event.actor_name || 'Cliente'} Â· {formatDateTime(event.created_at)}</div>
+                    <div style={{ fontSize: 10, color: '#64748B' }}>{event.actor_name || 'Cliente'} · {formatDateTime(event.created_at)}</div>
                   </div>
                 ))}
               </div>
