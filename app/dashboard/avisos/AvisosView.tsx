@@ -493,6 +493,7 @@ export default function AvisosView({
   const [busyId, setBusyId] = useState('')
   const [notice, setNotice] = useState('')
   const [rows, setRows] = useState<any[]>(canonicalAvisos || [])
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const clientById = useMemo(() => new Map((clients || []).map((client: any) => [client.id, client])), [clients])
   const itemById = useMemo(() => new Map((items || []).map((item: any) => [item.id, item])), [items])
@@ -627,6 +628,117 @@ export default function AvisosView({
       return matchesScope && matchesQuery
     })
   }, [alerts, scope, query])
+
+
+  const selectedVisible = useMemo(() => {
+    return visible.filter((alert: any) => selectedIds.includes(String(alert.id)))
+  }, [visible, selectedIds])
+
+  useEffect(() => {
+    setSelectedIds([])
+  }, [scope, query])
+
+  function toggleAvisoSelection(id: any, checked: boolean) {
+    const key = String(id)
+
+    setSelectedIds((current) => {
+      if (checked) return Array.from(new Set([...current, key]))
+      return current.filter((item) => item !== key)
+    })
+  }
+
+  function selectVisibleAvisos() {
+    setSelectedIds(visible.map((alert: any) => String(alert.id)))
+  }
+
+  function clearSelectedAvisos() {
+    setSelectedIds([])
+  }
+
+  async function markSelectedRead() {
+    const targets = selectedVisible.filter((alert: any) => !alert.read_at && !['archived', 'deleted', 'done'].includes(alert.status))
+
+    if (targets.length === 0) {
+      setNotice('Nenhum aviso selecionado para marcar como lido.')
+      return
+    }
+
+    setBusyId('selected-read')
+    setNotice('')
+
+    try {
+      const ids: string[] = []
+
+      for (const alert of targets) {
+        const id = await persistGenerated(alert)
+        if (id) ids.push(id)
+      }
+
+      if (ids.length > 0) {
+        const { error } = await supabase
+          .from('avisos')
+          .update({
+            status: 'read',
+            read_at: new Date().toISOString(),
+          })
+          .in('id', ids)
+
+        if (error) throw error
+      }
+
+      setSelectedIds([])
+      setNotice('Avisos selecionados marcados como lidos.')
+      await reloadAvisos()
+    } catch (err: any) {
+      setNotice(err?.message || 'Erro ao marcar avisos selecionados como lidos.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function deleteSelectedAvisos() {
+    const targets = selectedVisible.filter((alert: any) => alert.status !== 'deleted')
+
+    if (targets.length === 0) {
+      setNotice('Nenhum aviso selecionado para apagar.')
+      return
+    }
+
+    const ok = window.confirm(`Apagar ${targets.length} aviso(s) selecionado(s)? Eles irão para Apagados.`)
+    if (!ok) return
+
+    setBusyId('selected-delete')
+    setNotice('')
+
+    try {
+      const ids: string[] = []
+
+      for (const alert of targets) {
+        const id = await persistGenerated(alert)
+        if (id) ids.push(id)
+      }
+
+      if (ids.length > 0) {
+        const { error } = await supabase
+          .from('avisos')
+          .update({
+            status: 'deleted',
+            deleted_at: new Date().toISOString(),
+          })
+          .in('id', ids)
+
+        if (error) throw error
+      }
+
+      setSelectedIds([])
+      setNotice('Avisos selecionados apagados.')
+      await reloadAvisos()
+    } catch (err: any) {
+      setNotice(err?.message || 'Erro ao apagar avisos selecionados.')
+    } finally {
+      setBusyId('')
+    }
+  }
 
   async function persistGenerated(alert: any) {
     if (alert.dbId) return alert.dbId
@@ -797,6 +909,8 @@ export default function AvisosView({
       if (error) throw error
 
       setNotice('Avisos apagados foram limpos definitivamente.')
+      setScope('deleted')
+      setSelectedIds([])
       await reloadAvisos()
     } catch (err: any) {
       setNotice(err?.message || 'Erro ao limpar avisos apagados.')
@@ -827,15 +941,9 @@ export default function AvisosView({
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <button type="button" className="bsec" onClick={markAllRead} disabled={busyId === 'all-read'}>
-            {busyId === 'all-read' ? 'Marcando...' : 'Marcar visíveis como lidos'}
-          </button>
-          <button type="button" className="bsec" onClick={deleteVisibleAvisos} disabled={busyId === 'delete-visible'}>
-            {busyId === 'delete-visible' ? 'Apagando...' : 'Apagar visíveis'}
-          </button>
-          <button type="button" className="bsec danger-action" onClick={purgeDeletedAvisos} disabled={busyId === 'purge-deleted'}>
-            {busyId === 'purge-deleted' ? 'Limpando...' : 'Limpar apagados'}
-          </button>
+          
+          
+          
           <div style={{ color: 'var(--t3)', fontSize: 12, fontWeight: 800 }}>
             {currentProfile?.full_name || 'Equipe Ampy'}
           </div>
@@ -886,6 +994,39 @@ export default function AvisosView({
           ))}
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" className="bsec" onClick={selectVisibleAvisos} disabled={visible.length === 0}>
+              Selecionar visíveis
+            </button>
+            <button type="button" className="bsec" onClick={clearSelectedAvisos} disabled={selectedIds.length === 0}>
+              Limpar seleção
+            </button>
+            <span style={{ color: 'var(--t3)', fontSize: 12, fontWeight: 800 }}>
+              {selectedIds.length} selecionado(s)
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {selectedIds.length > 0 && (
+              <>
+                <button type="button" className="bsec" onClick={markSelectedRead} disabled={busyId === 'selected-read'}>
+                  {busyId === 'selected-read' ? 'Marcando...' : 'Marcar como lido'}
+                </button>
+                <button type="button" className="bsec danger-action" onClick={deleteSelectedAvisos} disabled={busyId === 'selected-delete'}>
+                  {busyId === 'selected-delete' ? 'Apagando...' : 'Apagar selecionados'}
+                </button>
+              </>
+            )}
+
+            {scope === 'deleted' && (
+              <button type="button" className="bsec danger-action" onClick={purgeDeletedAvisos} disabled={busyId === 'purge-deleted'}>
+                {busyId === 'purge-deleted' ? 'Limpando...' : 'Limpar apagados'}
+              </button>
+            )}
+          </div>
+        </div>
+
         {visible.length === 0 ? (
           <div className="empty">
             <i className="ti ti-bell" />
@@ -901,7 +1042,16 @@ export default function AvisosView({
               const unread = !alert.read_at && !muted && alert.status !== 'read'
 
               return (
-                <article key={alert.id} style={{ background: unread ? '#FFFFFF' : 'var(--s1)', border: unread ? '1px solid #2563EB' : '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14, display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr) 135px 310px', gap: 14, alignItems: 'center', opacity: muted ? .72 : 1 }}>
+                <article key={alert.id} style={{ background: unread ? '#FFFFFF' : 'var(--s1)', border: unread ? '1px solid #2563EB' : '0.5px solid var(--b1)', borderRadius: 'var(--rc)', padding: 14, display: 'grid', gridTemplateColumns: '42px 160px minmax(0, 1fr) 135px 310px', gap: 14, alignItems: 'center', opacity: muted ? .72 : 1 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(String(alert.id))}
+                      onChange={(event) => toggleAvisoSelection(alert.id, event.target.checked)}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                  </label>
+
                   <div style={{ display: 'grid', gap: 6 }}>
                     <span style={{ display: 'inline-flex', width: 'fit-content', borderRadius: 999, padding: '6px 9px', background: category.bg, color: category.color, fontSize: 11, fontWeight: 900 }}>
                       {CATEGORY_LABEL[alert.category] || alert.category}
