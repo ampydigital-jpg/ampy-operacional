@@ -1,4 +1,5 @@
 import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -105,6 +106,41 @@ const areaLabel = (area: string) => {
   return map[area] || area
 }
 
+async function getCurrentTeamAuthor(adminSupabase: ReturnType<typeof createAdminClient>) {
+  const authSupabase = createClient()
+  const {
+    data: { user },
+  } = await authSupabase.auth.getUser()
+
+  let teamMember: { id: string; email: string; profile_id: string | null } | null = null
+
+  if (user?.id) {
+    const { data } = await adminSupabase
+      .from('team_members')
+      .select('id,email,profile_id')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+
+    teamMember = data
+  }
+
+  if (!teamMember && user?.email) {
+    const { data } = await adminSupabase
+      .from('team_members')
+      .select('id,email,profile_id')
+      .eq('email', user.email)
+      .maybeSingle()
+
+    teamMember = data
+  }
+
+  return {
+    profileId: user?.id || teamMember?.profile_id || null,
+    teamMemberId: teamMember?.id || null,
+    email: teamMember?.email || user?.email || 'ampydigital@gmail.com',
+  }
+}
+
 async function createInternalMessageAction(formData: FormData) {
   'use server'
 
@@ -136,14 +172,11 @@ async function createInternalMessageAction(formData: FormData) {
             ? avisoId
             : null
 
-  const defaultAuthor = await supabase
-    .from('team_members')
-    .select('id,email')
-    .eq('email', 'ampydigital@gmail.com')
-    .maybeSingle()
+  const currentAuthor = await getCurrentTeamAuthor(supabase)
 
-  const createdByTeamMemberId = defaultAuthor.data?.id || null
-  const createdByEmail = defaultAuthor.data?.email || 'ampydigital@gmail.com'
+  const createdByProfileId = currentAuthor.profileId
+  const createdByTeamMemberId = currentAuthor.teamMemberId
+  const createdByEmail = currentAuthor.email
 
   const { data: message, error } = await supabase
     .from('internal_messages')
@@ -157,6 +190,7 @@ async function createInternalMessageAction(formData: FormData) {
       aviso_id: avisoId,
       drive_url: driveUrl,
       attachment_title: attachmentTitle,
+      created_by_profile_id: createdByProfileId,
       created_by_team_member_id: createdByTeamMemberId,
       created_by_email: createdByEmail,
       metadata: {
