@@ -573,17 +573,25 @@ async function addFeedBoardEventInternal(
 ) {
   try {
     const { data: auth } = await supabase.auth.getUser()
-    await supabase.from('feed_board_events').insert({
-      board_id: boardId,
-      item_id: itemId,
-      actor_type: 'internal',
-      actor_id: auth.user?.id || null,
-      actor_name: 'Ampy Digital',
-      event_type: eventType,
-      message,
-      metadata,
-    })
-  } catch {}
+    const { data } = await supabase
+      .from('feed_board_events')
+      .insert({
+        board_id: boardId,
+        item_id: itemId,
+        actor_type: 'internal',
+        actor_id: auth.user?.id || null,
+        actor_name: 'Ampy Digital',
+        event_type: eventType,
+        message,
+        metadata,
+      })
+      .select('id')
+      .single()
+
+    return data
+  } catch {
+    return null
+  }
 }
 
 export async function createFeedBoardAction(formData: FormData) {
@@ -958,7 +966,7 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
 
   const { data: board, error: boardError } = await supabase
     .from('feed_boards')
-    .select('id,title,status,share_token')
+    .select('id,title,status,share_token,client_id')
     .eq('share_token', token)
     .single()
 
@@ -1010,7 +1018,7 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
     })
     .eq('id', board.id)
 
-  await addFeedBoardEventInternal(
+  const eventRecord = await addFeedBoardEventInternal(
     supabase,
     board.id,
     updatedItem.id,
@@ -1021,7 +1029,43 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
     { feedback }
   )
 
+  if (decision === 'changes_requested') {
+    const avisoMessage = `${actorName} solicitou ajuste no item "${updatedItem.title || 'Capa'}"${feedback ? `: ${feedback}` : ''}.`
+
+    const { error: avisoError } = await supabase.from('avisos').insert({
+      title: 'Ajuste solicitado em aprovação',
+      message: avisoMessage,
+      category: 'adjustment',
+      priority: 'high',
+      status: 'active',
+      source_module: 'approval',
+      source_table: 'feed_board_events',
+      source_id: eventRecord?.id || null,
+      source_url: `/dashboard/feed-preview/${board.id}`,
+      action_label: 'Abrir aprovação',
+      related_entity_type: 'feed_board_item',
+      related_entity_id: updatedItem.id,
+      dedupe_key: eventRecord?.id ? `approval-adjustment-event-${eventRecord.id}` : `approval-adjustment-${updatedItem.id}-${Date.now()}`,
+      client_id: board.client_id || null,
+      feed_board_id: board.id,
+      feed_board_item_id: updatedItem.id,
+      feed_board_event_id: eventRecord?.id || null,
+      is_auto: true,
+      metadata: {
+        actor_name: actorName,
+        feedback: feedback || null,
+        item_title: updatedItem.title || null,
+        board_title: board.title || null,
+      },
+    })
+
+    if (avisoError) {
+      console.error('[avisos] erro ao criar aviso de ajuste:', avisoError.message)
+    }
+  }
+
   revalidatePath(`/aprovacao/${token}`)
+  revalidatePath('/dashboard/avisos')
   revalidateFeedBoardPaths(board.id)
 
   return {
