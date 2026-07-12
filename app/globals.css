@@ -1670,3 +1670,206 @@ body {
     font-size: 13px;
   }
 }
+
+
+/* === V16-A2: Visual interno alinhado à sidebar === */
+:root {
+  --ampy-bg: #DCE4EF;
+  --ampy-bg-2: #E8EEF6;
+  --ampy-surface: rgba(248, 250, 252, 0.82);
+  --ampy-surface-strong: rgba(255, 255, 255, 0.92);
+  --ampy-surface-dark: #0B1324;
+  --ampy-border: rgba(100, 116, 139, 0.18);
+  --ampy-border-strong: rgba(59, 130, 246, 0.22);
+  --ampy-text: #08111F;
+  --ampy-muted: #64748B;
+  --ampy-blue: #2563EB;
+  --ampy-green: #16A34A;
+  --ampy-yellow: #D99A00;
+  --ampy-red: #DC2626;
+  --ampy-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+  --ampy-shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.075);
+}
+
+body {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(37, 99, 235, 0.11), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(15, 23, 42, 0.07), transparent 30%),
+    linear-gradient(135deg, var(--ampy-bg) 0%, #E9EEF6 42%, #D5DEE9 100%) !important;
+  color: var(--ampy-text);
+}
+
+.brand-logo-shell {
+  width: 116px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.brand-logo {
+  width: 114px;
+  max-height: 42px;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.22));
+}
+
+main,
+.dashboard-main,
+.page,
+.dash-page {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.09), transparent 28%),
+    radial-gradient(circle at 94% 12%, rgba(14, 165, 233, 0.08), transparent 26%),
+    linear-gradient(135deg, rgba(226, 232, 240, 0.72), rgba(241, 245, 249, 0.72));
+}
+
+.card,
+.kpi,
+.panel,
+.dash-card,
+.metric-card,
+.stat-card,
+.table-card,
+.modal-card,
+.feed-card,
+.approval-card {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.92), rgba(248,250,252,0.78)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.20) !important;
+  box-shadow: var(--ampy-shadow-soft) !important;
+  backdrop-filter: blur(18px);
+}
+
+.kpi,
+.metric-card,
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi::before,
+.metric-card::before,
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.38), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.08), transparent 28%);
+}
+
+.shead,
+.tb-head,
+.page-head,
+.dash-head,
+.section-head {
+  color: var(--ampy-text);
+}
+
+.stitle,
+.tb-title,
+.card-title,
+.section-title {
+  color: #07111F;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+
+.ssub,
+.tb-sub,
+.card-sub,
+.section-sub,
+.muted,
+.empty-sub {
+  color: #59677C;
+}
+
+.bpri,
+button.bpri,
+a.bpri {
+  background:
+    linear-gradient(135deg, #0F172A 0%, #1D4ED8 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(96, 165, 250, 0.34) !important;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.22) !important;
+}
+
+.bpri:hover,
+button.bpri:hover,
+a.bpri:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.bsec,
+button.bsec,
+a.bsec {
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #0F172A !important;
+  border: 1px solid rgba(100, 116, 139, 0.22) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+.fi,
+input,
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(100, 116, 139, 0.24) !important;
+}
+
+.fi:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.52) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12) !important;
+}
+
+.badge,
+.tag,
+.status-pill,
+.pill {
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34);
+}
+
+.modal,
+.dialog,
+.drawer {
+  backdrop-filter: blur(18px);
+}
+
+table,
+.data-table {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+th {
+  color: #475569;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.empty,
+.empty-state {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.54), rgba(241,245,249,0.42));
+  border: 1px dashed rgba(100, 116, 139, 0.24);
+}
+
+@media (max-width: 980px) {
+  .brand-logo-shell {
+    width: 104px;
+  }
+
+  .brand-logo {
+    width: 102px;
+  }
+}
+

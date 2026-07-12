@@ -45,10 +45,8 @@ export default function Sidebar({ profile }: { profile: any }) {
   return (
     <aside className="sb">
       <div className="sb-brand">
-        <div className="brand-ico">A</div>
-        <div className="brand-copy">
-          <div className="brand-name">Ampy</div>
-          <div className="brand-sub">Digital</div>
+        <div className="brand-logo-shell">
+          <img className="brand-logo" src="/brand/ampy-logo.png" alt="Ampy Digital" />
         </div>
       </div>
 
