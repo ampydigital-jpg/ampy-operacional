@@ -46,7 +46,7 @@ export default function Sidebar({ profile }: { profile: any }) {
     <aside className="sb">
       <div className="sb-brand">
         <div className="brand-logo-shell">
-          <img className="brand-logo" src="/brand/ampy-logo.png" alt="Ampy Digital" />
+          <img className="brand-logo" src="/brand/ampy-arrow-white.png" alt="Ampy Digital" />
         </div>
       </div>
 

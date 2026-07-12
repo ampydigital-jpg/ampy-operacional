@@ -1671,59 +1671,151 @@ body {
   }
 }
 
-
-/* === V16-A2: Visual interno alinhado à sidebar === */
+/* === V16-A2B: Logo original e escala de cinza Ampy === */
 :root {
-  --ampy-bg: #DCE4EF;
-  --ampy-bg-2: #E8EEF6;
-  --ampy-surface: rgba(248, 250, 252, 0.82);
-  --ampy-surface-strong: rgba(255, 255, 255, 0.92);
-  --ampy-surface-dark: #0B1324;
-  --ampy-border: rgba(100, 116, 139, 0.18);
-  --ampy-border-strong: rgba(59, 130, 246, 0.22);
-  --ampy-text: #08111F;
-  --ampy-muted: #64748B;
-  --ampy-blue: #2563EB;
-  --ampy-green: #16A34A;
-  --ampy-yellow: #D99A00;
-  --ampy-red: #DC2626;
-  --ampy-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
-  --ampy-shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.075);
+  --ampy-bg: #E1E3E6;
+  --ampy-bg-2: #EEF0F3;
+  --ampy-surface: rgba(255, 255, 255, 0.74);
+  --ampy-surface-strong: rgba(255, 255, 255, 0.88);
+  --ampy-border: rgba(24, 24, 27, 0.10);
+  --ampy-border-strong: rgba(24, 24, 27, 0.18);
+  --ampy-text: #111214;
+  --ampy-muted: #626975;
+  --ampy-gray-900: #121315;
+  --ampy-gray-800: #1B1D20;
+  --ampy-gray-700: #2A2D31;
+  --ampy-gray-600: #3F4349;
+  --ampy-gray-500: #6B7280;
+  --ampy-gray-300: #D1D5DB;
+  --ampy-gray-200: #E5E7EB;
+  --ampy-gray-100: #F4F5F6;
+  --ampy-shadow: 0 24px 70px rgba(17, 18, 20, 0.10);
+  --ampy-shadow-soft: 0 16px 42px rgba(17, 18, 20, 0.075);
+
+  --blue: #3F4349;
+  --blue-bg: #F1F2F4;
+  --blue-br: #D6D8DC;
+  --ok: #404348;
+  --ok-bg: #F3F4F5;
+  --ok-br: #D8DADE;
+  --warn: #565A60;
+  --warn-bg: #F4F4F5;
+  --warn-br: #DADCE0;
+  --err: #2E3034;
+  --err-bg: #F2F2F3;
+  --err-br: #D6D7DA;
+  --action: #181A1D;
+  --action-hover: #2A2D31;
 }
 
 body {
   background:
-    radial-gradient(circle at 28% 0%, rgba(37, 99, 235, 0.11), transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(15, 23, 42, 0.07), transparent 30%),
-    linear-gradient(135deg, var(--ampy-bg) 0%, #E9EEF6 42%, #D5DEE9 100%) !important;
+    radial-gradient(circle at 24% 0%, rgba(255, 255, 255, 0.54), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(17, 18, 20, 0.055), transparent 30%),
+    linear-gradient(135deg, #DADDE2 0%, #ECEEF2 44%, #D6DAE0 100%) !important;
   color: var(--ampy-text);
 }
 
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 276px;
+  z-index: 2;
+  pointer-events: none;
+  background-image: url('/brand/ampy-arrow-black.png');
+  background-repeat: no-repeat;
+  background-position: center 46px;
+  background-size: min(72vw, 880px) auto;
+  opacity: 0.026;
+  mix-blend-mode: multiply;
+}
+
+.sb {
+  z-index: 5;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.12), transparent 28%),
+    radial-gradient(circle at 85% 14%, rgba(255, 255, 255, 0.055), transparent 26%),
+    linear-gradient(180deg, #202225 0%, #151719 46%, #0F1012 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 22px 0 70px rgba(17, 18, 20, 0.18), inset -1px 0 0 rgba(255,255,255,0.035) !important;
+}
+
+.sb-brand {
+  min-height: 110px !important;
+  padding: 18px 18px 16px !important;
+  justify-content: center !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075) !important;
+}
+
 .brand-logo-shell {
-  width: 116px;
-  height: 44px;
+  width: 100%;
+  height: 76px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .brand-logo {
-  width: 114px;
-  max-height: 42px;
-  object-fit: contain;
-  object-position: left center;
+  width: auto !important;
+  height: 66px !important;
+  max-width: 142px !important;
+  object-fit: contain !important;
+  object-position: center !important;
   display: block;
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.22));
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.24));
+}
+
+.nav-lbl {
+  color: rgba(255, 255, 255, 0.40) !important;
+  letter-spacing: 0.26em !important;
+}
+
+.nav-item {
+  color: rgba(255, 255, 255, 0.70) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.nav-item:hover {
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.nav-item.active {
+  color: #FFFFFF !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.075)),
+    rgba(255, 255, 255, 0.035) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 3px 0 0 rgba(255,255,255,0.72),
+    0 14px 34px rgba(0, 0, 0, 0.22) !important;
+}
+
+.sb-user {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035)),
+    rgba(24, 24, 27, 0.56) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 main,
 .dashboard-main,
 .page,
-.dash-page {
+.dash-page,
+.ops-page,
+.clients-page {
+  position: relative;
+  z-index: 3;
   background:
-    radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.09), transparent 28%),
-    radial-gradient(circle at 94% 12%, rgba(14, 165, 233, 0.08), transparent 26%),
-    linear-gradient(135deg, rgba(226, 232, 240, 0.72), rgba(241, 245, 249, 0.72));
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.56), transparent 32%),
+    radial-gradient(circle at 96% 12%, rgba(17, 18, 20, 0.035), transparent 28%),
+    linear-gradient(135deg, rgba(224, 227, 232, 0.82), rgba(243, 244, 246, 0.82)) !important;
 }
 
 .card,
@@ -1735,91 +1827,89 @@ main,
 .table-card,
 .modal-card,
 .feed-card,
-.approval-card {
+.approval-card,
+.settings-card,
+.today-section,
+.week-day,
+.side-card,
+.calendar-shell {
   background:
-    linear-gradient(145deg, rgba(255,255,255,0.92), rgba(248,250,252,0.78)) !important;
-  border: 1px solid rgba(148, 163, 184, 0.20) !important;
+    linear-gradient(145deg, rgba(255,255,255,0.88), rgba(248,249,250,0.68)) !important;
+  border: 1px solid rgba(24, 24, 27, 0.095) !important;
   box-shadow: var(--ampy-shadow-soft) !important;
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .kpi,
 .metric-card,
-.stat-card {
+.stat-card,
+.dash-stat {
   position: relative;
   overflow: hidden;
 }
 
 .kpi::before,
 .metric-card::before,
-.stat-card::before {
+.stat-card::before,
+.dash-stat::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(120deg, rgba(255,255,255,0.38), transparent 34%),
-    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.08), transparent 28%);
+    linear-gradient(120deg, rgba(255,255,255,0.46), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(17, 18, 20, 0.045), transparent 30%);
 }
 
-.shead,
-.tb-head,
-.page-head,
-.dash-head,
-.section-head {
-  color: var(--ampy-text);
+.dash-metric,
+.dash-stat,
+.metric {
+  border-color: rgba(24, 24, 27, 0.10) !important;
 }
 
-.stitle,
-.tb-title,
-.card-title,
-.section-title {
-  color: #07111F;
-  font-weight: 850;
-  letter-spacing: -0.035em;
-}
-
-.ssub,
-.tb-sub,
-.card-sub,
-.section-sub,
-.muted,
-.empty-sub {
-  color: #59677C;
+.dash-stat::after,
+.metric::after,
+.kpi::after {
+  background: linear-gradient(90deg, #1D1F22, #6B7280) !important;
 }
 
 .bpri,
 button.bpri,
-a.bpri {
-  background:
-    linear-gradient(135deg, #0F172A 0%, #1D4ED8 100%) !important;
+a.bpri,
+.ops-page .bpri,
+.dash-pro-page .bpri {
+  background: linear-gradient(135deg, #17191C 0%, #3A3D42 100%) !important;
   color: #FFFFFF !important;
-  border: 1px solid rgba(96, 165, 250, 0.34) !important;
-  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 14px 34px rgba(17, 18, 20, 0.18) !important;
 }
 
 .bpri:hover,
 button.bpri:hover,
-a.bpri:hover {
-  filter: brightness(1.05);
+a.bpri:hover,
+.ops-page .bpri:hover,
+.dash-pro-page .bpri:hover {
+  background: linear-gradient(135deg, #222529 0%, #50545A 100%) !important;
   transform: translateY(-1px);
 }
 
 .bsec,
 button.bsec,
-a.bsec {
-  background: rgba(255, 255, 255, 0.72) !important;
-  color: #0F172A !important;
-  border: 1px solid rgba(100, 116, 139, 0.22) !important;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06) !important;
+a.bsec,
+.ops-page .bsec {
+  background: rgba(255, 255, 255, 0.62) !important;
+  color: #1D1F22 !important;
+  border: 1px solid rgba(24, 24, 27, 0.12) !important;
+  box-shadow: 0 10px 28px rgba(17, 18, 20, 0.06) !important;
 }
 
 .fi,
 input,
 select,
 textarea {
-  background: rgba(255, 255, 255, 0.78) !important;
-  border-color: rgba(100, 116, 139, 0.24) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(24, 24, 27, 0.15) !important;
 }
 
 .fi:focus,
@@ -1827,49 +1917,58 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: rgba(37, 99, 235, 0.52) !important;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(24, 24, 27, 0.34) !important;
+  box-shadow: 0 0 0 4px rgba(24, 24, 27, 0.08) !important;
 }
 
-.badge,
-.tag,
-.status-pill,
-.pill {
-  border: 1px solid rgba(148, 163, 184, 0.20);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34);
+.stitle,
+.tb-title,
+.card-title,
+.section-title,
+.dash-card h3 {
+  color: #111214 !important;
 }
 
-.modal,
-.dialog,
-.drawer {
-  backdrop-filter: blur(18px);
+.ssub,
+.tb-sub,
+.card-sub,
+.section-sub,
+.muted,
+.empty-sub,
+.dash-card p {
+  color: #626975 !important;
 }
 
-table,
-.data-table {
-  border-color: rgba(148, 163, 184, 0.18) !important;
+.progress-ring,
+.donut-ring,
+.dash-donut,
+.dash-gauge {
+  filter: grayscale(1) saturate(0.2);
 }
 
-th {
-  color: #475569;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.empty,
-.empty-state {
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.54), rgba(241,245,249,0.42));
-  border: 1px dashed rgba(100, 116, 139, 0.24);
+.dash-bar-track div,
+.progress-track > div,
+.client-score-fill,
+.heatmap-fill {
+  background: linear-gradient(90deg, #2A2D31, #6B7280) !important;
 }
 
 @media (max-width: 980px) {
+  body::after {
+    left: 244px;
+    background-size: 620px auto;
+  }
+
+  .sb-brand {
+    min-height: 96px !important;
+  }
+
   .brand-logo-shell {
-    width: 104px;
+    height: 66px;
   }
 
   .brand-logo {
-    width: 102px;
+    height: 56px !important;
+    max-width: 118px !important;
   }
 }
-
