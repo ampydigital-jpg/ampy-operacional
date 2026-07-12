@@ -139,6 +139,7 @@ function normalizeCanonicalAviso(row: any, clientById: Map<any, any>, itemById: 
     id: row.id,
     dbId: row.id,
     dedupe_key: row.dedupe_key,
+    metadata: row.metadata || {},
     hidden: Boolean(row?.metadata?.purged || row?.metadata?.purged_at),
     source_table: row.source_table || null,
     feed_board_item_id: row.feed_board_item_id || null,
@@ -461,6 +462,17 @@ function alertSourceKey(alert: any) {
   return ''
 }
 
+function alertContentKey(alert: any) {
+  const category = String(alert?.category || alert?.source?.category || '').trim().toLowerCase()
+  const title = String(alert?.title || '').trim().toLowerCase()
+  const message = String(alert?.message || '').trim().toLowerCase()
+  const client = String(alert?.client_id || alert?.client?.id || alert?.client || '').trim().toLowerCase()
+
+  if (!title && !message) return ''
+
+  return [category, client, title, message].join(':')
+}
+
 function avisoPayload(alert: any) {
   return {
     title: alert.title,
@@ -519,7 +531,7 @@ export default function AvisosView({
   async function reloadAvisos() {
     const { data } = await supabase
       .from('avisos')
-      .select('*')
+      .select('*,metadata')
       .order('updated_at', { ascending: false })
       .limit(1000)
 
@@ -560,13 +572,16 @@ export default function AvisosView({
   const alerts = useMemo(() => {
     const canonicalKeys = new Set((canonicalAlerts || []).map((alert: any) => alert.dedupe_key).filter(Boolean))
     const canonicalSourceKeys = new Set((canonicalAlerts || []).map((alert: any) => alertSourceKey(alert)).filter(Boolean))
+    const canonicalContentKeys = new Set((canonicalAlerts || []).map((alert: any) => alertContentKey(alert)).filter(Boolean))
 
     const onlyGenerated = generatedAlerts.filter((alert: any) => {
       const dedupeKey = alert.dedupe_key
       const sourceKey = alertSourceKey(alert)
+      const contentKey = alertContentKey(alert)
 
       if (dedupeKey && canonicalKeys.has(dedupeKey)) return false
       if (sourceKey && canonicalSourceKeys.has(sourceKey)) return false
+      if (contentKey && canonicalContentKeys.has(contentKey)) return false
 
       return true
     })
@@ -771,7 +786,7 @@ export default function AvisosView({
     const { data, error } = await supabase
       .from('avisos')
       .upsert(payload, { onConflict: 'dedupe_key' })
-      .select('id')
+      .select('id,metadata')
       .single()
 
     if (error) throw error
@@ -918,7 +933,7 @@ export default function AvisosView({
   }
 
   async function purgeDeletedAvisos() {
-    const ok = window.confirm('Excluir definitivamente todos os avisos apagados? Esta ação limpa a lixeira de avisos.')
+    const ok = window.confirm('Remover todos os avisos apagados da lixeira? Eles ficarão ocultos e não deverão voltar para Ativos.')
     if (!ok) return
 
     setBusyId('purge-deleted')
