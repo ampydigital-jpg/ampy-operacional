@@ -19,7 +19,7 @@ function currentMonth() {
 }
 
 function formatMonth(value: string) {
-  if (!value) return 'Sem perÃ­odo'
+  if (!value) return 'Sem período'
   const key = String(value).slice(0, 7)
   const [year, month] = key.split('-')
   return `${month}/${year}`
@@ -114,7 +114,7 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
     const result = await createFeedBoardAction(formData)
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao criar aprovaÃ§Ã£o.')
+      setError(result.error || 'Erro ao criar aprovação.')
       setLoading(false)
       return
     }
@@ -165,12 +165,12 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
     <div className="page-wrap">
       <div className="topbar">
         <div>
-          <div className="tb-title">AprovaÃ§Ãµes</div>
+          <div className="tb-title">Aprovações</div>
           <div className="tb-sub">Lista operacional de documentos enviados, pendentes e com ajustes.</div>
         </div>
 
         <button className="bpri" onClick={() => { setError(''); setModal(true) }}>
-          <i className="ti ti-plus" /> Nova aprovaÃ§Ã£o
+          <i className="ti ti-plus" /> Nova aprovação
         </button>
       </div>
 
@@ -199,8 +199,8 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
 
         <div className="sh" style={{ marginBottom: 14 }}>
           <div>
-            <div className="stitle">Documentos de aprovaÃ§Ã£o</div>
-            <div className="ssub">Use a lista para priorizar ajustes, pendÃªncias e aprovaÃ§Ãµes por cliente.</div>
+            <div className="stitle">Documentos de aprovação</div>
+            <div className="ssub">Use a lista para priorizar ajustes, pendências e aprovações por cliente.</div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -219,8 +219,8 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
             <select className="fi compact" value={sort} onChange={(event) => setSort(event.target.value)}>
               <option value="updated_desc">Atualizados recentemente</option>
               <option value="updated_asc">Mais antigos primeiro</option>
-              <option value="period_asc">Menor perÃ­odo</option>
-              <option value="period_desc">Maior perÃ­odo</option>
+              <option value="period_asc">Menor período</option>
+              <option value="period_desc">Maior período</option>
               <option value="pending_desc">Mais pendentes</option>
               <option value="changes_desc">Mais ajustes</option>
             </select>
@@ -238,20 +238,20 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
         {visible.length === 0 ? (
           <div className="empty">
             <i className="ti ti-clipboard-check" />
-            <div className="empty-title">Nenhuma aprovaÃ§Ã£o encontrada</div>
-            <div className="empty-sub">Crie uma nova aprovaÃ§Ã£o ou ajuste os filtros.</div>
+            <div className="empty-title">Nenhuma aprovação encontrada</div>
+            <div className="empty-sub">Crie uma nova aprovação ou ajuste os filtros.</div>
           </div>
         ) : (
           <div style={{ background: 'var(--s1)', border: '0.5px solid var(--b1)', borderRadius: 'var(--rc)', overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr .65fr .75fr .75fr .75fr 1.1fr .9fr', gap: 10, padding: '12px 14px', background: 'var(--s2)', color: 'var(--t3)', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
               <div>Documento</div>
               <div>Cliente</div>
-              <div>PerÃ­odo</div>
+              <div>Período</div>
               <div>Status</div>
               <div>Itens</div>
-              <div>PendÃªncias</div>
-              <div>Ãšltima aÃ§Ã£o</div>
-              <div>AÃ§Ãµes</div>
+              <div>Pendências</div>
+              <div>Última ação</div>
+              <div>Ações</div>
             </div>
 
             {visible.map((board: any) => {
@@ -270,7 +270,7 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
                   </div>
 
                   <div style={{ minWidth: 0, fontSize: 12, color: 'var(--t2)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {board.client?.name || 'Cliente nÃ£o encontrado'}
+                    {board.client?.name || 'Cliente não encontrado'}
                   </div>
 
                   <div style={{ fontSize: 12, color: 'var(--t2)', fontWeight: 800 }}>{formatMonth(board.period_month)}</div>
@@ -290,7 +290,7 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
 
                   <div style={{ minWidth: 0 }}>
                     <div style={{ color: 'var(--t2)', fontSize: 11, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {stats.last_event_message || 'Sem aÃ§Ã£o registrada'}
+                      {stats.last_event_message || 'Sem ação registrada'}
                     </div>
                     <div style={{ color: 'var(--t4)', fontSize: 10 }}>{formatDateTime(stats.last_event_at)}</div>
                   </div>
@@ -313,7 +313,7 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head">
               <div>
-                <div className="modal-title">Nova aprovaÃ§Ã£o</div>
+                <div className="modal-title">Nova aprovação</div>
                 <div className="modal-sub">Crie o documento antes de subir as capas.</div>
               </div>
               <button className="mclose" onClick={() => setModal(false)}><i className="ti ti-x" /></button>
@@ -330,24 +330,24 @@ export default function FeedPreviewHome({ boards = [], clients = [], loadErrors 
                 </div>
 
                 <div className="fg">
-                  <label className="fl">Nome da aprovaÃ§Ã£o *</label>
+                  <label className="fl">Nome da aprovação *</label>
                   <input className="fi" name="title" defaultValue={`Feed Preview ${formatMonth(currentMonth())}`} required />
                 </div>
 
                 <div className="fg">
-                  <label className="fl">PerÃ­odo *</label>
+                  <label className="fl">Período *</label>
                   <input className="fi" name="period_month" type="month" defaultValue={currentMonth()} required />
                 </div>
 
                 <div className="fg">
-                  <label className="fl">ObservaÃ§Ãµes internas</label>
-                  <textarea className="fi" name="notes" placeholder="ObservaÃ§Ãµes para a equipe." />
+                  <label className="fl">Observações internas</label>
+                  <textarea className="fi" name="notes" placeholder="Observações para a equipe." />
                 </div>
               </div>
 
               <div className="modal-foot">
                 <button className="bsec" type="button" onClick={() => setModal(false)}>Cancelar</button>
-                <button className="bpri" disabled={loading}>{loading ? 'Criando...' : 'Criar aprovaÃ§Ã£o'}</button>
+                <button className="bpri" disabled={loading}>{loading ? 'Criando...' : 'Criar aprovação'}</button>
               </div>
             </form>
           </div>

@@ -71,7 +71,7 @@ export default async function FeedPreviewPage() {
     boardsResult.error ? `Documentos: ${boardsResult.error.message}` : null,
     clientsResult.error ? `Clientes: ${clientsResult.error.message}` : null,
     itemsResult.error ? `Itens: ${itemsResult.error.message}` : null,
-    eventsResult.error ? `HistÃ³rico: ${eventsResult.error.message}` : null,
+    eventsResult.error ? `Histórico: ${eventsResult.error.message}` : null,
   ].filter(Boolean) as string[]
 
   return <FeedPreviewHome boards={boards} clients={clients} loadErrors={loadErrors} />

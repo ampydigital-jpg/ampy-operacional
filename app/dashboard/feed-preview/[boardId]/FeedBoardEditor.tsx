@@ -1140,14 +1140,14 @@ export default function FeedBoardEditor({ board, items = [], events = [], assets
                   <div>
                     <strong style={{ display: 'block', color: 'var(--ink)' }}>Histórico de ajustes e decisões deste post</strong>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      Ajustes, aprovações e comentÃ¡rios registrados pelo cliente.
+                      Ajustes, aprovações e comentários registrados pelo cliente.
                     </span>
                   </div>
 
                   {selected.client_feedback && (
                     <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#991B1B', borderRadius: 12, padding: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                        Ãšltimo ajuste solicitado pelo cliente
+                        Último ajuste solicitado pelo cliente
                       </div>
                       <div style={{ fontSize: 13, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
                         {selected.client_feedback}

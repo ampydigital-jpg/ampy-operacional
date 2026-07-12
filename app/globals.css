@@ -292,7 +292,7 @@ textarea.fi { resize: vertical; min-height: 80px; }
   .panel { width: 100%; min-width: 100%; position: fixed; bottom: 0; left: 0; right: 0; height: 70vh; border-radius: 16px 16px 0 0; z-index: 50; }
 }
 
-/* V7 — operação consolidada */
+/* V7 â€” operaÃ§Ã£o consolidada */
 .modal-wide { max-width: 680px; }
 .modal-sub { font-size:10px; color:var(--t4); margin-top:3px; line-height:1.4; }
 .compact { width:auto; min-width:150px; height:32px; padding:0 10px; font-size:11px; }
@@ -318,9 +318,9 @@ textarea.fi { resize: vertical; min-height: 80px; }
 @media(max-width:1100px){.detail-layout,.agenda-layout,.today-grid{grid-template-columns:1fr}.agenda-side{display:grid;grid-template-columns:1fr 1fr}.client-detail-panel{position:fixed;right:0;top:0;bottom:0;z-index:30;box-shadow:-10px 0 30px #000}.demand-row{grid-template-columns:10px 1fr 95px 115px 28px}.demand-process{display:none}}@media(max-width:760px){.sb{width:60px;min-width:60px}.brand-name,.brand-sub,.nav-lbl,.nav-item span,.sb-user>div:not(.uav){display:none}.sb-brand,.sb-user{justify-content:center;padding:12px}.nav-item{justify-content:center;padding:10px}.nav-item i{margin:0}.topbar{padding:0 12px}.topbar .tb-sub,.topbar .sbox{display:none}.agenda-periods{overflow-x:auto}.demand-row{grid-template-columns:10px 1fr 28px}.demand-process,.demand-deadline,.status-select{display:none}.client-detail-panel{width:100%;min-width:0}.metrics{grid-template-columns:1fr 1fr}.agenda-side{grid-template-columns:1fr}.calendar-cell{min-height:92px;padding:4px}.calendar-ref,.calendar-event{font-size:7px}.modal-ov{padding:8px}.frow{grid-template-columns:1fr}.board-hint{width:100%;margin-left:0}.client-table th:nth-child(n+4),.client-table td:nth-child(n+4){display:none}}
 .team-card-button{border:0.5px solid var(--b1);text-align:left;cursor:pointer;font-family:inherit}.team-card-button:hover{border-color:var(--b3);background:var(--s2)}
 
-/* V9/V10-preview — integração visual operacional */
+/* V9/V10-preview â€” integraÃ§Ã£o visual operacional */
 .demand-list { border:0.5px solid var(--b1); border-radius:14px; overflow:hidden; background:linear-gradient(180deg,#101010,#0d0d0d); box-shadow:0 12px 34px rgba(0,0,0,.18); }
-.demand-list::before { content:'Atividade  Cliente / Serviço  Processo  Prazo  Status'; display:grid; grid-template-columns:10px minmax(280px,1.9fr) 120px 128px 150px 34px; gap:14px; padding:10px 16px; border-bottom:0.5px solid var(--b1); color:var(--t4); font-size:8px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; white-space:pre; }
+.demand-list::before { content:'Atividade  Cliente / ServiÃ§o  Processo  Prazo  Status'; display:grid; grid-template-columns:10px minmax(280px,1.9fr) 120px 128px 150px 34px; gap:14px; padding:10px 16px; border-bottom:0.5px solid var(--b1); color:var(--t4); font-size:8px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; white-space:pre; }
 .demand-row { grid-template-columns:10px minmax(280px,1.9fr) 120px 128px 150px 34px; gap:14px; min-height:58px; padding:10px 16px; transition:background .12s,border-color .12s; }
 .demand-row:hover { background:#141414; }
 .demand-title { font-size:12px; letter-spacing:-.2px; line-height:1.25; }
@@ -363,7 +363,7 @@ textarea.fi { resize: vertical; min-height: 80px; }
 @media(max-width:1100px){.demand-list::before{display:none}.demand-row{grid-template-columns:10px 1fr 110px 130px 30px}.timeline-body,.timeline-wrap{min-width:760px}.agenda-layout{grid-template-columns:1fr}.agenda-side{display:grid;grid-template-columns:1fr 1fr}.project-card-operational .project-card-bottom{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.demand-row{grid-template-columns:10px 1fr 30px}.timeline-body,.timeline-wrap{min-width:680px}.agenda-side{grid-template-columns:1fr}.project-list-dense{grid-template-columns:1fr}}
 
-/* HOTFIX 07 — CLAREZA VISUAL OPERACIONAL */
+/* HOTFIX 07 â€” CLAREZA VISUAL OPERACIONAL */
 .ops-page {
   --bg: #F4F6F8;
   --s1: #FFFFFF;
@@ -494,7 +494,7 @@ textarea.fi { resize: vertical; min-height: 80px; }
   .week-summary { grid-template-columns: 1fr; }
 }
 
-/* HOTFIX 08 — CLAREZA GERAL E DASHBOARDS SaaS */
+/* HOTFIX 08 â€” CLAREZA GERAL E DASHBOARDS SaaS */
 body { background: var(--bg); color: var(--t1); }
 .main, .page-wrap { background: var(--bg); }
 .pad { background: var(--bg); }
@@ -590,7 +590,7 @@ body { background: var(--bg); color: var(--t1); }
 @media (max-width: 1320px) { .dash-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dash-main-grid { grid-template-columns: 1fr 1fr; } .dash-span-2 { grid-column: span 2; } }
 @media (max-width: 960px) { .dash-stat-grid, .dash-main-grid { grid-template-columns: 1fr; } .dash-span-2 { grid-column: span 1; } .dash-donut-wrap { grid-template-columns: 1fr; } .dash-pro-head { flex-direction: column; align-items: flex-start; } }
 
-/* HOTFIX 09 — INTEGRAÇÃO REAL, DASHBOARDS PARA TV E AGENDA CLARA */
+/* HOTFIX 09 â€” INTEGRAÃ‡ÃƒO REAL, DASHBOARDS PARA TV E AGENDA CLARA */
 .dash-pro-page {
   min-height: 100vh;
   background: #DDE4EE;
@@ -725,7 +725,7 @@ body { background: var(--bg); color: var(--t1); }
   margin-bottom: 0;
 }
 
-/* Agenda clara, próxima de Google Agenda */
+/* Agenda clara, prÃ³xima de Google Agenda */
 .ops-page .agenda-content {
   background: #F1F5F9;
   padding: 16px;
@@ -878,7 +878,7 @@ body { background: var(--bg); color: var(--t1); }
   .dash-variant-month .dash-main-grid { grid-template-columns: 1fr; }
 }
 
-/* HOTFIX 10 — ESTABILIZAÇÃO DE DEMANDAS/CLIENTES E DASHBOARD DIÁRIO OPERACIONAL */
+/* HOTFIX 10 â€” ESTABILIZAÃ‡ÃƒO DE DEMANDAS/CLIENTES E DASHBOARD DIÃRIO OPERACIONAL */
 .clients-page .client-layout { background: transparent; min-height: 0; }
 .clients-page .client-table-wrap { background: rgba(255,255,255,.9); border: 1px solid rgba(15,23,42,.08); border-radius: 22px; box-shadow: 0 14px 34px rgba(15,23,42,.055); overflow: auto; }
 .clients-page .client-table tr { cursor: pointer; }
@@ -929,7 +929,7 @@ body { background: var(--bg); color: var(--t1); }
   .dash-variant-day .dash-main-grid { grid-template-columns: 1fr; }
 }
 
-/* HOTFIX 11 — FECHAMENTO VISUAL SEMANA/MÊS PARA TV */
+/* HOTFIX 11 â€” FECHAMENTO VISUAL SEMANA/MÃŠS PARA TV */
 .dash-variant-week .dash-focus-grid,
 .dash-variant-month .dash-focus-grid {
   grid-template-columns: .95fr 1.05fr 1.05fr;
@@ -1012,7 +1012,7 @@ body { background: var(--bg); color: var(--t1); }
   .dash-variant-month .dash-span-2 { grid-column: span 1; }
 }
 
-/* HOTFIX 12 — SCROLL CONTÍNUO, AGENDA 14/28D E PAINÉIS PARA TV */
+/* HOTFIX 12 â€” SCROLL CONTÃNUO, AGENDA 14/28D E PAINÃ‰IS PARA TV */
 .page-wrap,
 .dash-pro-page,
 .ops-page {
@@ -1123,7 +1123,7 @@ body { background: var(--bg); color: var(--t1); }
   height: 190px !important;
 }
 
-/* Quadro: scroll real em colunas e na área horizontal */
+/* Quadro: scroll real em colunas e na Ã¡rea horizontal */
 .kanban-wrap {
   overflow: auto !important;
   padding-bottom: 18px;
@@ -1137,7 +1137,7 @@ body { background: var(--bg); color: var(--t1); }
   min-height: 160px;
 }
 
-/* Agenda 14d/28d: visão compacta funcional em grade, sem timeline gigante */
+/* Agenda 14d/28d: visÃ£o compacta funcional em grade, sem timeline gigante */
 .ops-page .agenda-range-grid {
   display: grid;
   gap: 10px;
@@ -1227,9 +1227,9 @@ body { background: var(--bg); color: var(--t1); }
 }
 
 
-/* HOTFIX 12 REV — DASHBOARDS SEM SCROLL MANUAL + MOVIMENTO CONTÍNUO + CORES PADRÃO
-   Regra visual: Entregas=verde, Pendências=amarelo, Atrasos=vermelho, Andamento/neutro=azul.
-   Dashboards são painéis de TV: sem rolagem manual interna; listas extensas usam movimento suave e contínuo. */
+/* HOTFIX 12 REV â€” DASHBOARDS SEM SCROLL MANUAL + MOVIMENTO CONTÃNUO + CORES PADRÃƒO
+   Regra visual: Entregas=verde, PendÃªncias=amarelo, Atrasos=vermelho, Andamento/neutro=azul.
+   Dashboards sÃ£o painÃ©is de TV: sem rolagem manual interna; listas extensas usam movimento suave e contÃ­nuo. */
 .dash-pro-page {
   overflow: hidden !important;
   height: 100%;
@@ -1282,7 +1282,7 @@ body { background: var(--bg); color: var(--t1); }
   opacity: .94;
 }
 
-/* Operação continua com scroll manual quando necessário */
+/* OperaÃ§Ã£o continua com scroll manual quando necessÃ¡rio */
 .ops-page,
 .kanban-wrap,
 .kcol-body,
@@ -1294,7 +1294,7 @@ body { background: var(--bg); color: var(--t1); }
   scrollbar-width: thin;
 }
 
-/* Cores semânticas globais de status/tags/chips onde houver classes genéricas */
+/* Cores semÃ¢nticas globais de status/tags/chips onde houver classes genÃ©ricas */
 .tone-green, .status-done, .status-delivered, .status-approved { color: var(--ok) !important; }
 .tone-yellow, .status-not_started, .status-waiting, .status-awaiting_approval, .status-scheduled { color: var(--warn) !important; }
 .tone-red, .status-blocked, .status-late, .status-overdue { color: var(--err) !important; }
@@ -1310,11 +1310,11 @@ body { background: var(--bg); color: var(--t1); }
 .dash-stat[style*="#DC2626"] { border-bottom-color: var(--err) !important; }
 .dash-stat[style*="#2563EB"] { border-bottom-color: var(--blue) !important; }
 
-/* HOTFIX 12.1 — RESTAURA ROLAGEM GERAL DOS DASHBOARDS
+/* HOTFIX 12.1 â€” RESTAURA ROLAGEM GERAL DOS DASHBOARDS
    Regra final:
-   - Dashboard pode rolar a página inteira quando a composição for maior que a tela.
-   - Cards/listas internas continuam sem scroll manual; listas longas usam movimento automático.
-   - Operação mantém scroll manual onde necessário. */
+   - Dashboard pode rolar a pÃ¡gina inteira quando a composiÃ§Ã£o for maior que a tela.
+   - Cards/listas internas continuam sem scroll manual; listas longas usam movimento automÃ¡tico.
+   - OperaÃ§Ã£o mantÃ©m scroll manual onde necessÃ¡rio. */
 html,
 body {
   min-height: 100%;
@@ -1341,7 +1341,7 @@ body {
   overflow: visible !important;
   padding-bottom: 42px;
 }
-/* Mantém a regra de TV: nada de scroll manual dentro dos cards/listas dos dashboards. */
+/* MantÃ©m a regra de TV: nada de scroll manual dentro dos cards/listas dos dashboards. */
 .dash-pro-page .dash-card,
 .dash-pro-page .summary-list,
 .dash-pro-page .dash-bars,
@@ -1357,7 +1357,7 @@ body {
   display: none;
 }
 
-/* HOTFIX 13 — CLIENTES, DEMANDAS, PROJETOS E AVISOS OPERACIONAIS */
+/* HOTFIX 13 â€” CLIENTES, DEMANDAS, PROJETOS E AVISOS OPERACIONAIS */
 :root {
   --action: #2563EB;
   --action-hover: #1D4ED8;
@@ -1451,3 +1451,222 @@ body {
 .archived-client-row b { display:block; font-size:12px; color:#111827; }
 .archived-client-row small, .archived-client-row span { color:#667085; font-size:10px; }
 @media(max-width:1100px){.client-filters-bar,.alert-actions{flex-wrap:wrap}.settings-grid{grid-template-columns:1fr}.alert-mail{grid-template-columns:22px minmax(0,1fr);}.alert-mail .badge,.read-state,.alert-mail .icon-button{justify-self:start}.project-actions{justify-content:flex-start;flex-wrap:wrap}}
+
+
+/* === V16-A1: Sidebar futurista e base visual Ampy === */
+.sb {
+  width: 276px;
+  min-width: 276px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(59, 130, 246, 0.18), transparent 28%),
+    linear-gradient(180deg, #07111F 0%, #0B1324 48%, #080D18 100%);
+  color: #E5EEF9;
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 24px 0 70px rgba(15, 23, 42, 0.18);
+}
+
+.sb-brand {
+  min-height: 72px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+}
+
+.brand-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  color: #F8FAFC;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background:
+    linear-gradient(145deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.96)),
+    linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(168, 85, 247, 0.35));
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 30px rgba(0,0,0,0.22);
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-name {
+  color: #F8FAFC;
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.brand-sub {
+  margin-top: 4px;
+  color: #7EA1D6;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.sb-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.36) transparent;
+}
+
+.nav-grp {
+  margin: 8px 0 18px;
+}
+
+.nav-lbl {
+  padding: 0 14px 8px;
+  color: #7385A4;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.nav-item {
+  position: relative;
+  min-height: 40px;
+  margin: 2px 0;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 13px;
+  color: #A9B7CF;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.nav-item:hover {
+  color: #F8FAFC;
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.10);
+}
+
+.nav-item.active {
+  color: #FFFFFF;
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.26), rgba(15, 23, 42, 0.42)),
+    rgba(255, 255, 255, 0.055);
+  border-color: rgba(96, 165, 250, 0.24);
+  box-shadow: inset 3px 0 0 rgba(96, 165, 250, 0.95), 0 12px 32px rgba(15, 23, 42, 0.22);
+}
+
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  color: inherit;
+  opacity: 0.94;
+}
+
+.nav-icon i {
+  font-size: 17px;
+}
+
+.nav-text {
+  min-width: 0;
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 720;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-badge {
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.14), 0 8px 20px rgba(220, 38, 38, 0.24);
+}
+
+.sb-user {
+  width: calc(100% - 24px);
+  margin: 0 12px 14px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.82), rgba(30, 41, 59, 0.56)),
+    rgba(255, 255, 255, 0.04);
+  color: #E5EEF9;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 34px rgba(0,0,0,0.20);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.sb-user:hover {
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.28);
+  background:
+    linear-gradient(135deg, rgba(30, 41, 59, 0.90), rgba(15, 23, 42, 0.70)),
+    rgba(255, 255, 255, 0.06);
+}
+
+.uav {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  font-size: 11px;
+  font-weight: 900;
+  border: 1px solid rgba(226, 232, 240, 0.15);
+}
+
+.sb-user-meta {
+  min-width: 0;
+  text-align: left;
+}
+
+.sb-user-name {
+  max-width: 176px;
+  color: #F8FAFC;
+  font-size: 12px;
+  font-weight: 760;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-user-action {
+  margin-top: 2px;
+  color: #88A1C4;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .sb {
+    width: 244px;
+    min-width: 244px;
+  }
+
+  .nav-text {
+    font-size: 13px;
+  }
+}
