@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import AvisosMenuBadge from './AvisosMenuBadge'
 
 const groups = [
   { label: 'Dashboards', items: [
@@ -55,7 +56,9 @@ export default function Sidebar({ profile }: { profile: any }) {
               const active = item.href === '/dashboard' ? pathname === item.href : pathname.startsWith(item.href)
               return (
                 <Link href={item.href} className={`nav-item ${active ? 'active' : ''}`} key={item.href}>
-                  <i className={`ti ${item.icon}`} /><span>{item.label}</span>
+                  <i className={`ti ${item.icon}`} />
+                  <span>{item.label}</span>
+                  {item.href === '/dashboard/avisos' && <AvisosMenuBadge />}
                 </Link>
               )
             })}

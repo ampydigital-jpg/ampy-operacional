@@ -540,7 +540,10 @@ export default function AvisosView({
       .order('updated_at', { ascending: false })
       .limit(1000)
 
-    if (data) setRows(data)
+    if (data) {
+      setRows(data)
+      window.dispatchEvent(new Event('avisos:changed'))
+    }
   }
 
   // A tela de Avisos deve usar a tabela public.avisos como fonte de verdade.
