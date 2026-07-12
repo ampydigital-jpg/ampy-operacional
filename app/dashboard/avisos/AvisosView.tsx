@@ -528,6 +528,11 @@ export default function AvisosView({
     [manualAvisos, boards, items, events, workItems, clients]
   )
 
+  const canonicalAlerts = useMemo(
+    () => (rows || []).map((row: any) => normalizeCanonicalAviso(row, clientById, itemById)),
+    [rows, clientById, itemById]
+  )
+
   async function reloadAvisos() {
     const { data } = await supabase
       .from('avisos')
@@ -539,68 +544,53 @@ export default function AvisosView({
   }
 
   useEffect(() => {
-    let cancelled = false
-
     async function syncGeneratedAlerts() {
-      const existing = new Set((rows || []).map((row: any) => row.dedupe_key).filter(Boolean))
-      const missing = generatedAlerts
-        .filter((alert: any) => alert.dedupe_key && !existing.has(alert.dedupe_key))
-        .slice(0, 150)
-        .map(avisoPayload)
+      const existingDedupeKeys = new Set((rows || []).map((row: any) => row.dedupe_key).filter(Boolean))
+      const existingSourceKeys = new Set((rows || []).map((row: any) => alertSourceKey(row)).filter(Boolean))
+      const existingContentKeys = new Set((rows || []).map((row: any) => alertContentKey(row)).filter(Boolean))
+
+      const missing = generatedAlerts.filter((alert: any) => {
+        const dedupeKey = alert.dedupe_key
+        const sourceKey = alertSourceKey(alert)
+        const contentKey = alertContentKey(alert)
+
+        if (!dedupeKey && !sourceKey && !contentKey) return false
+
+        if (dedupeKey && existingDedupeKeys.has(dedupeKey)) return false
+        if (sourceKey && existingSourceKeys.has(sourceKey)) return false
+        if (contentKey && existingContentKeys.has(contentKey)) return false
+
+        return true
+      })
 
       if (missing.length === 0) return
 
-      await supabase
-        .from('avisos')
-        .upsert(missing, { onConflict: 'dedupe_key', ignoreDuplicates: true })
+      const payloads = missing
+        .map((alert: any) => avisoPayload(alert))
+        .filter((payload: any) => payload.dedupe_key)
 
-      if (!cancelled) await reloadAvisos()
+      if (payloads.length === 0) return
+
+      const { error } = await supabase
+        .from('avisos')
+        .upsert(payloads, { onConflict: 'dedupe_key' })
+
+      if (!error) {
+        await reloadAvisos()
+      }
     }
 
     syncGeneratedAlerts()
-
-    return () => {
-      cancelled = true
-    }
-  }, [generatedAlerts])
-
-  const canonicalAlerts = useMemo(
-    () => (rows || []).map((row: any) => normalizeCanonicalAviso(row, clientById, itemById)),
-    [rows, clientById, itemById]
-  )
+  }, [generatedAlerts, rows])
 
   const alerts = useMemo(() => {
-    const canonicalKeys = new Set((canonicalAlerts || []).map((alert: any) => alert.dedupe_key).filter(Boolean))
-    const canonicalSourceKeys = new Set((canonicalAlerts || []).map((alert: any) => alertSourceKey(alert)).filter(Boolean))
-    const canonicalContentKeys = new Set((canonicalAlerts || []).map((alert: any) => alertContentKey(alert)).filter(Boolean))
+    const visibleCanonical = (canonicalAlerts || []).filter((alert: any) => !alert.hidden)
 
-    const onlyGenerated = generatedAlerts.filter((alert: any) => {
-      const dedupeKey = alert.dedupe_key
-      const sourceKey = alertSourceKey(alert)
-      const contentKey = alertContentKey(alert)
-
-      if (dedupeKey && canonicalKeys.has(dedupeKey)) return false
-      if (sourceKey && canonicalSourceKeys.has(sourceKey)) return false
-      if (contentKey && canonicalContentKeys.has(contentKey)) return false
-
-      return true
-    })
-
-    const visibleCanonical = canonicalAlerts.filter((alert: any) => !alert.hidden)
-    const combined = [...visibleCanonical, ...onlyGenerated]
-
-    const sorted = combined.sort((a: any, b: any) => {
+    const sorted = [...visibleCanonical].sort((a: any, b: any) => {
       const pa = a.priority === 'urgent' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1
       const pb = b.priority === 'urgent' ? 4 : b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1
+
       if (pb !== pa) return pb - pa
-
-      const aSource = String(a.source_table || a.source?.source_table || '')
-      const bSource = String(b.source_table || b.source?.source_table || '')
-
-      if (a.category === b.category && a.category === 'adjustment') {
-        if (aSource === 'feed_board_items' && bSource !== 'feed_board_items') return -1
-        if (bSource === 'feed_board_items' && aSource !== 'feed_board_items') return 1
-      }
 
       return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
     })
@@ -608,16 +598,28 @@ export default function AvisosView({
     const seen = new Set()
 
     return sorted.filter((alert: any) => {
-      const isClosed = ['archived', 'deleted', 'done'].includes(alert.status)
       const itemId = alert.feed_board_item_id || alert.source?.feed_board_item_id
+      const sourceKey = alertSourceKey(alert)
+      const contentKey = alertContentKey(alert)
 
-      if (!isClosed && alert.category === 'adjustment' && itemId) {
+      const stableKey =
+        alert.dedupe_key ||
+        sourceKey ||
+        contentKey ||
+        String(alert.id || '')
+
+      if (stableKey) {
+        if (seen.has(stableKey)) return false
+        seen.add(stableKey)
+      }
+
+      if (alert.category === 'adjustment' && itemId) {
         const key = `adjustment-${itemId}`
         if (seen.has(key)) return false
         seen.add(key)
       }
 
-      if (!isClosed && alert.category === 'approval' && itemId) {
+      if (alert.category === 'approval' && itemId) {
         const key = `approval-${itemId}`
         if (seen.has(key)) return false
         seen.add(key)
@@ -625,7 +627,7 @@ export default function AvisosView({
 
       return true
     })
-  }, [canonicalAlerts, generatedAlerts])
+  }, [canonicalAlerts])
 
   const counts = useMemo(() => {
     const active = alerts.filter((alert: any) => !['archived', 'deleted', 'done'].includes(alert.status))
@@ -777,6 +779,40 @@ export default function AvisosView({
     } finally {
       setBusyId('')
     }
+  }
+
+  function isClosedCanonicalAviso(row: any) {
+    if (!row) return false
+
+    const metadata = row.metadata || {}
+    const status = String(row.status || '').toLowerCase()
+
+    return Boolean(
+      metadata.purged ||
+      metadata.purged_at ||
+      ['deleted', 'archived', 'done'].includes(status)
+    )
+  }
+
+  function sameAvisoIdentity(row: any, alert: any) {
+    if (!row || !alert) return false
+
+    const rowDedupe = String(row.dedupe_key || '')
+    const alertDedupe = String(alert.dedupe_key || '')
+
+    if (rowDedupe && alertDedupe && rowDedupe === alertDedupe) return true
+
+    const rowSource = alertSourceKey(row)
+    const alertSource = alertSourceKey(alert)
+
+    if (rowSource && alertSource && rowSource === alertSource) return true
+
+    const rowContent = alertContentKey(row)
+    const alertContent = alertContentKey(alert)
+
+    if (rowContent && alertContent && rowContent === alertContent) return true
+
+    return false
   }
 
   async function persistGenerated(alert: any) {
@@ -933,7 +969,7 @@ export default function AvisosView({
   }
 
   async function purgeDeletedAvisos() {
-    const ok = window.confirm('Remover todos os avisos apagados da lixeira? Eles ficarão ocultos e não deverão voltar para Ativos.')
+    const ok = window.confirm('Remover todos os avisos apagados da lixeira? Eles ficarão ocultos e não poderão ser reativados automaticamente.')
     if (!ok) return
 
     setBusyId('purge-deleted')
@@ -952,6 +988,19 @@ export default function AvisosView({
         .eq('status', 'deleted')
 
       if (error) throw error
+
+      setRows((current: any[]) => current.map((row: any) => {
+        if (String(row.status || '').toLowerCase() !== 'deleted') return row
+
+        return {
+          ...row,
+          metadata: {
+            ...(row.metadata || {}),
+            purged: true,
+            purged_at: new Date().toISOString(),
+          },
+        }
+      }))
 
       setNotice('Avisos apagados foram removidos da lixeira.')
       setScope('deleted')
