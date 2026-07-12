@@ -139,6 +139,7 @@ function normalizeCanonicalAviso(row: any, clientById: Map<any, any>, itemById: 
     id: row.id,
     dbId: row.id,
     dedupe_key: row.dedupe_key,
+    hidden: Boolean(row?.metadata?.purged || row?.metadata?.purged_at),
     source_table: row.source_table || null,
     feed_board_item_id: row.feed_board_item_id || null,
     canonical: true,
@@ -448,6 +449,18 @@ function buildGeneratedAlerts({ manualAvisos, boards, items, events, workItems, 
     .slice(0, 300)
 }
 
+function alertSourceKey(alert: any) {
+  const source = alert?.source || {}
+  const category = String(alert?.category || source?.category || '')
+  const sourceTable = alert?.source_table || source?.source_table || ''
+  const sourceId = alert?.source_id || source?.source_id || ''
+  const itemId = alert?.feed_board_item_id || source?.feed_board_item_id || ''
+
+  if (category && itemId) return `${category}:feed_board_item:${itemId}`
+  if (category && sourceTable && sourceId) return `${category}:${sourceTable}:${sourceId}`
+  return ''
+}
+
 function avisoPayload(alert: any) {
   return {
     title: alert.title,
@@ -546,9 +559,20 @@ export default function AvisosView({
 
   const alerts = useMemo(() => {
     const canonicalKeys = new Set((canonicalAlerts || []).map((alert: any) => alert.dedupe_key).filter(Boolean))
-    const onlyGenerated = generatedAlerts.filter((alert: any) => !alert.dedupe_key || !canonicalKeys.has(alert.dedupe_key))
+    const canonicalSourceKeys = new Set((canonicalAlerts || []).map((alert: any) => alertSourceKey(alert)).filter(Boolean))
 
-    const combined = [...canonicalAlerts, ...onlyGenerated]
+    const onlyGenerated = generatedAlerts.filter((alert: any) => {
+      const dedupeKey = alert.dedupe_key
+      const sourceKey = alertSourceKey(alert)
+
+      if (dedupeKey && canonicalKeys.has(dedupeKey)) return false
+      if (sourceKey && canonicalSourceKeys.has(sourceKey)) return false
+
+      return true
+    })
+
+    const visibleCanonical = canonicalAlerts.filter((alert: any) => !alert.hidden)
+    const combined = [...visibleCanonical, ...onlyGenerated]
 
     const sorted = combined.sort((a: any, b: any) => {
       const pa = a.priority === 'urgent' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1
@@ -903,12 +927,18 @@ export default function AvisosView({
     try {
       const { error } = await supabase
         .from('avisos')
-        .delete()
+        .update({
+          metadata: {
+            purged: true,
+            purged_at: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        })
         .eq('status', 'deleted')
 
       if (error) throw error
 
-      setNotice('Avisos apagados foram limpos definitivamente.')
+      setNotice('Avisos apagados foram removidos da lixeira.')
       setScope('deleted')
       setSelectedIds([])
       await reloadAvisos()
