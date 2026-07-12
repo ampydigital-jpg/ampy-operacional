@@ -543,45 +543,11 @@ export default function AvisosView({
     if (data) setRows(data)
   }
 
+  // A tela de Avisos deve usar a tabela public.avisos como fonte de verdade.
+  // Não sincronizar generatedAlerts aqui, porque isso reativa avisos apagados/limpos.
   useEffect(() => {
-    async function syncGeneratedAlerts() {
-      const existingDedupeKeys = new Set((rows || []).map((row: any) => row.dedupe_key).filter(Boolean))
-      const existingSourceKeys = new Set((rows || []).map((row: any) => alertSourceKey(row)).filter(Boolean))
-      const existingContentKeys = new Set((rows || []).map((row: any) => alertContentKey(row)).filter(Boolean))
-
-      const missing = generatedAlerts.filter((alert: any) => {
-        const dedupeKey = alert.dedupe_key
-        const sourceKey = alertSourceKey(alert)
-        const contentKey = alertContentKey(alert)
-
-        if (!dedupeKey && !sourceKey && !contentKey) return false
-
-        if (dedupeKey && existingDedupeKeys.has(dedupeKey)) return false
-        if (sourceKey && existingSourceKeys.has(sourceKey)) return false
-        if (contentKey && existingContentKeys.has(contentKey)) return false
-
-        return true
-      })
-
-      if (missing.length === 0) return
-
-      const payloads = missing
-        .map((alert: any) => avisoPayload(alert))
-        .filter((payload: any) => payload.dedupe_key)
-
-      if (payloads.length === 0) return
-
-      const { error } = await supabase
-        .from('avisos')
-        .upsert(payloads, { onConflict: 'dedupe_key' })
-
-      if (!error) {
-        await reloadAvisos()
-      }
-    }
-
-    syncGeneratedAlerts()
-  }, [generatedAlerts, rows])
+    return
+  }, [])
 
   const alerts = useMemo(() => {
     const visibleCanonical = (canonicalAlerts || []).filter((alert: any) => !alert.hidden)
@@ -598,31 +564,15 @@ export default function AvisosView({
     const seen = new Set()
 
     return sorted.filter((alert: any) => {
-      const itemId = alert.feed_board_item_id || alert.source?.feed_board_item_id
-      const sourceKey = alertSourceKey(alert)
-      const contentKey = alertContentKey(alert)
-
       const stableKey =
         alert.dedupe_key ||
-        sourceKey ||
-        contentKey ||
+        alertSourceKey(alert) ||
+        alertContentKey(alert) ||
         String(alert.id || '')
 
       if (stableKey) {
         if (seen.has(stableKey)) return false
         seen.add(stableKey)
-      }
-
-      if (alert.category === 'adjustment' && itemId) {
-        const key = `adjustment-${itemId}`
-        if (seen.has(key)) return false
-        seen.add(key)
-      }
-
-      if (alert.category === 'approval' && itemId) {
-        const key = `approval-${itemId}`
-        if (seen.has(key)) return false
-        seen.add(key)
       }
 
       return true
@@ -741,7 +691,7 @@ export default function AvisosView({
     const targets = selectedVisible.filter((alert: any) => alert.status !== 'deleted')
 
     if (targets.length === 0) {
-      setNotice('Nenhum aviso selecionado para apagar.')
+      setNotice(scope === 'deleted' ? 'Avisos apagados já estão na lixeira. Use Limpar apagados.' : 'Nenhum aviso selecionado para apagar.')
       return
     }
 
@@ -1102,7 +1052,7 @@ export default function AvisosView({
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {selectedIds.length > 0 && (
+            {selectedIds.length > 0 && scope !== 'deleted' && (
               <>
                 <button type="button" className="bsec" onClick={markSelectedRead} disabled={busyId === 'selected-read'}>
                   {busyId === 'selected-read' ? 'Marcando...' : 'Marcar como lido'}
@@ -1113,7 +1063,7 @@ export default function AvisosView({
               </>
             )}
 
-            {scope === 'deleted' && (
+            {scope === 'deleted' && counts.deleted > 0 && (
               <button type="button" className="bsec danger-action" onClick={purgeDeletedAvisos} disabled={busyId === 'purge-deleted'}>
                 {busyId === 'purge-deleted' ? 'Limpando...' : 'Limpar apagados'}
               </button>
