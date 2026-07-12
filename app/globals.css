@@ -3103,3 +3103,433 @@ tr:hover td,
   }
 }
 /* === /V17-A3 === */
+
+/* === V17-A4.1: Comunicacao contextual em demandas === */
+.demanda-comms-v17-page {
+  min-height: 100vh;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.demanda-comms-v17-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.demanda-comms-v17-eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  font-weight: 900;
+  color: rgba(17, 19, 24, 0.48);
+  margin-bottom: 8px;
+}
+
+.demanda-comms-v17-head h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: #101216;
+}
+
+.demanda-comms-v17-head p {
+  margin: 10px 0 0;
+  color: #525862;
+  font-size: 14px;
+}
+
+.demanda-comms-v17-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.demanda-comms-v17-toplink,
+.demanda-comms-v17-action {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.demanda-comms-v17-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.demanda-comms-v17-metric,
+.demanda-comms-v17-row,
+.demanda-comms-v17-compose,
+.demanda-comms-v17-panel,
+.demanda-comms-v17-feed,
+.demanda-comms-v17-message {
+  background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(247,248,250,0.76));
+  border: 1px solid rgba(17, 19, 24, 0.09);
+  box-shadow: 0 18px 42px rgba(17, 19, 24, 0.075);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.demanda-comms-v17-metric {
+  border-radius: 22px;
+  padding: 18px;
+  min-height: 112px;
+}
+
+.demanda-comms-v17-metric span,
+.demanda-comms-v17-metric strong,
+.demanda-comms-v17-metric small {
+  display: block;
+}
+
+.demanda-comms-v17-metric span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: #747C89;
+}
+
+.demanda-comms-v17-metric strong {
+  margin-top: 10px;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: #101216;
+}
+
+.demanda-comms-v17-metric small {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #626975;
+}
+
+.demanda-comms-v17-list,
+.demanda-comms-v17-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demanda-comms-v17-row {
+  border-radius: 22px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.demanda-comms-v17-status {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(17, 19, 24, 0.08);
+  color: #101216;
+  font-size: 10px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.demanda-comms-v17-row h2 {
+  margin: 0;
+  color: #101216;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.demanda-comms-v17-row p {
+  margin: 5px 0 0;
+  color: #626975;
+  font-size: 12px;
+}
+
+.demanda-comms-v17-row-metrics {
+  display: flex;
+  gap: 8px;
+}
+
+.demanda-comms-v17-row-metrics span {
+  min-width: 86px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(17, 19, 24, 0.08);
+  padding: 9px 10px;
+  color: #626975;
+  font-size: 11px;
+  text-align: center;
+}
+
+.demanda-comms-v17-row-metrics strong {
+  display: block;
+  color: #101216;
+  font-size: 18px;
+}
+
+.demanda-comms-v17-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.demanda-comms-v17-compose,
+.demanda-comms-v17-panel,
+.demanda-comms-v17-feed {
+  border-radius: 26px;
+  padding: 20px;
+}
+
+.demanda-comms-v17-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.demanda-comms-v17-compose h2,
+.demanda-comms-v17-panel h3,
+.demanda-comms-v17-feed h2 {
+  margin: 0;
+  color: #101216;
+  letter-spacing: -0.04em;
+}
+
+.demanda-comms-v17-compose p,
+.demanda-comms-v17-panel p {
+  margin: 8px 0 0;
+  color: #525862;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.demanda-comms-v17-compose label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.demanda-comms-v17-compose label span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #626975;
+}
+
+.demanda-comms-v17-compose textarea,
+.demanda-comms-v17-compose input,
+.demanda-comms-v17-compose select {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(17, 19, 24, 0.10);
+  background: rgba(255,255,255,0.72);
+  color: #101216;
+  padding: 12px 13px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.demanda-comms-v17-compose textarea {
+  min-height: 124px;
+  resize: vertical;
+}
+
+.demanda-comms-v17-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.demanda-comms-v17-submit {
+  height: 42px;
+  justify-content: center;
+}
+
+.demanda-comms-v17-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.demanda-comms-v17-members {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.demanda-comms-v17-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(17, 19, 24, 0.07);
+}
+
+.demanda-comms-v17-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.demanda-comms-v17-member strong,
+.demanda-comms-v17-member span {
+  display: block;
+}
+
+.demanda-comms-v17-member strong {
+  color: #101216;
+  font-size: 12px;
+}
+
+.demanda-comms-v17-member span {
+  color: #626975;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.demanda-comms-v17-feed-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.demanda-comms-v17-feed-head > span {
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.64);
+  border: 1px solid rgba(17, 19, 24, 0.08);
+  color: #525862;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.demanda-comms-v17-message {
+  border-radius: 20px;
+  padding: 15px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+}
+
+.demanda-comms-v17-message.resolved {
+  opacity: 0.72;
+}
+
+.demanda-comms-v17-message-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.demanda-comms-v17-message-top span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(17, 19, 24, 0.08);
+  color: #101216;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.demanda-comms-v17-message-top small {
+  color: #747C89;
+  font-size: 11px;
+}
+
+.demanda-comms-v17-message p {
+  margin: 0;
+  color: #101216;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.demanda-comms-v17-tags {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.demanda-comms-v17-tags span,
+.demanda-comms-v17-tags a {
+  border-radius: 999px;
+  background: rgba(255,255,255,0.64);
+  border: 1px solid rgba(17, 19, 24, 0.08);
+  color: #525862;
+  padding: 6px 9px;
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.demanda-comms-v17-message-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.demanda-comms-v17-empty {
+  min-height: 180px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.45);
+  border: 1px dashed rgba(17, 19, 24, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  color: #626975;
+  padding: 24px;
+}
+
+.demanda-comms-v17-empty strong {
+  color: #101216;
+}
+
+@media (max-width: 1280px) {
+  .demanda-comms-v17-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .demanda-comms-v17-row {
+    grid-template-columns: 1fr;
+  }
+
+  .demanda-comms-v17-row-metrics {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 980px) {
+  .demanda-comms-v17-page {
+    padding: 18px;
+  }
+
+  .demanda-comms-v17-head {
+    flex-direction: column;
+  }
+
+  .demanda-comms-v17-metrics,
+  .demanda-comms-v17-form-grid,
+  .demanda-comms-v17-message {
+    grid-template-columns: 1fr;
+  }
+}
+/* === /V17-A4.1 === */
