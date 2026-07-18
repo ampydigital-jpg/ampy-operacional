@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
@@ -1147,3 +1147,547 @@ export async function updateFeedBoardItemPlanningAction(itemId: string, formData
   return { success: true, item: data }
 }
 
+// =========================================================
+// AMPY-V17-A12B — FLUXO CONTEXTUAL DE QUADROS E PROJETOS
+// =========================================================
+
+async function v17A12bHasTotalAccess() {
+  const { user } = await getCurrentProfile()
+
+  if (!user) return false
+
+  const admin = createAdminClient()
+
+  const byProfile = await admin
+    .from('team_members')
+    .select('access_type,is_active')
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
+  if (
+    byProfile.data?.is_active !== false &&
+    byProfile.data?.access_type === 'total'
+  ) {
+    return true
+  }
+
+  if (!user.email) return false
+
+  const byEmail = await admin
+    .from('team_members')
+    .select('access_type,is_active')
+    .ilike('email', user.email)
+    .maybeSingle()
+
+  return (
+    byEmail.data?.is_active !== false &&
+    byEmail.data?.access_type === 'total'
+  )
+}
+
+async function v17A12bValidateBoard(
+  supabase: ReturnType<typeof createClient>,
+  boardId: string | null,
+) {
+  if (!boardId) {
+    return { error: 'Selecione o Quadro da demanda.' as const }
+  }
+
+  const { data, error } = await supabase
+    .from('boards')
+    .select('id,name,status')
+    .eq('id', boardId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (error || !data) {
+    return { error: 'Quadro inválido ou inativo.' as const }
+  }
+
+  return { board: data }
+}
+
+export async function createBoardAction(formData: FormData) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem criar Quadros.',
+    )
+  }
+
+  const { supabase, user } = await getCurrentProfile()
+
+  if (!user) {
+    return { error: 'Sessão inválida.' }
+  }
+
+  const name = value(formData, 'name')
+
+  if (name.length < 2) {
+    return { error: 'Informe um nome válido para o Quadro.' }
+  }
+
+  const { data, error } = await supabase
+    .from('boards')
+    .insert({
+      name,
+      description: nullable(formData, 'description'),
+      color: value(formData, 'color') || '#2563EB',
+      status: value(formData, 'status') || 'active',
+      created_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    id: data.id,
+  }
+}
+
+export async function updateBoardAction(
+  id: string,
+  formData: FormData,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem editar Quadros.',
+    )
+  }
+
+  if (!id) {
+    return { error: 'Quadro inválido.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const name = value(formData, 'name')
+
+  if (name.length < 2) {
+    return { error: 'Informe um nome válido para o Quadro.' }
+  }
+
+  const status = value(formData, 'status') || 'active'
+
+  if (!['active', 'archived'].includes(status)) {
+    return { error: 'Status de Quadro inválido.' }
+  }
+
+  const { error } = await supabase
+    .from('boards')
+    .update({
+      name,
+      description: nullable(formData, 'description'),
+      color: value(formData, 'color') || '#2563EB',
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidateOperationalPaths()
+
+  return { success: true }
+}
+
+export async function deleteBoardAction(id: string) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem excluir Quadros.',
+    )
+  }
+
+  if (!id) {
+    return { error: 'Quadro inválido.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+
+  const { data, error } = await supabase.rpc(
+    'delete_board_preserve_demands',
+    {
+      p_board_id: id,
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    result: data,
+  }
+}
+
+async function v17A12bCreateContextItem(
+  formData: FormData,
+  context: 'board' | 'project',
+) {
+  const { supabase, user, profile } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return { error: 'Sessão inválida ou usuário inativo.' }
+  }
+
+  const title = value(formData, 'title')
+
+  if (!title) {
+    return {
+      error:
+        context === 'project'
+          ? 'Informe o título do projeto.'
+          : 'Informe o título da demanda.',
+    }
+  }
+
+  const clientId = nullable(formData, 'client_id')
+  const clientServiceId = nullable(
+    formData,
+    'client_service_id',
+  )
+
+  const linkValidation = await validateWorkItemLinks(
+    supabase,
+    clientId,
+    clientServiceId,
+  )
+
+  if ('error' in linkValidation) {
+    return linkValidation
+  }
+
+  let boardId: string | null = null
+
+  if (context === 'board') {
+    boardId = nullable(formData, 'board_id')
+
+    const boardValidation = await v17A12bValidateBoard(
+      supabase,
+      boardId,
+    )
+
+    if ('error' in boardValidation) {
+      return boardValidation
+    }
+  }
+
+  const requestedResponsible = nullable(
+    formData,
+    'responsible_id',
+  )
+
+  const responsibleId = isManager(profile.role)
+    ? requestedResponsible
+    : user.id
+
+  const { data, error } = await supabase
+    .from('work_items')
+    .insert({
+      title,
+      description: nullable(formData, 'description'),
+      client_id: clientId,
+      client_service_id: clientServiceId,
+      type:
+        nullable(formData, 'type') ||
+        (clientId ? 'Planejamento' : 'Interno'),
+      origin:
+        value(formData, 'origin') ||
+        (clientId ? 'planned' : 'internal'),
+      destino: context === 'board' ? 'quadro' : 'projeto',
+      board_id: boardId,
+      status: 'not_started',
+      priority: value(formData, 'priority') || 'normal',
+      responsible_id: responsibleId,
+      created_by: user.id,
+      internal_deadline: nullable(
+        formData,
+        'internal_deadline',
+      ),
+      final_deadline: nullable(formData, 'final_deadline'),
+      drive_link: nullable(formData, 'drive_link'),
+      notes: nullable(formData, 'notes'),
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  await addHistory(
+    data.id,
+    user.id,
+    'created',
+    null,
+    context === 'board' ? 'quadro' : 'projeto',
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    id: data.id,
+  }
+}
+
+export async function createBoardDemandAction(
+  formData: FormData,
+) {
+  return v17A12bCreateContextItem(formData, 'board')
+}
+
+export async function createProjectAction(formData: FormData) {
+  return v17A12bCreateContextItem(formData, 'project')
+}
+
+export async function updateContextWorkItemAction(
+  id: string,
+  formData: FormData,
+) {
+  const permission = await canOperateWorkItem(id)
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const { supabase, user, profile } = permission
+
+  const { data: existing, error: existingError } =
+    await supabase
+      .from('work_items')
+      .select(
+        'id,title,status,destino,board_id,responsible_id',
+      )
+      .eq('id', id)
+      .single()
+
+  if (existingError || !existing) {
+    return { error: 'Demanda não encontrada.' }
+  }
+
+  const title = value(formData, 'title')
+
+  if (!title) {
+    return { error: 'Informe o título.' }
+  }
+
+  const context = value(formData, 'context')
+
+  if (!['board', 'project'].includes(context)) {
+    return { error: 'Contexto operacional inválido.' }
+  }
+
+  const clientId = nullable(formData, 'client_id')
+  const clientServiceId = nullable(
+    formData,
+    'client_service_id',
+  )
+
+  const linkValidation = await validateWorkItemLinks(
+    supabase,
+    clientId,
+    clientServiceId,
+  )
+
+  if ('error' in linkValidation) {
+    return linkValidation
+  }
+
+  let boardId: string | null = null
+
+  if (context === 'board') {
+    boardId = nullable(formData, 'board_id')
+
+    const boardValidation = await v17A12bValidateBoard(
+      supabase,
+      boardId,
+    )
+
+    if ('error' in boardValidation) {
+      return boardValidation
+    }
+  }
+
+  const status =
+    value(formData, 'status') || existing.status
+
+  if (
+    !VALID_WORK_ITEM_STATUSES.includes(
+      status as WorkItemStatus,
+    )
+  ) {
+    return { error: 'Status inválido.' }
+  }
+
+  const update: Record<string, unknown> = {
+    title,
+    description: nullable(formData, 'description'),
+    client_id: clientId,
+    client_service_id: clientServiceId,
+    type:
+      nullable(formData, 'type') ||
+      (clientId ? 'Planejamento' : 'Interno'),
+    origin:
+      value(formData, 'origin') ||
+      (clientId ? 'planned' : 'internal'),
+    destino: context === 'board' ? 'quadro' : 'projeto',
+    board_id: context === 'board' ? boardId : null,
+    status,
+    priority: value(formData, 'priority') || 'normal',
+    internal_deadline: nullable(
+      formData,
+      'internal_deadline',
+    ),
+    final_deadline: nullable(formData, 'final_deadline'),
+    drive_link: nullable(formData, 'drive_link'),
+    notes: nullable(formData, 'notes'),
+    blocked_reason: nullable(formData, 'blocked_reason'),
+  }
+
+  if (isManager(profile.role)) {
+    update.responsible_id = nullable(
+      formData,
+      'responsible_id',
+    )
+  }
+
+  if (
+    ['done', 'delivered', 'cancelled', 'archived'].includes(
+      status,
+    )
+  ) {
+    update.closed_at = new Date().toISOString()
+  } else {
+    update.closed_at = null
+  }
+
+  const { error } = await supabase
+    .from('work_items')
+    .update(update)
+    .eq('id', id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  await addHistory(
+    id,
+    user.id,
+    'updated_context',
+    existing.title,
+    title,
+  )
+
+  if (existing.status !== status) {
+    await addHistory(
+      id,
+      user.id,
+      'status',
+      existing.status,
+      status,
+    )
+  }
+
+  if (
+    existing.destino !== update.destino ||
+    existing.board_id !== update.board_id
+  ) {
+    await addHistory(
+      id,
+      user.id,
+      'context',
+      `${existing.destino}:${existing.board_id || ''}`,
+      `${String(update.destino)}:${String(
+        update.board_id || '',
+      )}`,
+    )
+  }
+
+  revalidateOperationalPaths()
+  revalidatePath(`/dashboard/demandas/${id}`)
+
+  return { success: true }
+}
+
+export async function updateProjectStepAction(
+  stepId: string,
+  workItemId: string,
+  formData: FormData,
+) {
+  const permission = await canOperateWorkItem(workItemId)
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const { supabase, user } = permission
+  const title = value(formData, 'title')
+
+  if (!title) {
+    return { error: 'Informe o título da etapa.' }
+  }
+
+  const status = value(formData, 'status') || 'not_started'
+  const validStepStatuses = [
+    'not_started',
+    'in_progress',
+    'waiting',
+    'blocked',
+    'done',
+  ]
+
+  if (!validStepStatuses.includes(status)) {
+    return { error: 'Status de etapa inválido.' }
+  }
+
+  const { data: existing } = await supabase
+    .from('project_steps')
+    .select('title,status')
+    .eq('id', stepId)
+    .eq('work_item_id', workItemId)
+    .single()
+
+  const { error } = await supabase
+    .from('project_steps')
+    .update({
+      title,
+      responsible_id: nullable(
+        formData,
+        'responsible_id',
+      ),
+      start_date: nullable(formData, 'start_date'),
+      end_date: nullable(formData, 'end_date'),
+      status,
+      notes: nullable(formData, 'notes'),
+    })
+    .eq('id', stepId)
+    .eq('work_item_id', workItemId)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  await addHistory(
+    workItemId,
+    user.id,
+    'project_step_updated',
+    existing?.title || stepId,
+    title,
+  )
+
+  revalidateOperationalPaths()
+  revalidatePath(`/dashboard/demandas/${workItemId}`)
+
+  return { success: true }
+}

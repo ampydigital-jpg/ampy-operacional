@@ -7,8 +7,8 @@ import { createProjectStepAction, deleteProjectStepAction, deleteWorkItemAction,
 const statusOptions = [
   ['not_started','Não iniciada'],['in_progress','Em andamento'],['waiting','Aguardando'],['blocked','Bloqueada'],['in_review','Em revisão'],['awaiting_approval','Aguardando aprovação'],['approved','Aprovada'],['scheduled','Programada'],['delivered','Entregue'],['done','Concluída'],['cancelled','Cancelada'],
 ]
-const processOptions = [['quadro','Quadro'],['projeto','Projeto / Cronograma'],['ambos','Quadro + Projeto'],['avulsa','Avulsa']]
-const processLabels: Record<string, string> = { quadro: 'Quadro', projeto: 'Projeto', ambos: 'Quadro + Projeto', avulsa: 'Avulsa', kanban: 'Quadro' }
+const processOptions = [['quadro','Quadro'],['projeto','Projeto / Cronograma'],['ambos','Quadro + Projeto'],['avulsa','Extra']]
+const processLabels: Record<string, string> = { quadro: 'Quadro', projeto: 'Projeto', ambos: 'Quadro + Projeto', avulsa: 'Extra', kanban: 'Quadro' }
 
 const types = ['Planejamento','Captação','Edição','Design','Organização de Feed','Programação','Tráfego','Reunião','Relatório','Interno']
 

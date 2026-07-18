@@ -23,7 +23,7 @@ const PROCESS_LABEL: Record<string, string> = {
   quadro: 'Quadro',
   projeto: 'Projeto',
   ambos: 'Quadro + Projeto',
-  avulsa: 'Avulsa',
+  avulsa: 'Extra',
   kanban: 'Quadro',
 }
 
@@ -68,7 +68,7 @@ export default function DemandasView({ demands, clients, profiles, clientService
   const [deadline, setDeadline] = useState('all')
   const [sort, setSort] = useState('deadline_asc')
   const [formClient, setFormClient] = useState('')
-  const [formProcess, setFormProcess] = useState<'quadro'|'projeto'|'ambos'|'avulsa'>('quadro')
+  const [formProcess, setFormProcess] = useState<'quadro'|'projeto'|'ambos'|'avulsa'>('avulsa')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -126,14 +126,14 @@ export default function DemandasView({ demands, clients, profiles, clientService
     <div className="topbar">
       <div className="tb-title">Demandas</div>
       <div className="sbox"><i className="ti ti-search" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar demanda ou cliente..." /></div>
-      <button className="bpri" onClick={() => setOpen(true)}><i className="ti ti-plus" /> Nova demanda</button>
+      <button className="bpri" onClick={() => { setFormProcess('avulsa'); setOpen(true) }}><i className="ti ti-plus" /> Novo Extra</button>
     </div>
     <div className="pad" style={{ overflowY:'auto', flex:1 }}>
       <div className="filters">
         {[['all','Todas'],['open','Abertas'],['in_progress','Em andamento'],['blocked','Bloqueadas'],['awaiting_approval','Ag. aprovação'],['late','Atrasadas'],['done','Concluídas']].map(([key,label]) => <button className={`fb ${status === key ? 'on' : ''}`} onClick={() => setStatus(key)} key={key}>{label}</button>)}
       </div>
       <div className="filters demand-filters">
-        <select className="fi compact" value={process} onChange={(e) => setProcess(e.target.value)}><option value="all">Todos processos</option><option value="quadro">Quadro</option><option value="projeto">Projeto</option><option value="ambos">Quadro + Projeto</option><option value="avulsa">Avulsa</option></select>
+        <select className="fi compact" value={process} onChange={(e) => setProcess(e.target.value)}><option value="all">Todos processos</option><option value="quadro">Quadro</option><option value="projeto">Projeto</option><option value="ambos">Quadro + Projeto</option><option value="avulsa">Extra</option></select>
         <select className="fi compact" value={clientId} onChange={(e) => setClientId(e.target.value)}><option value="all">Todos os clientes</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
         <select className="fi compact" value={responsibleId} onChange={(e) => setResponsibleId(e.target.value)}><option value="all">Todos responsáveis</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select>
         <select className="fi compact" value={priority} onChange={(e) => setPriority(e.target.value)}><option value="all">Todas prioridades</option><option value="urgent">Urgente</option><option value="high">Alta</option><option value="normal">Normal</option><option value="low">Baixa</option></select>
@@ -142,7 +142,7 @@ export default function DemandasView({ demands, clients, profiles, clientService
       </div>
       {safeLoadErrors.length > 0 && <div className="notice notice-err"><i className="ti ti-alert-circle" /><span>{safeLoadErrors.join(' | ')}</span></div>}
       <div className="sh"><div className="ssub">{filtered.length} demanda(s) encontrada(s)</div></div>
-      {filtered.length === 0 ? <div className="empty"><i className="ti ti-checklist" /><div className="empty-title">Nenhuma demanda encontrada</div><div className="empty-sub">Crie a atividade nesta tela. Quadro e Projetos são visualizações do mesmo registro.</div></div> :
+      {filtered.length === 0 ? <div className="empty"><i className="ti ti-checklist" /><div className="empty-title">Nenhuma demanda encontrada</div><div className="empty-sub">Crie Extras nesta tela. Demandas de Quadro e Projetos nascem dentro das respectivas abas.</div></div> :
         <div className="demand-table">
           <div className="demand-head"><span>Atividade</span><span>Cliente/serviço</span><span>Processo</span><span>Prazo</span><span>Responsável</span><span>Prioridade</span><span>Status</span><span /></div>
           {filtered.map((item) => {
@@ -164,10 +164,10 @@ export default function DemandasView({ demands, clients, profiles, clientService
         </div>}
     </div>
     {open && <div className="modal-ov" onClick={() => setOpen(false)}><div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-head"><div><div className="modal-title">Nova demanda</div><div className="modal-sub">A criação acontece apenas em Demandas. Escolha o processo que exibirá a atividade.</div></div><button className="mclose" onClick={() => setOpen(false)}><i className="ti ti-x" /></button></div>
+      <div className="modal-head"><div><div className="modal-title">Novo Extra</div><div className="modal-sub">Demandas de Quadro e Projetos são criadas dentro das respectivas abas.</div></div><button className="mclose" onClick={() => setOpen(false)}><i className="ti ti-x" /></button></div>
       <form onSubmit={submit}><div className="modal-body">
         <div className="fg"><label className="fl">Título *</label><input className="fi" name="title" required placeholder="Ex.: Conteúdos de Julho — Cliente X" /></div>
-        <div className="frow"><div className="fg"><label className="fl">Processo *</label><select className="fi" name="destino" value={formProcess} onChange={(e) => setFormProcess(e.target.value as 'quadro'|'projeto'|'ambos'|'avulsa')}><option value="quadro">Quadro</option><option value="projeto">Projeto / Cronograma</option><option value="ambos">Quadro + Projeto</option><option value="avulsa">Avulsa</option></select></div><div className="fg"><label className="fl">Tipo</label><select className="fi" name="type">{TYPES.map((type) => <option key={type}>{type}</option>)}</select></div></div>
+        <input type="hidden" name="destino" value={formProcess} /><div className="fg"><label className="fl">Tipo</label><select className="fi" name="type">{TYPES.map((type) => <option key={type}>{type}</option>)}</select></div>
         <div className="frow"><div className="fg"><label className="fl">Cliente</label><select className="fi" name="client_id" value={formClient} onChange={(e) => setFormClient(e.target.value)}><option value="">Interno Ampy</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></div><div className="fg"><label className="fl">Serviço</label><select className="fi" name="client_service_id" disabled={!formClient}><option value="">Sem serviço específico</option>{activeServices.map((item: any) => <option key={item.id} value={item.id}>{item.service?.name || 'Serviço ativo'}</option>)}</select></div></div>
         <div className="frow"><div className="fg"><label className="fl">Responsável</label><select className="fi" name="responsible_id"><option value="">Definir depois</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select></div><div className="fg"><label className="fl">Prioridade</label><select className="fi" name="priority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baixa</option></select></div></div>
         <div className="frow"><div className="fg"><label className="fl">Prazo interno</label><input className="fi" name="internal_deadline" type="date" /></div><div className="fg"><label className="fl">Prazo final</label><input className="fi" name="final_deadline" type="date" /></div></div>
