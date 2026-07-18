@@ -1691,3 +1691,525 @@ export async function updateProjectStepAction(
 
   return { success: true }
 }
+
+// =========================================================
+// AMPY-V17-A14 — QUADRO COM COLUNAS EDITÁVEIS
+// =========================================================
+
+const V17_A14_COLUMN_STATUSES = [
+  'not_started',
+  'in_progress',
+  'waiting',
+  'blocked',
+  'in_review',
+  'awaiting_approval',
+  'approved',
+  'scheduled',
+  'delivered',
+  'done',
+  'cancelled',
+  'archived',
+]
+
+async function v17A14GetColumn(
+  supabase: ReturnType<typeof createClient>,
+  columnId: string | null,
+) {
+  if (!columnId) {
+    return { error: 'Selecione a coluna da demanda.' as const }
+  }
+
+  const { data: column, error } = await supabase
+    .from('board_columns')
+    .select(
+      'id,board_id,name,color,operational_status,position',
+    )
+    .eq('id', columnId)
+    .single()
+
+  if (error || !column) {
+    return { error: 'Coluna inválida ou removida.' as const }
+  }
+
+  const { data: board, error: boardError } = await supabase
+    .from('boards')
+    .select('id,name,status')
+    .eq('id', column.board_id)
+    .eq('status', 'active')
+    .single()
+
+  if (boardError || !board) {
+    return { error: 'Quadro inválido ou arquivado.' as const }
+  }
+
+  return { column, board }
+}
+
+export async function createBoardColumnAction(
+  formData: FormData,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem criar colunas.',
+    )
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const boardId = value(formData, 'board_id')
+  const name = value(formData, 'name')
+  const operationalStatus =
+    value(formData, 'operational_status') || 'not_started'
+
+  if (!boardId) return { error: 'Quadro inválido.' }
+  if (!name) return { error: 'Informe o nome da coluna.' }
+
+  if (!V17_A14_COLUMN_STATUSES.includes(operationalStatus)) {
+    return { error: 'Status operacional inválido.' }
+  }
+
+  const { data: lastColumn } = await supabase
+    .from('board_columns')
+    .select('position')
+    .eq('board_id', boardId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data, error } = await supabase
+    .from('board_columns')
+    .insert({
+      board_id: boardId,
+      name,
+      color: value(formData, 'color') || '#64748B',
+      operational_status: operationalStatus,
+      position: Number(lastColumn?.position ?? -1) + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+
+  return { success: true, id: data.id }
+}
+
+export async function updateBoardColumnAction(
+  columnId: string,
+  formData: FormData,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem editar colunas.',
+    )
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const name = value(formData, 'name')
+  const operationalStatus =
+    value(formData, 'operational_status')
+
+  if (!name) return { error: 'Informe o nome da coluna.' }
+
+  if (!V17_A14_COLUMN_STATUSES.includes(operationalStatus)) {
+    return { error: 'Status operacional inválido.' }
+  }
+
+  const { error } = await supabase
+    .from('board_columns')
+    .update({
+      name,
+      color: value(formData, 'color') || '#64748B',
+      operational_status: operationalStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', columnId)
+
+  if (error) return { error: error.message }
+
+  const { error: cardsError } = await supabase
+    .from('work_items')
+    .update({ status: operationalStatus })
+    .eq('board_column_id', columnId)
+    .not('status', 'in', '(archived,cancelled)')
+
+  if (cardsError) return { error: cardsError.message }
+
+  revalidateOperationalPaths()
+
+  return { success: true }
+}
+
+export async function reorderBoardColumnsAction(
+  boardId: string,
+  columnIds: string[],
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem ordenar colunas.',
+    )
+  }
+
+  const safeIds = Array.isArray(columnIds)
+    ? columnIds.filter(Boolean)
+    : []
+
+  if (!boardId || safeIds.length === 0) {
+    return { error: 'Ordem de colunas inválida.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+
+  const { data: existing, error: readError } = await supabase
+    .from('board_columns')
+    .select('id')
+    .eq('board_id', boardId)
+
+  if (readError) return { error: readError.message }
+
+  const existingIds = (existing || []).map((item) => item.id)
+
+  if (
+    existingIds.length !== safeIds.length ||
+    existingIds.some((id) => !safeIds.includes(id))
+  ) {
+    return {
+      error:
+        'A ordem enviada não corresponde às colunas do Quadro.',
+    }
+  }
+
+  const updates = await Promise.all(
+    safeIds.map((id, position) =>
+      supabase
+        .from('board_columns')
+        .update({
+          position,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('board_id', boardId),
+    ),
+  )
+
+  const firstError = updates.find((item) => item.error)?.error
+
+  if (firstError) return { error: firstError.message }
+
+  revalidateOperationalPaths()
+
+  return { success: true }
+}
+
+export async function deleteBoardColumnAction(
+  columnId: string,
+  targetColumnId?: string | null,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem excluir colunas.',
+    )
+  }
+
+  const { supabase } = await getCurrentProfile()
+
+  const { data, error } = await supabase.rpc(
+    'delete_board_column_move_cards',
+    {
+      p_column_id: columnId,
+      p_target_column_id: targetColumnId || null,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+
+  return { success: true, result: data }
+}
+
+export async function createBoardColumnDemandAction(
+  formData: FormData,
+) {
+  const { supabase, user, profile } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return { error: 'Sessão inválida ou usuário inativo.' }
+  }
+
+  const title = value(formData, 'title')
+
+  if (!title) return { error: 'Informe o título da demanda.' }
+
+  const columnValidation = await v17A14GetColumn(
+    supabase,
+    nullable(formData, 'board_column_id'),
+  )
+
+  if ('error' in columnValidation) {
+    return columnValidation
+  }
+
+  const clientId = nullable(formData, 'client_id')
+  const clientServiceId = nullable(
+    formData,
+    'client_service_id',
+  )
+
+  const linkValidation = await validateWorkItemLinks(
+    supabase,
+    clientId,
+    clientServiceId,
+  )
+
+  if ('error' in linkValidation) {
+    return linkValidation
+  }
+
+  const requestedResponsible = nullable(
+    formData,
+    'responsible_id',
+  )
+
+  const responsibleId = isManager(profile.role)
+    ? requestedResponsible
+    : user.id
+
+  const { column } = columnValidation
+
+  const { data, error } = await supabase
+    .from('work_items')
+    .insert({
+      title,
+      description: nullable(formData, 'description'),
+      client_id: clientId,
+      client_service_id: clientServiceId,
+      type:
+        nullable(formData, 'type') ||
+        (clientId ? 'Planejamento' : 'Interno'),
+      origin:
+        value(formData, 'origin') ||
+        (clientId ? 'planned' : 'internal'),
+      destino: 'quadro',
+      board_id: column.board_id,
+      board_column_id: column.id,
+      status: column.operational_status,
+      priority: value(formData, 'priority') || 'normal',
+      responsible_id: responsibleId,
+      created_by: user.id,
+      internal_deadline: nullable(
+        formData,
+        'internal_deadline',
+      ),
+      final_deadline: nullable(
+        formData,
+        'final_deadline',
+      ),
+      drive_link: nullable(formData, 'drive_link'),
+      notes: nullable(formData, 'notes'),
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+
+  await addHistory(
+    data.id,
+    user.id,
+    'created',
+    null,
+    `quadro:${column.id}`,
+  )
+
+  revalidateOperationalPaths()
+
+  return { success: true, id: data.id }
+}
+
+export async function updateBoardColumnDemandAction(
+  id: string,
+  formData: FormData,
+) {
+  const permission = await canOperateWorkItem(id)
+
+  if ('error' in permission) return permission
+
+  const { supabase, user, profile } = permission
+
+  const { data: existing, error: existingError } =
+    await supabase
+      .from('work_items')
+      .select(
+        'id,title,status,board_id,board_column_id,responsible_id',
+      )
+      .eq('id', id)
+      .single()
+
+  if (existingError || !existing) {
+    return { error: 'Demanda não encontrada.' }
+  }
+
+  const title = value(formData, 'title')
+
+  if (!title) return { error: 'Informe o título.' }
+
+  const columnValidation = await v17A14GetColumn(
+    supabase,
+    nullable(formData, 'board_column_id'),
+  )
+
+  if ('error' in columnValidation) {
+    return columnValidation
+  }
+
+  const clientId = nullable(formData, 'client_id')
+  const clientServiceId = nullable(
+    formData,
+    'client_service_id',
+  )
+
+  const linkValidation = await validateWorkItemLinks(
+    supabase,
+    clientId,
+    clientServiceId,
+  )
+
+  if ('error' in linkValidation) {
+    return linkValidation
+  }
+
+  const { column } = columnValidation
+
+  const update: Record<string, unknown> = {
+    title,
+    description: nullable(formData, 'description'),
+    client_id: clientId,
+    client_service_id: clientServiceId,
+    type:
+      nullable(formData, 'type') ||
+      (clientId ? 'Planejamento' : 'Interno'),
+    origin:
+      value(formData, 'origin') ||
+      (clientId ? 'planned' : 'internal'),
+    destino: 'quadro',
+    board_id: column.board_id,
+    board_column_id: column.id,
+    status: column.operational_status,
+    priority: value(formData, 'priority') || 'normal',
+    internal_deadline: nullable(
+      formData,
+      'internal_deadline',
+    ),
+    final_deadline: nullable(formData, 'final_deadline'),
+    drive_link: nullable(formData, 'drive_link'),
+    notes: nullable(formData, 'notes'),
+    blocked_reason: nullable(
+      formData,
+      'blocked_reason',
+    ),
+    closed_at: ['done', 'delivered', 'approved'].includes(
+      column.operational_status,
+    )
+      ? new Date().toISOString()
+      : null,
+  }
+
+  if (isManager(profile.role)) {
+    update.responsible_id = nullable(
+      formData,
+      'responsible_id',
+    )
+  }
+
+  const { error } = await supabase
+    .from('work_items')
+    .update(update)
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  await addHistory(
+    id,
+    user.id,
+    'board_column',
+    existing.board_column_id || null,
+    column.id,
+  )
+
+  if (existing.status !== column.operational_status) {
+    await addHistory(
+      id,
+      user.id,
+      'status',
+      existing.status,
+      column.operational_status,
+    )
+  }
+
+  revalidateOperationalPaths()
+  revalidatePath(`/dashboard/demandas/${id}`)
+
+  return { success: true }
+}
+
+export async function moveBoardCardAction(
+  id: string,
+  columnId: string,
+) {
+  const permission = await canOperateWorkItem(id)
+
+  if ('error' in permission) return permission
+
+  const { supabase, user, item } = permission
+
+  const columnValidation = await v17A14GetColumn(
+    supabase,
+    columnId,
+  )
+
+  if ('error' in columnValidation) {
+    return columnValidation
+  }
+
+  const { column } = columnValidation
+
+  const { error } = await supabase
+    .from('work_items')
+    .update({
+      destino: 'quadro',
+      board_id: column.board_id,
+      board_column_id: column.id,
+      status: column.operational_status,
+      closed_at: ['done', 'delivered', 'approved'].includes(
+        column.operational_status,
+      )
+        ? new Date().toISOString()
+        : null,
+    })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  await addHistory(
+    id,
+    user.id,
+    'board_column',
+    null,
+    column.id,
+  )
+
+  if (item.status !== column.operational_status) {
+    await addHistory(
+      id,
+      user.id,
+      'status',
+      item.status,
+      column.operational_status,
+    )
+  }
+
+  revalidateOperationalPaths()
+
+  return { success: true }
+}

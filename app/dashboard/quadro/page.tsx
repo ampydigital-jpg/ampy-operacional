@@ -111,21 +111,35 @@ export default async function QuadroPage({
     ? String(searchParams.board)
     : String(boards[0]?.id || '')
 
+  let columnsResult: any = {
+    data: [],
+    error: null,
+  }
+
   let demandsResult: any = {
     data: [],
     error: null,
   }
 
   if (activeBoardId) {
-    demandsResult = await supabase
-      .from('work_items')
-      .select(
-        'id,title,description,type,status,priority,destino,board_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at',
-      )
-      .eq('board_id', activeBoardId)
-      .not('status', 'in', '(archived,cancelled)')
-      .order('created_at', { ascending: false })
-      .limit(1000)
+    ;[columnsResult, demandsResult] = await Promise.all([
+      supabase
+        .from('board_columns')
+        .select(
+          'id,board_id,name,color,operational_status,position,created_at,updated_at',
+        )
+        .eq('board_id', activeBoardId)
+        .order('position'),
+      supabase
+        .from('work_items')
+        .select(
+          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at',
+        )
+        .eq('board_id', activeBoardId)
+        .not('status', 'in', '(archived,cancelled)')
+        .order('created_at', { ascending: false })
+        .limit(2000),
+    ])
   }
 
   const clientsById = mapById(clients)
@@ -157,6 +171,9 @@ export default async function QuadroPage({
     boardsResult.error
       ? `Quadros: ${boardsResult.error.message}`
       : null,
+    columnsResult.error
+      ? `Colunas: ${columnsResult.error.message}`
+      : null,
     demandsResult.error
       ? `Demandas: ${demandsResult.error.message}`
       : null,
@@ -175,6 +192,7 @@ export default async function QuadroPage({
     <BoardWorkspace
       boards={boards}
       activeBoardId={activeBoardId}
+      columns={columnsResult.data || []}
       demands={demands}
       clients={clients}
       profiles={profiles}
