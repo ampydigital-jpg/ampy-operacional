@@ -3843,3 +3843,133 @@ tr:hover td,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* =========================================================
+   AMPY-V17-A13 — QUADRO JIRA E CALENDARIO
+   ========================================================= */
+
+.board-context-actions {
+  display: none !important;
+}
+
+.board-jira-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.board-jira-icon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--b1);
+  border-radius: 8px;
+  background: var(--c1);
+  color: var(--t2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.board-jira-icon::-webkit-details-marker {
+  display: none;
+}
+
+.board-jira-icon:hover {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: var(--c2);
+  color: var(--blue);
+}
+
+.board-jira-menu {
+  position: relative;
+}
+
+.board-jira-menu > summary {
+  list-style: none;
+}
+
+.board-jira-menu-popover {
+  position: absolute;
+  z-index: 90;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--b1);
+  border-radius: 10px;
+  background: var(--c1);
+  box-shadow: var(--sh2);
+}
+
+.board-jira-menu-popover > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--t2);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.board-jira-menu-popover > button:hover {
+  background: var(--c2);
+}
+
+.board-jira-menu-popover .danger-option {
+  color: var(--err);
+}
+
+.board-jira-color-title {
+  padding: 9px 10px 5px;
+  color: var(--t4);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.board-jira-color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 30px);
+  gap: 8px;
+  padding: 5px 10px 10px;
+}
+
+.board-jira-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(16, 24, 40, 0.1);
+}
+
+.board-jira-swatch.selected {
+  border-color: var(--c1);
+  outline: 2px solid var(--t1);
+  outline-offset: 1px;
+}
+
+.context-kanban {
+  border-top: 4px solid var(--blue);
+  border-radius: 12px 12px 0 0;
+  padding-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .board-jira-menu-popover {
+    right: -2px;
+  }
+}

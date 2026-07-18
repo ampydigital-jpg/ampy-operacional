@@ -159,7 +159,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
         <select className="fi compact" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}><option value="all">Todos os tipos</option>{EVENT_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
         <select className="fi compact" value={demandFilter} onChange={(e) => setDemandFilter(e.target.value)}><option value="all">Todas demandas</option>{safeDemands.map((demand: any) => <option key={demand.id} value={demand.id}>{demand.title}</option>)}</select>
         <button className={`fb ${showHoliday ? 'on' : ''}`} onClick={() => setShowHoliday(!showHoliday)}>Feriados</button>
-        <button className={`fb ${showOpportunities ? 'on' : ''}`} onClick={() => setShowOpportunities(!showOpportunities)}>Oportunidades</button>
+        <button className={`fb ${showOpportunities ? 'on' : ''}`} onClick={() => setShowOpportunities(!showOpportunities)}>Datas de marketing</button>
       </div>
       {safeLoadErrors.length > 0 && <div className="notice notice-err"><i className="ti ti-alert-circle" /><span>{safeLoadErrors.join(' | ')}</span></div>}
       <div className={isMonth ? 'agenda-layout' : 'agenda-layout range-layout'}>

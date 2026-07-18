@@ -48,6 +48,17 @@ const PRIORITY_LABEL: Record<string, string> = {
   low: 'Baixa',
 }
 
+const BOARD_COLORS = [
+  '#2563EB',
+  '#7C3AED',
+  '#0891B2',
+  '#16A34A',
+  '#CA8A04',
+  '#EA580C',
+  '#DC2626',
+  '#475467',
+] as const
+
 function dateValue(value?: string | null) {
   return value ? String(value).slice(0, 10) : ''
 }
@@ -284,6 +295,75 @@ export default function BoardWorkspace({
     window.location.reload()
   }
 
+  async function saveCompactBoardUpdate(
+    name: string,
+    color: string,
+  ) {
+    if (!activeBoard) return
+
+    const formData = new FormData()
+
+    formData.set('name', name)
+    formData.set(
+      'description',
+      activeBoard.description || '',
+    )
+    formData.set('color', color)
+    formData.set('status', 'active')
+
+    setLoading(true)
+    setError('')
+
+    const result = await updateBoardAction(
+      activeBoard.id,
+      formData,
+    )
+
+    if ('error' in result) {
+      setError(
+        result.error || 'Erro ao atualizar Quadro.',
+      )
+      setLoading(false)
+      return
+    }
+
+    window.location.reload()
+  }
+
+  async function renameBoard() {
+    if (!activeBoard) return
+
+    const nextName = window
+      .prompt(
+        'Novo nome do Quadro:',
+        activeBoard.name,
+      )
+      ?.trim()
+
+    if (
+      !nextName ||
+      nextName === activeBoard.name
+    ) {
+      return
+    }
+
+    await saveCompactBoardUpdate(
+      nextName,
+      activeBoard.color || '#2563EB',
+    )
+  }
+
+  async function changeBoardColor(
+    color: string,
+  ) {
+    if (!activeBoard) return
+
+    await saveCompactBoardUpdate(
+      activeBoard.name,
+      color,
+    )
+  }
+
   async function removeBoard() {
     if (!activeBoard) return
 
@@ -441,9 +521,83 @@ export default function BoardWorkspace({
                 'Sem descrição operacional.'}
             </span>
           </div>
-          <span className="badge bblue">
-            {filtered.length} demanda(s)
-          </span>
+          <div className="board-jira-heading-actions">
+            <span className="badge bblue">
+              {filtered.length} demanda(s)
+            </span>
+
+            {canManage && (
+              <button
+                className="board-jira-icon"
+                type="button"
+                title="Novo Quadro"
+                aria-label="Novo Quadro"
+                onClick={() => {
+                  setError('')
+                  setBoardModal('create')
+                }}
+              >
+                <i className="ti ti-plus" />
+              </button>
+            )}
+
+            {canManage && (
+              <details className="board-jira-menu">
+                <summary
+                  className="board-jira-icon"
+                  title="Opções do Quadro"
+                  aria-label="Opções do Quadro"
+                >
+                  <i className="ti ti-dots" />
+                </summary>
+
+                <div className="board-jira-menu-popover">
+                  <button
+                    type="button"
+                    onClick={renameBoard}
+                  >
+                    <i className="ti ti-edit" />
+                    Renomear
+                  </button>
+
+                  <div className="board-jira-color-title">
+                    Cor da borda
+                  </div>
+
+                  <div className="board-jira-color-grid">
+                    {BOARD_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        className={
+                          activeBoard?.color === color
+                            ? 'board-jira-swatch selected'
+                            : 'board-jira-swatch'
+                        }
+                        type="button"
+                        title={`Usar cor ${color}`}
+                        aria-label={`Usar cor ${color}`}
+                        style={{
+                          backgroundColor: color,
+                        }}
+                        onClick={() =>
+                          changeBoardColor(color)
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    className="danger-option"
+                    type="button"
+                    onClick={removeBoard}
+                  >
+                    <i className="ti ti-trash" />
+                    Excluir Quadro
+                  </button>
+                </div>
+              </details>
+            )}
+          </div>
         </div>
       )}
 
@@ -473,7 +627,13 @@ export default function BoardWorkspace({
           </div>
         </div>
       ) : (
-        <div className="context-kanban">
+        <div
+          className="context-kanban"
+          style={{
+            borderTopColor:
+              activeBoard?.color || '#2563EB',
+          }}
+        >
           {COLUMNS.map(([status, label]) => {
             const columnItems = filtered.filter(
               (item: any) => item.status === status,
