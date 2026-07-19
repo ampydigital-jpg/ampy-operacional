@@ -1,5 +1,7 @@
 'use client'
 
+// AMPY-V17-A19.1 — AGENDA RECORRENTE
+
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { createCalendarEventAction, deleteCalendarEventAction, moveCalendarEventAction, updateCalendarEventAction } from '@/lib/actions'
@@ -7,13 +9,36 @@ import { getCalendarReferences } from '@/lib/calendar/calendar-data'
 import { dateKeyInAmpyTimezone } from '@/lib/date'
 
 const EVENT_TYPES = [
-  ['meeting','Reunião','#3B82F6'],
-  ['capture_external','Captação externa','#F59E0B'],
-  ['capture_studio','Captação estúdio','#F97316'],
-  ['recording','Gravação','#F97316'],
-  ['delivery','Entrega','#22C55E'],
-  ['internal','Interno','#777777'],
-  ['commercial','Comercial','#8B5CF6'],
+  [
+    'reu_a',
+    'REU A',
+    'Reunião de alinhamento',
+    '#6D28D9',
+  ],
+  [
+    'reu_c',
+    'REU C',
+    'Reunião comercial',
+    '#9333EA',
+  ],
+  [
+    'cap_e',
+    'CAP E',
+    'Captação externa',
+    '#C026D3',
+  ],
+  [
+    'cap_s',
+    'CAP S',
+    'Captação em estúdio',
+    '#DB2777',
+  ],
+  [
+    'out_a',
+    'OUT A',
+    'Outro alinhamento',
+    '#64748B',
+  ],
 ] as const
 
 const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
@@ -37,7 +62,46 @@ function navigate(period: string, start: Date, direction: number) {
   const step = period === 'month' ? new Date(start.getFullYear(), start.getMonth()+direction, 1, 12) : addDays(start, direction * (period === 'day' ? 1 : Number(period)))
   return `/dashboard/agenda?period=${period}&start=${ymd(step)}`
 }
-function eventType(type: string) { return EVENT_TYPES.find(([id]) => id === type) || EVENT_TYPES[5] }
+function eventType(
+  type: string,
+) {
+  return (
+    EVENT_TYPES.find(
+      ([id]) => id === type,
+    ) || [
+      type || 'legacy',
+      'LEGADO',
+      'Agenda existente',
+      '#64748B',
+    ]
+  )
+}
+
+function formatDate(
+  value?: string | null,
+) {
+  if (!value) {
+    return 'Sem data'
+  }
+
+  const clean =
+    String(value).slice(0, 10)
+
+  const parts =
+    clean.split('-')
+
+  if (parts.length !== 3) {
+    return clean
+  }
+
+  return (
+    parts[2] +
+    '/' +
+    parts[1] +
+    '/' +
+    parts[0]
+  )
+}
 function minutesFromDate(value: string) { const date = new Date(value); return date.getHours() * 60 + date.getMinutes() }
 function addHour(time: string) {
   const [h, m] = time.split(':').map(Number)
@@ -72,6 +136,63 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const [
+    selectedType,
+    setSelectedType,
+  ] = useState('reu_a')
+
+  const [
+    selectedClientId,
+    setSelectedClientId,
+  ] = useState('')
+
+  const [
+    recurrenceMode,
+    setRecurrenceMode,
+  ] = useState('none')
+
+  const [
+    autoRecurrence,
+    setAutoRecurrence,
+  ] = useState(false)
+
+  const [
+    recurrenceUntil,
+    setRecurrenceUntil,
+  ] = useState('')
+
+  const [
+    seriesScope,
+    setSeriesScope,
+  ] = useState<
+    'single' | 'future'
+  >('single')
+
+  const selectedClient =
+    safeClients.find(
+      (client: any) =>
+        client.id ===
+        selectedClientId,
+    ) || null
+
+  const selectedContractEnd =
+    selectedClient
+      ?.fim_contrato ||
+    selectedClient
+      ?.ended_at ||
+    ''
+
+  const selectedTypeData =
+    eventType(selectedType)
+
+  const automaticTitle =
+    selectedTypeData[1] +
+    ' - ' +
+    (
+      selectedClient?.name ||
+      'AMPY'
+    )
+
   const startDate = new Date(`${start}T12:00:00`)
   const endDate = new Date(`${end}T12:00:00`)
   const refs = getCalendarReferences(startDate.getFullYear()).concat(endDate.getFullYear() === startDate.getFullYear() ? [] : getCalendarReferences(endDate.getFullYear()))
@@ -96,15 +217,82 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const rangeDays = useMemo(() => { const output = []; for (let d = new Date(startDate); d < endDate; d = addDays(d, 1)) output.push(new Date(d)); return output }, [start, end])
   const hours = useMemo(() => Array.from({ length: endHour - startHour }, (_, index) => startHour + index), [])
 
-  function openCreate(date = start, startTime = '09:00') {
+  function openCreate(
+    date = start,
+    startTime = '09:00',
+  ) {
     setEditing(null)
-    setDraft({ date, startTime, endTime: addHour(startTime) })
+
+    setDraft({
+      date,
+      startTime,
+      endTime:
+        addHour(startTime),
+    })
+
+    setSelectedType('reu_a')
+    setSelectedClientId('')
+    setRecurrenceMode('none')
+    setAutoRecurrence(false)
+    setRecurrenceUntil('')
+    setSeriesScope('single')
     setError('')
     setShowModal(true)
   }
-  function openEdit(event: any) {
+
+  function openEdit(
+    event: any,
+  ) {
     setEditing(event)
-    setDraft({ date: dateKeyInAmpyTimezone(event.starts_at), startTime: timeValue(event.starts_at), endTime: timeValue(event.ends_at) })
+
+    setDraft({
+      date:
+        dateKeyInAmpyTimezone(
+          event.starts_at,
+        ),
+
+      startTime:
+        timeValue(
+          event.starts_at,
+        ),
+
+      endTime:
+        timeValue(
+          event.ends_at,
+        ),
+    })
+
+    setSelectedType(
+      EVENT_TYPES.some(
+        ([id]) =>
+          id === event.type,
+      )
+        ? event.type
+        : 'out_a',
+    )
+
+    setSelectedClientId(
+      event.client_id || '',
+    )
+
+    setRecurrenceMode(
+      event.auto_recurrence
+        ? 'every_4_weeks'
+        : 'none',
+    )
+
+    setAutoRecurrence(
+      Boolean(
+        event.auto_recurrence,
+      ),
+    )
+
+    setRecurrenceUntil(
+      event.recurrence_until ||
+      '',
+    )
+
+    setSeriesScope('single')
     setError('')
     setShowModal(true)
   }
@@ -116,9 +304,38 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     setLoading(false); setShowModal(false); window.location.reload()
   }
   async function remove() {
-    if (!editing || !confirm('Excluir esta agenda?')) return
-    const result = await deleteCalendarEventAction(editing.id)
-    if ('error' in result) { setError(result.error || 'Erro inesperado.'); return }
+    if (!editing) {
+      return
+    }
+
+    const message =
+      editing.series_id &&
+      seriesScope === 'future'
+        ? 'Excluir esta agenda e todas as próximas da série?'
+        : 'Excluir esta agenda?'
+
+    if (!confirm(message)) {
+      return
+    }
+
+    const result =
+      await deleteCalendarEventAction(
+        editing.id,
+        seriesScope,
+      )
+
+    if ('error' in result) {
+      setError(
+        result.error ||
+        'Erro inesperado.',
+      )
+
+      return
+    }
+
+    setShowModal(false)
+    window.location.reload()
+  }
     setShowModal(false); window.location.reload()
   }
   async function move(eventId: string, date: string) {
@@ -224,17 +441,566 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     </div>
     {showModal && <div className="modal-ov" onClick={() => setShowModal(false)}><div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
       <div className="modal-head"><div><div className="modal-title">{editing ? 'Editar agenda' : 'Nova agenda'}</div><div className="modal-sub">Agenda cria blocos de execução. O prazo de demanda não é alterado ao mover a agenda.</div></div><button className="mclose" onClick={() => setShowModal(false)}><i className="ti ti-x" /></button></div>
-      <form onSubmit={submit}><div className="modal-body">
-        <div className="fg"><label className="fl">Título *</label><input className="fi" name="title" required defaultValue={editing?.title || ''} /></div>
-        <div className="frow"><div className="fg"><label className="fl">Tipo</label><select className="fi" name="type" defaultValue={editing?.type || 'meeting'}>{EVENT_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div><div className="fg"><label className="fl">Responsável</label><select className="fi" name="responsible_id" defaultValue={editing?.responsible_id || ''}><option value="">Definir depois</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select></div></div>
-        <div className="frow"><div className="fg"><label className="fl">Cliente</label><select className="fi" name="client_id" defaultValue={editing?.client_id || ''}><option value="">Interno — Ampy</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></div><div className="fg"><label className="fl">Demanda vinculada</label><select className="fi" name="work_item_id" defaultValue={editing?.work_item_id || ''}><option value="">Não vincular</option>{safeDemands.map((demand: any) => <option key={demand.id} value={demand.id}>{demand.title}</option>)}</select></div></div>
-        <label className="checkbox-line"><input name="all_day" type="checkbox" defaultChecked={editing?.all_day || false} /> Agenda de dia inteiro</label>
-        <div className="frow"><div className="fg"><label className="fl">Início</label><input className="fi" name="start_date" required type="date" defaultValue={editing?.starts_at ? dateKeyInAmpyTimezone(editing.starts_at) : draft.date} /><input className="fi time-field" name="start_time" type="time" defaultValue={editing?.starts_at ? timeValue(editing.starts_at) : draft.startTime} /></div><div className="fg"><label className="fl">Término</label><input className="fi" name="end_date" required type="date" defaultValue={editing?.ends_at ? dateKeyInAmpyTimezone(editing.ends_at) : draft.date} /><input className="fi time-field" name="end_time" type="time" defaultValue={editing?.ends_at ? timeValue(editing.ends_at) : draft.endTime} /></div></div>
-        <div className="frow"><div className="fg"><label className="fl">Local</label><input className="fi" name="location" defaultValue={editing?.location || ''} placeholder="Local, endereço ou link" /></div><div className="fg"><label className="fl">Recorrência</label><select className="fi" name="recurrence_rule" defaultValue={editing?.recurrence_rule || ''}><option value="">Não recorrente</option><option value="weekly">Semanal</option><option value="monthly">Mensal</option></select></div></div>
-        <div className="fg"><label className="fl">Link Drive</label><input className="fi" name="drive_link" defaultValue={editing?.drive_link || ''} placeholder="https://drive.google.com/..." /></div>
-        <div className="fg"><label className="fl">Observações</label><textarea className="fi" name="notes" defaultValue={editing?.notes || ''} /></div>
-        {error && <div className="notice notice-err"><i className="ti ti-alert-circle" /><span>{error}</span></div>}
-      </div><div className="modal-foot">{editing && <button type="button" className="bsec danger-button" onClick={remove}>Excluir</button>}<button type="button" className="bsec" onClick={() => setShowModal(false)}>Cancelar</button><button className="bpri" disabled={loading}>{loading ? 'Salvando...' : editing ? 'Salvar agenda' : 'Criar agenda'}</button></div></form>
+
+<form onSubmit={submit}>
+              <div className="modal-head">
+                <div>
+                  <h2>
+                    {editing
+                      ? 'Editar agenda'
+                      : 'Nova agenda'}
+                  </h2>
+
+                  <p>
+                    O título é criado automaticamente pelo tipo e pelo cliente.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() =>
+                    setShowModal(false)
+                  }
+                >
+                  <i className="ti ti-x" />
+                </button>
+              </div>
+
+              <div className="modal-body agenda-a19-modal-body">
+                <input
+                  type="hidden"
+                  name="title"
+                  value={automaticTitle}
+                />
+
+                <div className="agenda-a19-title-preview">
+                  <span>
+                    Título automático
+                  </span>
+
+                  <strong>
+                    {automaticTitle}
+                  </strong>
+                </div>
+
+                <div className="frow">
+                  <div className="fg">
+                    <label className="fl">
+                      Tipo *
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="type"
+                      required
+                      value={selectedType}
+                      onChange={(event) =>
+                        setSelectedType(
+                          event.target.value,
+                        )
+                      }
+                    >
+                      {EVENT_TYPES.map(
+                        ([
+                          id,
+                          code,
+                          label,
+                        ]) => (
+                          <option
+                            key={id}
+                            value={id}
+                          >
+                            {code} — {label}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Responsável
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="responsible_id"
+                      defaultValue={
+                        editing
+                          ?.responsible_id ||
+                        ''
+                      }
+                    >
+                      <option value="">
+                        Definir depois
+                      </option>
+
+                      {safeProfiles.map(
+                        (
+                          profile: any,
+                        ) => (
+                          <option
+                            key={
+                              profile.id
+                            }
+                            value={
+                              profile.id
+                            }
+                          >
+                            {
+                              profile.full_name
+                            }
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="frow">
+                  <div className="fg">
+                    <label className="fl">
+                      Cliente
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="client_id"
+                      value={selectedClientId}
+                      onChange={(event) => {
+                        const nextId =
+                          event.target.value
+
+                        setSelectedClientId(
+                          nextId,
+                        )
+
+                        const nextClient =
+                          safeClients.find(
+                            (
+                              client: any,
+                            ) =>
+                              client.id ===
+                              nextId,
+                          )
+
+                        const nextEnd =
+                          nextClient
+                            ?.fim_contrato ||
+                          nextClient
+                            ?.ended_at ||
+                          ''
+
+                        setRecurrenceUntil(
+                          nextEnd,
+                        )
+                      }}
+                    >
+                      <option value="">
+                        Interno — Ampy
+                      </option>
+
+                      {safeClients.map(
+                        (
+                          client: any,
+                        ) => (
+                          <option
+                            key={
+                              client.id
+                            }
+                            value={
+                              client.id
+                            }
+                          >
+                            {client.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Demanda vinculada
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="work_item_id"
+                      defaultValue={
+                        editing
+                          ?.work_item_id ||
+                        ''
+                      }
+                    >
+                      <option value="">
+                        Não vincular
+                      </option>
+
+                      {safeDemands.map(
+                        (
+                          demand: any,
+                        ) => (
+                          <option
+                            key={
+                              demand.id
+                            }
+                            value={
+                              demand.id
+                            }
+                          >
+                            {demand.title}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                <label className="agenda-a19-check">
+                  <input
+                    type="checkbox"
+                    name="all_day"
+                    defaultChecked={
+                      Boolean(
+                        editing?.all_day,
+                      )
+                    }
+                  />
+
+                  <span>
+                    Agenda de dia inteiro
+                  </span>
+                </label>
+
+                <div className="frow">
+                  <div className="fg">
+                    <label className="fl">
+                      Início
+                    </label>
+
+                    <input
+                      className="fi"
+                      type="date"
+                      name="start_date"
+                      required
+                      defaultValue={
+                        draft.date
+                      }
+                    />
+
+                    <input
+                      className="fi"
+                      type="time"
+                      name="start_time"
+                      required
+                      defaultValue={
+                        draft.startTime
+                      }
+                    />
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Término
+                    </label>
+
+                    <input
+                      className="fi"
+                      type="date"
+                      name="end_date"
+                      required
+                      defaultValue={
+                        draft.date
+                      }
+                    />
+
+                    <input
+                      className="fi"
+                      type="time"
+                      name="end_time"
+                      required
+                      defaultValue={
+                        draft.endTime
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="frow">
+                  <div className="fg">
+                    <label className="fl">
+                      Local
+                    </label>
+
+                    <input
+                      className="fi"
+                      name="location"
+                      defaultValue={
+                        editing?.location ||
+                        ''
+                      }
+                      placeholder="Local, endereço ou link"
+                    />
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Recorrência
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="recurrence_mode"
+                      value={recurrenceMode}
+                      disabled={
+                        Boolean(editing)
+                      }
+                      onChange={(event) => {
+                        const next =
+                          event.target.value
+
+                        setRecurrenceMode(
+                          next,
+                        )
+
+                        setAutoRecurrence(
+                          next ===
+                            'every_4_weeks',
+                        )
+                      }}
+                    >
+                      <option value="none">
+                        Não recorrente
+                      </option>
+
+                      <option value="every_4_weeks">
+                        A cada 4 semanas
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                {!editing &&
+                  recurrenceMode ===
+                    'every_4_weeks' && (
+                    <div className="agenda-a19-recurrence-box">
+                      <label className="agenda-a19-check agenda-a19-check-strong">
+                        <input
+                          type="checkbox"
+                          name="auto_recurrence"
+                          checked={
+                            autoRecurrence
+                          }
+                          onChange={(
+                            event,
+                          ) =>
+                            setAutoRecurrence(
+                              event.target
+                                .checked,
+                            )
+                          }
+                        />
+
+                        <span>
+                          Criar as próximas agendas automaticamente
+                        </span>
+                      </label>
+
+                      <p>
+                        Será criada uma ocorrência a cada 28 dias.
+                      </p>
+
+                      {selectedContractEnd ? (
+                        <>
+                          <input
+                            type="hidden"
+                            name="use_contract_end"
+                            value="on"
+                          />
+
+                          <input
+                            type="hidden"
+                            name="recurrence_until"
+                            value={
+                              selectedContractEnd
+                            }
+                          />
+
+                          <div className="agenda-a19-contract-end">
+                            <span>
+                              Termina no fim do contrato
+                            </span>
+
+                            <strong>
+                              {formatDate(
+                                selectedContractEnd,
+                              )}
+                            </strong>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="fg">
+                          <label className="fl">
+                            Repetir até *
+                          </label>
+
+                          <input
+                            className="fi"
+                            type="date"
+                            name="recurrence_until"
+                            required={
+                              autoRecurrence
+                            }
+                            min={
+                              draft.date
+                            }
+                            value={
+                              recurrenceUntil
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setRecurrenceUntil(
+                                event.target
+                                  .value,
+                              )
+                            }
+                          />
+
+                          <small>
+                            Obrigatório para agenda interna ou cliente sem fim de contrato.
+                          </small>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                {editing?.series_id && (
+                  <div className="agenda-a19-series-scope">
+                    <strong>
+                      Esta agenda pertence a uma série
+                    </strong>
+
+                    <label>
+                      <input
+                        type="radio"
+                        name="series_scope"
+                        value="single"
+                        checked={
+                          seriesScope ===
+                          'single'
+                        }
+                        onChange={() =>
+                          setSeriesScope(
+                            'single',
+                          )
+                        }
+                      />
+
+                      Somente esta agenda
+                    </label>
+
+                    <label>
+                      <input
+                        type="radio"
+                        name="series_scope"
+                        value="future"
+                        checked={
+                          seriesScope ===
+                          'future'
+                        }
+                        onChange={() =>
+                          setSeriesScope(
+                            'future',
+                          )
+                        }
+                      />
+
+                      Esta e as próximas
+                    </label>
+                  </div>
+                )}
+
+                <div className="fg">
+                  <label className="fl">
+                    Link Drive
+                  </label>
+
+                  <input
+                    className="fi"
+                    type="url"
+                    name="drive_link"
+                    defaultValue={
+                      editing
+                        ?.drive_link ||
+                      ''
+                    }
+                    placeholder="https://drive.google.com/..."
+                  />
+                </div>
+
+                <div className="fg">
+                  <label className="fl">
+                    Observações
+                  </label>
+
+                  <textarea
+                    className="fi"
+                    name="notes"
+                    rows={4}
+                    defaultValue={
+                      editing?.notes ||
+                      ''
+                    }
+                  />
+                </div>
+
+                {error && (
+                  <div className="notice notice-err">
+                    <i className="ti ti-alert-circle" />
+
+                    <span>
+                      {error}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-foot">
+                {editing && (
+                  <button
+                    type="button"
+                    className="bsec danger-button"
+                    onClick={remove}
+                  >
+                    Excluir
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="bsec"
+                  onClick={() =>
+                    setShowModal(false)
+                  }
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  className="bpri"
+                  disabled={loading}
+                >
+                  {loading
+                    ? 'Salvando...'
+                    : editing
+                      ? 'Salvar agenda'
+                      : 'Criar agenda'}
+                </button>
+              </div>
+            </form>
     </div></div>}
   </div>
 }

@@ -369,128 +369,1282 @@ export async function deleteProjectStepAction(stepId: string, workItemId: string
   return { success: true }
 }
 
-function isoFromForm(formData: FormData, dateKey: string, timeKey: string, allDay: boolean, endOfDay = false) {
-  const date = value(formData, dateKey)
-  const time = value(formData, timeKey) || '09:00'
-  if (!date) return null
-  return ampyLocalDateTimeToIso(date, time, allDay, endOfDay)
+
+/* =========================================================
+   AMPY-V17-A19.1 — AGENDA RECORRENTE
+   ========================================================= */
+
+const AMPY_CALENDAR_TYPES = {
+  reu_a: {
+    code: 'REU A',
+    label:
+      'Reunião de alinhamento',
+    color: '#6D28D9',
+  },
+
+  reu_c: {
+    code: 'REU C',
+    label:
+      'Reunião comercial',
+    color: '#9333EA',
+  },
+
+  cap_e: {
+    code: 'CAP E',
+    label:
+      'Captação externa',
+    color: '#C026D3',
+  },
+
+  cap_s: {
+    code: 'CAP S',
+    label:
+      'Captação em estúdio',
+    color: '#DB2777',
+  },
+
+  out_a: {
+    code: 'OUT A',
+    label:
+      'Outro alinhamento',
+    color: '#64748B',
+  },
+} as const
+
+type AmpyCalendarType =
+  keyof typeof AMPY_CALENDAR_TYPES
+
+function validCalendarType(
+  input: string,
+): AmpyCalendarType {
+  return Object.prototype
+    .hasOwnProperty.call(
+      AMPY_CALENDAR_TYPES,
+      input,
+    )
+      ? input as AmpyCalendarType
+      : 'out_a'
 }
 
-async function findCalendarConflict(supabase: ReturnType<typeof createClient>, responsibleId: string | null, startsAt: string, endsAt: string, ignoreId?: string) {
-  if (!responsibleId) return null
-  let query = supabase
+function isoFromForm(
+  formData: FormData,
+  dateKey: string,
+  timeKey: string,
+  allDay: boolean,
+  endOfDay = false,
+) {
+  const date =
+    value(
+      formData,
+      dateKey,
+    )
+
+  const time =
+    value(
+      formData,
+      timeKey,
+    ) || '09:00'
+
+  if (!date) {
+    return null
+  }
+
+  return ampyLocalDateTimeToIso(
+    date,
+    time,
+    allDay,
+    endOfDay,
+  )
+}
+
+function addDaysToDateKey(
+  input: string,
+  days: number,
+) {
+  const [
+    year,
+    month,
+    day,
+  ] = input
+    .split('-')
+    .map(Number)
+
+  const date =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day,
+      ),
+    )
+
+  date.setUTCDate(
+    date.getUTCDate() +
+      days,
+  )
+
+  return date
+    .toISOString()
+    .slice(0, 10)
+}
+
+function calendarDateKey(
+  value: string,
+) {
+  return new Date(value)
+    .toISOString()
+    .slice(0, 10)
+}
+
+async function calendarClient(
+  supabase:
+    ReturnType<
+      typeof createClient
+    >,
+
+  clientId: string | null,
+) {
+  if (!clientId) {
+    return null
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('clients')
+    .select(
+      'id,name,status,fim_contrato,ended_at',
+    )
+    .eq('id', clientId)
+    .maybeSingle()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data
+}
+
+function calendarAutomaticTitle(
+  type: AmpyCalendarType,
+  clientName?: string | null,
+) {
+  return (
+    AMPY_CALENDAR_TYPES[
+      type
+    ].code +
+    ' - ' +
+    (
+      String(
+        clientName || 'AMPY',
+      ).trim() ||
+      'AMPY'
+    ).toUpperCase()
+  )
+}
+
+async function findCalendarConflict(
+  supabase:
+    ReturnType<
+      typeof createClient
+    >,
+
+  responsibleId:
+    | string
+    | null,
+
+  startsAt: string,
+  endsAt: string,
+
+  ignoreIds:
+    string[] = [],
+) {
+  if (!responsibleId) {
+    return null
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
     .from('calendar_events')
-    .select('id,title,starts_at,ends_at')
-    .eq('responsible_id', responsibleId)
-    .lt('starts_at', endsAt)
-    .gt('ends_at', startsAt)
-    .limit(1)
-  if (ignoreId) query = query.neq('id', ignoreId)
-  const { data, error } = await query
-  if (error) return null
-  return data?.[0] || null
+    .select(
+      'id,title,starts_at,ends_at',
+    )
+    .eq(
+      'responsible_id',
+      responsibleId,
+    )
+    .lt(
+      'starts_at',
+      endsAt,
+    )
+    .gt(
+      'ends_at',
+      startsAt,
+    )
+    .limit(100)
+
+  if (error) {
+    return null
+  }
+
+  const ignored =
+    new Set(ignoreIds)
+
+  return (
+    (
+      data || []
+    ).find(
+      (item: any) =>
+        !ignored.has(
+          item.id,
+        ),
+    ) || null
+  )
 }
 
-export async function createCalendarEventAction(formData: FormData) {
-  const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
-  const title = value(formData, 'title')
-  if (!title) return { error: 'Informe o título da agenda.' }
-  const allDay = value(formData, 'all_day') === 'on'
-  const startsAt = isoFromForm(formData, 'start_date', 'start_time', allDay)
-  const endsAt = isoFromForm(formData, 'end_date', 'end_time', allDay, true)
-  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) return { error: 'Informe início e término válidos.' }
-  const requestedResponsible = nullable(formData, 'responsible_id')
-  const responsibleId = isManager(profile.role) ? requestedResponsible : user.id
-  const linked = await validateCalendarLinks(supabase, nullable(formData, 'client_id'), nullable(formData, 'work_item_id'))
-  if ('error' in linked) return linked
-  const conflict = await findCalendarConflict(supabase, responsibleId, startsAt, endsAt)
-  if (conflict) return { error: `Conflito de agenda com â€œ${conflict.title}â€. Reagende ou altere o responsável.` }
-  const { data, error } = await supabase.from('calendar_events').insert({
+function recurrenceOccurrences(
+  formData: FormData,
+  allDay: boolean,
+  recurrenceUntil: string,
+) {
+  const firstStartDate =
+    value(
+      formData,
+      'start_date',
+    )
+
+  const firstEndDate =
+    value(
+      formData,
+      'end_date',
+    )
+
+  const startTime =
+    value(
+      formData,
+      'start_time',
+    ) || '09:00'
+
+  const endTime =
+    value(
+      formData,
+      'end_time',
+    ) || '10:00'
+
+  const output: Array<{
+    startsAt: string
+    endsAt: string
+    sequence: number
+  }> = []
+
+  for (
+    let sequence = 0;
+    sequence < 80;
+    sequence += 1
+  ) {
+    const offset =
+      sequence * 28
+
+    const startDate =
+      addDaysToDateKey(
+        firstStartDate,
+        offset,
+      )
+
+    if (
+      startDate >
+      recurrenceUntil
+    ) {
+      break
+    }
+
+    const endDate =
+      addDaysToDateKey(
+        firstEndDate,
+        offset,
+      )
+
+    const startsAt =
+      ampyLocalDateTimeToIso(
+        startDate,
+        startTime,
+        allDay,
+        false,
+      )
+
+    const endsAt =
+      ampyLocalDateTimeToIso(
+        endDate,
+        endTime,
+        allDay,
+        true,
+      )
+
+    output.push({
+      startsAt,
+      endsAt,
+      sequence,
+    })
+  }
+
+  return output
+}
+
+export async function createCalendarEventAction(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const allDay =
+    value(
+      formData,
+      'all_day',
+    ) === 'on'
+
+  const startsAt =
+    isoFromForm(
+      formData,
+      'start_date',
+      'start_time',
+      allDay,
+    )
+
+  const endsAt =
+    isoFromForm(
+      formData,
+      'end_date',
+      'end_time',
+      allDay,
+      true,
+    )
+
+  if (
+    !startsAt ||
+    !endsAt ||
+    new Date(endsAt) <=
+      new Date(startsAt)
+  ) {
+    return {
+      error:
+        'Informe início e término válidos.',
+    }
+  }
+
+  const requestedResponsible =
+    nullable(
+      formData,
+      'responsible_id',
+    )
+
+  const responsibleId =
+    isManager(profile.role)
+      ? requestedResponsible
+      : user.id
+
+  const linked =
+    await validateCalendarLinks(
+      supabase,
+      nullable(
+        formData,
+        'client_id',
+      ),
+      nullable(
+        formData,
+        'work_item_id',
+      ),
+    )
+
+  if ('error' in linked) {
+    return linked
+  }
+
+  const client =
+    await calendarClient(
+      supabase,
+      linked.clientId,
+    )
+
+  const type =
+    validCalendarType(
+      value(
+        formData,
+        'type',
+      ),
+    )
+
+  const title =
+    calendarAutomaticTitle(
+      type,
+      client?.name,
+    )
+
+  const recurrenceMode =
+    value(
+      formData,
+      'recurrence_mode',
+    )
+
+  const autoRecurrence =
+    recurrenceMode ===
+      'every_4_weeks' &&
+    value(
+      formData,
+      'auto_recurrence',
+    ) === 'on'
+
+  let recurrenceUntil:
+    | string
+    | null = null
+
+  if (autoRecurrence) {
+    const useContractEnd =
+      value(
+        formData,
+        'use_contract_end',
+      ) === 'on'
+
+    recurrenceUntil =
+      useContractEnd
+        ? (
+            client
+              ?.fim_contrato ||
+            client
+              ?.ended_at ||
+            null
+          )
+        : nullable(
+            formData,
+            'recurrence_until',
+          )
+
+    if (!recurrenceUntil) {
+      return {
+        error:
+          'Informe até quando a agenda deve se repetir.',
+      }
+    }
+
+    if (
+      recurrenceUntil <
+      value(
+        formData,
+        'start_date',
+      )
+    ) {
+      return {
+        error:
+          'A data final da recorrência não pode ser anterior ao início.',
+      }
+    }
+  }
+
+  const occurrences =
+    autoRecurrence
+      ? recurrenceOccurrences(
+          formData,
+          allDay,
+          recurrenceUntil as string,
+        )
+      : [
+          {
+            startsAt,
+            endsAt,
+            sequence: 0,
+          },
+        ]
+
+  if (
+    occurrences.length === 0
+  ) {
+    return {
+      error:
+        'Nenhuma ocorrência válida foi gerada.',
+    }
+  }
+
+  for (
+    const occurrence
+    of occurrences
+  ) {
+    const conflict =
+      await findCalendarConflict(
+        supabase,
+        responsibleId,
+        occurrence.startsAt,
+        occurrence.endsAt,
+      )
+
+    if (conflict) {
+      return {
+        error:
+          'Conflito de agenda com “' +
+          conflict.title +
+          '” em ' +
+          new Date(
+            occurrence.startsAt,
+          ).toLocaleDateString(
+            'pt-BR',
+          ) +
+          '. Reagende ou altere o responsável.',
+      }
+    }
+  }
+
+  const seriesId =
+    autoRecurrence
+      ? globalThis.crypto
+          .randomUUID()
+      : null
+
+  const payload =
+    occurrences.map(
+      (occurrence) => ({
+        title,
+        type,
+
+        client_id:
+          linked.clientId,
+
+        work_item_id:
+          nullable(
+            formData,
+            'work_item_id',
+          ),
+
+        responsible_id:
+          responsibleId,
+
+        starts_at:
+          occurrence.startsAt,
+
+        ends_at:
+          occurrence.endsAt,
+
+        all_day: allDay,
+
+        color:
+          AMPY_CALENDAR_TYPES[
+            type
+          ].color,
+
+        recurrence_rule:
+          autoRecurrence
+            ? 'FREQ=WEEKLY;INTERVAL=4'
+            : null,
+
+        series_id:
+          seriesId,
+
+        series_sequence:
+          occurrence.sequence,
+
+        recurrence_until:
+          recurrenceUntil,
+
+        auto_recurrence:
+          autoRecurrence,
+
+        location:
+          nullable(
+            formData,
+            'location',
+          ),
+
+        notes:
+          nullable(
+            formData,
+            'notes',
+          ),
+
+        confirmed: false,
+
+        drive_link:
+          nullable(
+            formData,
+            'drive_link',
+          ),
+
+        created_by:
+          user.id,
+      }),
+    )
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('calendar_events')
+    .insert(payload)
+    .select(
+      'id,work_item_id',
+    )
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  const workItemId =
+    nullable(
+      formData,
+      'work_item_id',
+    )
+
+  if (workItemId) {
+    await addHistory(
+      workItemId,
+      user.id,
+      autoRecurrence
+        ? 'calendar_series_created'
+        : 'calendar_event_created',
+      null,
+      autoRecurrence
+        ? title +
+          ' (' +
+          String(
+            data?.length || 0,
+          ) +
+          ' ocorrências)'
+        : title,
+    )
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    occurrences:
+      data?.length || 0,
+  }
+}
+
+export async function updateCalendarEventAction(
+  id: string,
+  formData: FormData,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const {
+    data: existing,
+  } = await supabase
+    .from('calendar_events')
+    .select(
+      'id,responsible_id,created_by,work_item_id,title,starts_at,ends_at,series_id',
+    )
+    .eq('id', id)
+    .single()
+
+  if (
+    !existing ||
+    (
+      !isManager(
+        profile.role,
+      ) &&
+      existing.responsible_id !==
+        user.id &&
+      existing.created_by !==
+        user.id
+    )
+  ) {
+    return forbidden(
+      'Você não possui permissão para alterar esta agenda.',
+    )
+  }
+
+  const allDay =
+    value(
+      formData,
+      'all_day',
+    ) === 'on'
+
+  const startsAt =
+    isoFromForm(
+      formData,
+      'start_date',
+      'start_time',
+      allDay,
+    )
+
+  const endsAt =
+    isoFromForm(
+      formData,
+      'end_date',
+      'end_time',
+      allDay,
+      true,
+    )
+
+  if (
+    !startsAt ||
+    !endsAt ||
+    new Date(endsAt) <=
+      new Date(startsAt)
+  ) {
+    return {
+      error:
+        'Informe início e término válidos.',
+    }
+  }
+
+  const responsibleId =
+    isManager(
+      profile.role,
+    )
+      ? nullable(
+          formData,
+          'responsible_id',
+        )
+      : existing.responsible_id
+
+  const linked =
+    await validateCalendarLinks(
+      supabase,
+      nullable(
+        formData,
+        'client_id',
+      ),
+      nullable(
+        formData,
+        'work_item_id',
+      ),
+    )
+
+  if ('error' in linked) {
+    return linked
+  }
+
+  const client =
+    await calendarClient(
+      supabase,
+      linked.clientId,
+    )
+
+  const type =
+    validCalendarType(
+      value(
+        formData,
+        'type',
+      ),
+    )
+
+  const title =
+    calendarAutomaticTitle(
+      type,
+      client?.name,
+    )
+
+  const scope =
+    value(
+      formData,
+      'series_scope',
+    ) === 'future'
+      ? 'future'
+      : 'single'
+
+  const commonPayload = {
     title,
-    type: value(formData, 'type') || 'internal',
-    client_id: linked.clientId,
-    work_item_id: nullable(formData, 'work_item_id'),
-    responsible_id: responsibleId,
-    starts_at: startsAt,
-    ends_at: endsAt,
-    all_day: allDay,
-    color: nullable(formData, 'color'),
-    recurrence_rule: nullable(formData, 'recurrence_rule'),
-    location: nullable(formData, 'location'),
-    notes: nullable(formData, 'notes'),
-    confirmed: false,
-    drive_link: nullable(formData, 'drive_link'),
-    created_by: user.id,
-  }).select('id, work_item_id').single()
-  if (error) return { error: error.message }
-  if (data?.work_item_id) await addHistory(data.work_item_id, user.id, 'calendar_event_created', null, title)
+    type,
+
+    client_id:
+      linked.clientId,
+
+    work_item_id:
+      nullable(
+        formData,
+        'work_item_id',
+      ),
+
+    responsible_id:
+      responsibleId,
+
+    all_day:
+      allDay,
+
+    color:
+      AMPY_CALENDAR_TYPES[
+        type
+      ].color,
+
+    location:
+      nullable(
+        formData,
+        'location',
+      ),
+
+    notes:
+      nullable(
+        formData,
+        'notes',
+      ),
+
+    drive_link:
+      nullable(
+        formData,
+        'drive_link',
+      ),
+  }
+
+  if (
+    scope === 'future' &&
+    existing.series_id
+  ) {
+    const {
+      data: futureRows,
+      error: futureError,
+    } = await supabase
+      .from('calendar_events')
+      .select(
+        'id,starts_at,ends_at',
+      )
+      .eq(
+        'series_id',
+        existing.series_id,
+      )
+      .gte(
+        'starts_at',
+        existing.starts_at,
+      )
+      .order('starts_at')
+
+    if (futureError) {
+      return {
+        error:
+          futureError.message,
+      }
+    }
+
+    const rows =
+      futureRows || []
+
+    const ignoreIds =
+      rows.map(
+        (row: any) =>
+          row.id,
+      )
+
+    const delta =
+      new Date(
+        startsAt,
+      ).getTime() -
+      new Date(
+        existing.starts_at,
+      ).getTime()
+
+    const duration =
+      new Date(
+        endsAt,
+      ).getTime() -
+      new Date(
+        startsAt,
+      ).getTime()
+
+    const updates =
+      rows.map(
+        (
+          row: any,
+        ) => {
+          const nextStart =
+            new Date(
+              new Date(
+                row.starts_at,
+              ).getTime() +
+                delta,
+            )
+
+          const nextEnd =
+            new Date(
+              nextStart.getTime() +
+                duration,
+            )
+
+          return {
+            id: row.id,
+
+            ...commonPayload,
+
+            starts_at:
+              nextStart
+                .toISOString(),
+
+            ends_at:
+              nextEnd
+                .toISOString(),
+          }
+        },
+      )
+
+    for (
+      const update
+      of updates
+    ) {
+      const conflict =
+        await findCalendarConflict(
+          supabase,
+          responsibleId,
+          update.starts_at,
+          update.ends_at,
+          ignoreIds,
+        )
+
+      if (conflict) {
+        return {
+          error:
+            'Conflito de agenda com “' +
+            conflict.title +
+            '”. Nenhuma ocorrência foi alterada.',
+        }
+      }
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from('calendar_events')
+      .upsert(
+        updates,
+        {
+          onConflict: 'id',
+        },
+      )
+
+    if (error) {
+      return {
+        error: error.message,
+      }
+    }
+  } else {
+    const conflict =
+      await findCalendarConflict(
+        supabase,
+        responsibleId,
+        startsAt,
+        endsAt,
+        [id],
+      )
+
+    if (conflict) {
+      return {
+        error:
+          'Conflito de agenda com “' +
+          conflict.title +
+          '”. Reagende ou altere o responsável.',
+      }
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from('calendar_events')
+      .update({
+        ...commonPayload,
+
+        starts_at:
+          startsAt,
+
+        ends_at:
+          endsAt,
+      })
+      .eq('id', id)
+
+    if (error) {
+      return {
+        error: error.message,
+      }
+    }
+  }
+
+  const nextWorkItemId =
+    nullable(
+      formData,
+      'work_item_id',
+    ) ||
+    existing.work_item_id
+
+  if (nextWorkItemId) {
+    await addHistory(
+      nextWorkItemId,
+      user.id,
+      scope === 'future'
+        ? 'calendar_series_updated'
+        : 'calendar_event_updated',
+      existing.title,
+      title,
+    )
+  }
+
   revalidateOperationalPaths()
-  return { success: true }
+
+  return {
+    success: true,
+  }
 }
 
-export async function updateCalendarEventAction(id: string, formData: FormData) {
-  const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
-  const { data: existing } = await supabase.from('calendar_events').select('responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!existing || (!isManager(profile.role) && existing.responsible_id !== user.id && existing.created_by !== user.id)) return forbidden('Você não possui permissão para alterar esta agenda.')
-  const allDay = value(formData, 'all_day') === 'on'
-  const startsAt = isoFromForm(formData, 'start_date', 'start_time', allDay)
-  const endsAt = isoFromForm(formData, 'end_date', 'end_time', allDay, true)
-  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) return { error: 'Informe início e término válidos.' }
-  const responsibleId = isManager(profile.role) ? nullable(formData, 'responsible_id') : existing.responsible_id
-  const linked = await validateCalendarLinks(supabase, nullable(formData, 'client_id'), nullable(formData, 'work_item_id'))
-  if ('error' in linked) return linked
-  const conflict = await findCalendarConflict(supabase, responsibleId, startsAt, endsAt, id)
-  if (conflict) return { error: `Conflito de agenda com â€œ${conflict.title}â€. Reagende ou altere o responsável.` }
-  const { error } = await supabase.from('calendar_events').update({
-    title: value(formData, 'title'), type: value(formData, 'type') || 'internal',
-    client_id: linked.clientId, work_item_id: nullable(formData, 'work_item_id'),
-    responsible_id: responsibleId,
-    starts_at: startsAt, ends_at: endsAt, all_day: allDay, color: nullable(formData, 'color'),
-    recurrence_rule: nullable(formData, 'recurrence_rule'), location: nullable(formData, 'location'), notes: nullable(formData, 'notes'),
-    drive_link: nullable(formData, 'drive_link'),
-  }).eq('id', id)
-  if (error) return { error: error.message }
-  const nextWorkItemId = nullable(formData, 'work_item_id') || existing.work_item_id
-  if (nextWorkItemId) await addHistory(nextWorkItemId, user.id, 'calendar_event_updated', existing.title, value(formData, 'title'))
+export async function moveCalendarEventAction(
+  id: string,
+  nextDate: string,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const {
+    data: event,
+  } = await supabase
+    .from('calendar_events')
+    .select(
+      'starts_at,ends_at,responsible_id,created_by,work_item_id,title',
+    )
+    .eq('id', id)
+    .single()
+
+  if (
+    !event ||
+    (
+      !isManager(
+        profile.role,
+      ) &&
+      event.responsible_id !==
+        user.id &&
+      event.created_by !==
+        user.id
+    )
+  ) {
+    return forbidden(
+      'Você não possui permissão para mover esta agenda.',
+    )
+  }
+
+  const start =
+    new Date(
+      event.starts_at,
+    )
+
+  const end =
+    new Date(
+      event.ends_at,
+    )
+
+  const duration =
+    end.getTime() -
+    start.getTime()
+
+  const [
+    year,
+    month,
+    day,
+  ] = nextDate
+    .split('-')
+    .map(Number)
+
+  start.setFullYear(
+    year,
+    month - 1,
+    day,
+  )
+
+  const nextEnd =
+    new Date(
+      start.getTime() +
+        duration,
+    )
+
+  const conflict =
+    await findCalendarConflict(
+      supabase,
+      event.responsible_id,
+      start.toISOString(),
+      nextEnd.toISOString(),
+      [id],
+    )
+
+  if (conflict) {
+    return {
+      error:
+        'Conflito de agenda com “' +
+        conflict.title +
+        '”. Reagende ou altere o responsável.',
+    }
+  }
+
+  const {
+    error,
+  } = await supabase
+    .from('calendar_events')
+    .update({
+      starts_at:
+        start.toISOString(),
+
+      ends_at:
+        nextEnd.toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  if (
+    event.work_item_id
+  ) {
+    await addHistory(
+      event.work_item_id,
+      user.id,
+      'calendar_event_moved',
+      event.title,
+      nextDate,
+    )
+  }
+
   revalidateOperationalPaths()
-  return { success: true }
+
+  return {
+    success: true,
+  }
 }
 
-export async function moveCalendarEventAction(id: string, nextDate: string) {
-  const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
-  const { data: event } = await supabase.from('calendar_events').select('starts_at, ends_at, responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para mover esta agenda.')
-  const start = new Date(event.starts_at)
-  const end = new Date(event.ends_at)
-  const duration = end.getTime() - start.getTime()
-  const [year, month, day] = nextDate.split('-').map(Number)
-  start.setFullYear(year, month - 1, day)
-  const nextEnd = new Date(start.getTime() + duration)
-  const conflict = await findCalendarConflict(supabase, event.responsible_id, start.toISOString(), nextEnd.toISOString(), id)
-  if (conflict) return { error: `Conflito de agenda com â€œ${conflict.title}â€. Reagende ou altere o responsável.` }
-  const { error } = await supabase.from('calendar_events').update({ starts_at: start.toISOString(), ends_at: nextEnd.toISOString() }).eq('id', id)
-  if (error) return { error: error.message }
-  if (event.work_item_id) await addHistory(event.work_item_id, user.id, 'calendar_event_moved', event.title, nextDate)
+export async function deleteCalendarEventAction(
+  id: string,
+  scope:
+    | 'single'
+    | 'future' = 'single',
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const {
+    data: event,
+  } = await supabase
+    .from('calendar_events')
+    .select(
+      'id,responsible_id,created_by,work_item_id,title,starts_at,series_id',
+    )
+    .eq('id', id)
+    .single()
+
+  if (
+    !event ||
+    (
+      !isManager(
+        profile.role,
+      ) &&
+      event.responsible_id !==
+        user.id &&
+      event.created_by !==
+        user.id
+    )
+  ) {
+    return forbidden(
+      'Você não possui permissão para excluir esta agenda.',
+    )
+  }
+
+  let query =
+    supabase
+      .from('calendar_events')
+      .delete()
+
+  if (
+    scope === 'future' &&
+    event.series_id
+  ) {
+    query =
+      query
+        .eq(
+          'series_id',
+          event.series_id,
+        )
+        .gte(
+          'starts_at',
+          event.starts_at,
+        )
+  } else {
+    query =
+      query.eq(
+        'id',
+        id,
+      )
+  }
+
+  const {
+    error,
+  } = await query
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  if (
+    event.work_item_id
+  ) {
+    await addHistory(
+      event.work_item_id,
+      user.id,
+      scope === 'future'
+        ? 'calendar_series_deleted'
+        : 'calendar_event_deleted',
+      event.title,
+      null,
+    )
+  }
+
   revalidateOperationalPaths()
-  return { success: true }
+
+  return {
+    success: true,
+  }
 }
 
-export async function deleteCalendarEventAction(id: string) {
-  const { supabase, user, profile } = await getCurrentProfile()
-  if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' }
-  const { data: event } = await supabase.from('calendar_events').select('responsible_id, created_by, work_item_id, title').eq('id', id).single()
-  if (!event || (!isManager(profile.role) && event.responsible_id !== user.id && event.created_by !== user.id)) return forbidden('Você não possui permissão para excluir esta agenda.')
-  const { error } = await supabase.from('calendar_events').delete().eq('id', id)
-  if (error) return { error: error.message }
-  if (event.work_item_id) await addHistory(event.work_item_id, user.id, 'calendar_event_deleted', event.title, null)
-  revalidateOperationalPaths()
-  return { success: true }
-}
 
-export async function inviteMemberAction(formData: FormData) {
+export async function inviteMemberActionexport async function inviteMemberAction(formData: FormData) {
   const { profile } = await getCurrentProfile()
   if (!profile || !isAdmin(profile.role)) return forbidden('Somente Administração ou Direção podem criar acessos.')
   const email = value(formData, 'email')
