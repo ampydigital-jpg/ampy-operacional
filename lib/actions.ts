@@ -2509,15 +2509,29 @@ export async function createBoardPeriodDemandAction(
       formData,
     )
 
-  if (!('data' in validation)) {
-    return validation
+  // AMPY-V17-A15.2B — PAYLOAD VALIDADO
+  const validatedData =
+    'data' in validation &&
+    validation.data
+      ? validation.data
+      : null
+
+  if (!validatedData) {
+    return {
+      error:
+        'error' in validation &&
+        typeof validation.error === 'string' &&
+        validation.error
+          ? validation.error
+          : 'Não foi possível validar a demanda.',
+    }
   }
 
   const { data, error } =
     await supabase
       .from('work_items')
       .insert({
-        ...validation.data,
+        ...validatedData,
         created_by: user.id,
       })
       .select('id,title')
@@ -2570,14 +2584,28 @@ export async function updateBoardPeriodDemandAction(
       formData,
     )
 
-  if (!('data' in validation)) {
-    return validation
+  // AMPY-V17-A15.2B — PAYLOAD VALIDADO
+  const validatedData =
+    'data' in validation &&
+    validation.data
+      ? validation.data
+      : null
+
+  if (!validatedData) {
+    return {
+      error:
+        'error' in validation &&
+        typeof validation.error === 'string' &&
+        validation.error
+          ? validation.error
+          : 'Não foi possível validar a demanda.',
+    }
   }
 
   const { error } =
     await supabase
       .from('work_items')
-      .update(validation.data)
+      .update(validatedData)
       .eq('id', id)
 
   if (error) {
@@ -2588,27 +2616,27 @@ export async function updateBoardPeriodDemandAction(
 
   if (
     item.title !==
-    validation.data.title
+    validatedData.title
   ) {
     await addHistory(
       id,
       user.id,
       'title',
       item.title,
-      validation.data.title,
+      validatedData.title,
     )
   }
 
   if (
     item.status !==
-    validation.data.status
+    validatedData.status
   ) {
     await addHistory(
       id,
       user.id,
       'status',
       item.status,
-      validation.data.status,
+      validatedData.status,
     )
   }
 
