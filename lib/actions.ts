@@ -2436,8 +2436,15 @@ async function validateBoardPeriodDemand(
       clientServiceId,
     )
 
-  if ('error' in linksValidation) {
-    return linksValidation
+  // AMPY-V17-A15.1 — CORREÇÃO DE NARROWING TYPESCRIPT
+  if (
+    'error' in linksValidation &&
+    typeof linksValidation.error === 'string' &&
+    linksValidation.error
+  ) {
+    return {
+      error: linksValidation.error,
+    } as const
   }
 
   const notes =
@@ -2502,7 +2509,7 @@ export async function createBoardPeriodDemandAction(
       formData,
     )
 
-  if ('error' in validation) {
+  if (!('data' in validation)) {
     return validation
   }
 
@@ -2563,7 +2570,7 @@ export async function updateBoardPeriodDemandAction(
       formData,
     )
 
-  if ('error' in validation) {
+  if (!('data' in validation)) {
     return validation
   }
 
