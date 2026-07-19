@@ -48,31 +48,7 @@ export default async function DemandasPage() {
   ] = await Promise.all([
     supabase
       .from('work_items')
-      .select(
-        [
-          'id',
-          'title',
-          'description',
-          'type',
-          'origin',
-          'destino',
-          'status',
-          'priority',
-          'client_id',
-          'client_service_id',
-          'responsible_id',
-          'created_by',
-          'board_id',
-          'board_column_id',
-          'internal_deadline',
-          'final_deadline',
-          'drive_link',
-          'notes',
-          'created_at',
-          'updated_at',
-          'closed_at',
-        ].join(','),
-      )
+      .select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at')
       .not(
         'status',
         'in',
@@ -102,14 +78,7 @@ export default async function DemandasPage() {
 
     supabase
       .from('client_services')
-      .select(
-        [
-          'id',
-          'client_id',
-          'service_catalog_id',
-          'status',
-        ].join(','),
-      )
+      .select('id,client_id,service_catalog_id,status')
       .eq('status', 'active'),
 
     supabase
@@ -128,16 +97,7 @@ export default async function DemandasPage() {
 
     supabase
       .from('board_columns')
-      .select(
-        [
-          'id',
-          'board_id',
-          'name',
-          'color',
-          'operational_status',
-          'position',
-        ].join(','),
-      )
+      .select('id,board_id,name,color,operational_status,position')
       .order(
         'position',
         { ascending: true },

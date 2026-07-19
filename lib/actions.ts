@@ -2875,14 +2875,7 @@ export async function createDemandFromDemandasAction(
 
       supabase
         .from('board_columns')
-        .select(
-          [
-            'id',
-            'board_id',
-            'name',
-            'operational_status',
-          ].join(','),
-        )
+        .select('id,board_id,name,operational_status')
         .eq(
           'id',
           boardColumnId,
