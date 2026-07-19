@@ -1,4 +1,3 @@
-
 import {
   unstable_noStore as noStore,
 } from 'next/cache'
@@ -42,6 +41,7 @@ export default async function ProjetosPage() {
     clientsResult,
     profilesResult,
     stepsResult,
+    stepStatusesResult,
     clientServicesResult,
     servicesResult,
   ] = await Promise.all([
@@ -84,8 +84,18 @@ export default async function ProjetosPage() {
     supabase
       .from('project_steps')
       .select(
-        'id,work_item_id,title,status,start_date,end_date,responsible_id,position,notes',
+        'id,work_item_id,title,status,status_id,start_date,end_date,responsible_id,position,notes',
       )
+      .order('position'),
+
+    supabase
+      .from(
+        'project_step_statuses',
+      )
+      .select(
+        'id,work_item_id,name,color,behavior,position,is_archived,created_at,updated_at',
+      )
+      .eq('is_archived', false)
       .order('position'),
 
     supabase
@@ -111,6 +121,9 @@ export default async function ProjetosPage() {
   const steps =
     stepsResult.data || []
 
+  const stepStatuses =
+    stepStatusesResult.data || []
+
   const services =
     servicesResult.data || []
 
@@ -125,6 +138,9 @@ export default async function ProjetosPage() {
 
   const servicesById =
     mapById(services)
+
+  const statusesById =
+    mapById(stepStatuses)
 
   const clientServices =
     clientServicesRaw.map(
@@ -147,6 +163,13 @@ export default async function ProjetosPage() {
     (
       demandsResult.data || []
     ).map((item: any) => {
+      const itemStatuses =
+        stepStatuses.filter(
+          (status: any) =>
+            status.work_item_id ===
+            item.id,
+        )
+
       const itemSteps =
         steps.filter(
           (step: any) =>
@@ -178,6 +201,9 @@ export default async function ProjetosPage() {
               ) || null
             : null,
 
+        step_statuses:
+          itemStatuses,
+
         steps:
           itemSteps.map(
             (step: any) => ({
@@ -187,6 +213,13 @@ export default async function ProjetosPage() {
                 step.responsible_id
                   ? profilesById.get(
                       step.responsible_id,
+                    ) || null
+                  : null,
+
+              status_definition:
+                step.status_id
+                  ? statusesById.get(
+                      step.status_id,
                     ) || null
                   : null,
             }),
@@ -213,6 +246,11 @@ export default async function ProjetosPage() {
     stepsResult.error
       ? 'Cronogramas: ' +
         stepsResult.error.message
+      : null,
+
+    stepStatusesResult.error
+      ? 'Status das etapas: ' +
+        stepStatusesResult.error.message
       : null,
 
     clientServicesResult.error

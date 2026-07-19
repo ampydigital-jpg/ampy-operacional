@@ -3621,3 +3621,1595 @@ export async function updateStandardProjectAction(
     success: true,
   }
 }
+
+/* =========================================================
+   AMPY-V17-A18 — STATUS PERSONALIZADOS POR PROJETO
+   ========================================================= */
+
+const PROJECT_STEP_BEHAVIORS = [
+  'pending',
+  'active',
+  'blocked',
+  'done',
+] as const
+
+type ProjectStepBehavior =
+  (typeof PROJECT_STEP_BEHAVIORS)[number]
+
+function normalizeProjectStepColor(
+  input: string,
+) {
+  const color =
+    String(input || '')
+      .trim()
+      .toUpperCase()
+
+  return /^#[0-9A-F]{6}$/.test(color)
+    ? color
+    : '#64748B'
+}
+
+function normalizeProjectStepBehavior(
+  input: string,
+):
+  | ProjectStepBehavior
+  | null {
+  return PROJECT_STEP_BEHAVIORS.includes(
+    input as ProjectStepBehavior,
+  )
+    ? (
+        input as
+          ProjectStepBehavior
+      )
+    : null
+}
+
+function projectStepBehaviorToLegacyStatus(
+  behavior: ProjectStepBehavior,
+) {
+  if (behavior === 'active') {
+    return 'in_progress'
+  }
+
+  if (behavior === 'blocked') {
+    return 'blocked'
+  }
+
+  if (behavior === 'done') {
+    return 'done'
+  }
+
+  return 'not_started'
+}
+
+async function getProjectStepStatusDefinition(
+  supabase: any,
+  statusId: string,
+  projectId: string,
+) {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('project_step_statuses')
+    .select(
+      'id,work_item_id,name,color,behavior,position,is_archived',
+    )
+    .eq('id', statusId)
+    .eq('work_item_id', projectId)
+    .eq('is_archived', false)
+    .maybeSingle()
+
+  if (
+    error ||
+    !data
+  ) {
+    return {
+      error:
+        'Status da etapa inválido para este projeto.',
+    } as const
+  }
+
+  const behavior =
+    normalizeProjectStepBehavior(
+      data.behavior,
+    )
+
+  if (!behavior) {
+    return {
+      error:
+        'Comportamento do status inválido.',
+    } as const
+  }
+
+  return {
+    data: {
+      ...data,
+      behavior,
+    },
+  } as const
+}
+
+async function syncProjectStatusFromSteps(
+  supabase: any,
+  projectId: string,
+) {
+  const [
+    stepsResult,
+    statusesResult,
+  ] = await Promise.all([
+    supabase
+      .from('project_steps')
+      .select('id,status_id,status')
+      .eq(
+        'work_item_id',
+        projectId,
+      ),
+
+    supabase
+      .from(
+        'project_step_statuses',
+      )
+      .select('id,behavior')
+      .eq(
+        'work_item_id',
+        projectId,
+      )
+      .eq(
+        'is_archived',
+        false,
+      ),
+  ])
+
+  if (stepsResult.error) {
+    return {
+      error:
+        stepsResult.error.message,
+    } as const
+  }
+
+  if (statusesResult.error) {
+    return {
+      error:
+        statusesResult.error.message,
+    } as const
+  }
+
+  const statusesById =
+    new Map(
+      (
+        statusesResult.data || []
+      ).map((status: any) => [
+        status.id,
+        status.behavior,
+      ]),
+    )
+
+  const steps =
+    stepsResult.data || []
+
+  const behaviors =
+    steps.map((step: any) => {
+      const byDefinition =
+        step.status_id
+          ? statusesById.get(
+              step.status_id,
+            )
+          : null
+
+      if (
+        PROJECT_STEP_BEHAVIORS.includes(
+          byDefinition as
+            ProjectStepBehavior,
+        )
+      ) {
+        return (
+          byDefinition as
+            ProjectStepBehavior
+        )
+      }
+
+      if (
+        [
+          'done',
+          'delivered',
+          'approved',
+        ].includes(
+          String(
+            step.status || '',
+          ),
+        )
+      ) {
+        return 'done' as const
+      }
+
+      if (
+        [
+          'blocked',
+          'waiting',
+          'awaiting_approval',
+        ].includes(
+          String(
+            step.status || '',
+          ),
+        )
+      ) {
+        return 'blocked' as const
+      }
+
+      if (
+        [
+          'in_progress',
+          'in_review',
+          'scheduled',
+        ].includes(
+          String(
+            step.status || '',
+          ),
+        )
+      ) {
+        return 'active' as const
+      }
+
+      return 'pending' as const
+    })
+
+  let nextStatus =
+    'not_started'
+
+  if (
+    behaviors.length > 0 &&
+    behaviors.every(
+      (behavior) =>
+        behavior === 'done',
+    )
+  ) {
+    nextStatus = 'done'
+  } else if (
+    behaviors.some(
+      (behavior) =>
+        behavior === 'blocked',
+    )
+  ) {
+    nextStatus = 'blocked'
+  } else if (
+    behaviors.some(
+      (behavior) =>
+        behavior === 'active',
+    )
+  ) {
+    nextStatus =
+      'in_progress'
+  }
+
+  const closed =
+    nextStatus === 'done'
+
+  const { error } =
+    await supabase
+      .from('work_items')
+      .update({
+        status: nextStatus,
+
+        closed_at:
+          closed
+            ? new Date()
+                .toISOString()
+            : null,
+      })
+      .eq('id', projectId)
+
+  if (error) {
+    return {
+      error: error.message,
+    } as const
+  }
+
+  return {
+    success: true,
+    status: nextStatus,
+  } as const
+}
+
+function validateProjectStepDates(
+  startDate: string,
+  endDate: string,
+) {
+  if (!startDate) {
+    return {
+      error:
+        'Informe a data de início da etapa.',
+    } as const
+  }
+
+  if (!endDate) {
+    return {
+      error:
+        'Informe a data final da etapa.',
+    } as const
+  }
+
+  if (endDate < startDate) {
+    return {
+      error:
+        'A data final da etapa não pode ser anterior ao início.',
+    } as const
+  }
+
+  return {
+    success: true,
+  } as const
+}
+
+export async function createProjectStepStatusAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+    item,
+  } = permission
+
+  if (
+    ![
+      'projeto',
+      'ambos',
+    ].includes(
+      String(item.destino || ''),
+    )
+  ) {
+    return {
+      error:
+        'A demanda informada não é um projeto.',
+    }
+  }
+
+  const name =
+    value(formData, 'name')
+
+  if (
+    name.length < 1 ||
+    name.length > 48
+  ) {
+    return {
+      error:
+        'O nome do status deve ter entre 1 e 48 caracteres.',
+    }
+  }
+
+  const behavior =
+    normalizeProjectStepBehavior(
+      value(
+        formData,
+        'behavior',
+      ),
+    )
+
+  if (!behavior) {
+    return {
+      error:
+        'Comportamento do status inválido.',
+    }
+  }
+
+  const color =
+    normalizeProjectStepColor(
+      value(
+        formData,
+        'color',
+      ),
+    )
+
+  const {
+    data: lastStatus,
+    error: positionError,
+  } = await supabase
+    .from('project_step_statuses')
+    .select('position')
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .eq(
+      'is_archived',
+      false,
+    )
+    .order(
+      'position',
+      { ascending: false },
+    )
+    .limit(1)
+    .maybeSingle()
+
+  if (positionError) {
+    return {
+      error:
+        positionError.message,
+    }
+  }
+
+  const nextPosition =
+    Number(
+      lastStatus?.position ??
+        -1,
+    ) + 1
+
+  const { error } =
+    await supabase
+      .from(
+        'project_step_statuses',
+      )
+      .insert({
+        work_item_id:
+          projectId,
+        name,
+        color,
+        behavior,
+        position:
+          nextPosition,
+        is_archived:
+          false,
+      })
+
+  if (error) {
+    return {
+      error:
+        error.code === '23505'
+          ? 'Já existe um status com esse nome neste projeto.'
+          : error.message,
+    }
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_status_created',
+    null,
+    name,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function updateProjectStepStatusDefinitionAction(
+  statusId: string,
+  projectId: string,
+  formData: FormData,
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+  } = permission
+
+  const existing =
+    await getProjectStepStatusDefinition(
+      supabase,
+      statusId,
+      projectId,
+    )
+
+  if ('error' in existing) {
+    return existing
+  }
+
+  const name =
+    value(formData, 'name')
+
+  if (
+    name.length < 1 ||
+    name.length > 48
+  ) {
+    return {
+      error:
+        'O nome do status deve ter entre 1 e 48 caracteres.',
+    }
+  }
+
+  const behavior =
+    normalizeProjectStepBehavior(
+      value(
+        formData,
+        'behavior',
+      ),
+    )
+
+  if (!behavior) {
+    return {
+      error:
+        'Comportamento do status inválido.',
+    }
+  }
+
+  const color =
+    normalizeProjectStepColor(
+      value(
+        formData,
+        'color',
+      ),
+    )
+
+  const { error } =
+    await supabase
+      .from(
+        'project_step_statuses',
+      )
+      .update({
+        name,
+        color,
+        behavior,
+      })
+      .eq('id', statusId)
+      .eq(
+        'work_item_id',
+        projectId,
+      )
+
+  if (error) {
+    return {
+      error:
+        error.code === '23505'
+          ? 'Já existe um status com esse nome neste projeto.'
+          : error.message,
+    }
+  }
+
+  const legacyStatus =
+    projectStepBehaviorToLegacyStatus(
+      behavior,
+    )
+
+  const {
+    error: stepsError,
+  } = await supabase
+    .from('project_steps')
+    .update({
+      status:
+        legacyStatus,
+    })
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .eq(
+      'status_id',
+      statusId,
+    )
+
+  if (stepsError) {
+    return {
+      error:
+        stepsError.message,
+    }
+  }
+
+  const syncResult =
+    await syncProjectStatusFromSteps(
+      supabase,
+      projectId,
+    )
+
+  if ('error' in syncResult) {
+    return syncResult
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_status_updated',
+    existing.data.name,
+    name,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function moveProjectStepStatusAction(
+  statusId: string,
+  projectId: string,
+  direction: 'up' | 'down',
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const { supabase } =
+    permission
+
+  const {
+    data: statuses,
+    error,
+  } = await supabase
+    .from('project_step_statuses')
+    .select('id,position')
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .eq(
+      'is_archived',
+      false,
+    )
+    .order(
+      'position',
+      { ascending: true },
+    )
+    .order(
+      'created_at',
+      { ascending: true },
+    )
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  const list =
+    statuses || []
+
+  const currentIndex =
+    list.findIndex(
+      (status: any) =>
+        status.id === statusId,
+    )
+
+  if (currentIndex < 0) {
+    return {
+      error:
+        'Status não encontrado.',
+    }
+  }
+
+  const targetIndex =
+    direction === 'up'
+      ? currentIndex - 1
+      : currentIndex + 1
+
+  if (
+    targetIndex < 0 ||
+    targetIndex >= list.length
+  ) {
+    return {
+      success: true,
+    }
+  }
+
+  const current =
+    list[currentIndex]
+
+  const target =
+    list[targetIndex]
+
+  const firstUpdate =
+    await supabase
+      .from(
+        'project_step_statuses',
+      )
+      .update({
+        position:
+          Number(
+            target.position,
+          ),
+      })
+      .eq(
+        'id',
+        current.id,
+      )
+
+  if (firstUpdate.error) {
+    return {
+      error:
+        firstUpdate.error.message,
+    }
+  }
+
+  const secondUpdate =
+    await supabase
+      .from(
+        'project_step_statuses',
+      )
+      .update({
+        position:
+          Number(
+            current.position,
+          ),
+      })
+      .eq(
+        'id',
+        target.id,
+      )
+
+  if (secondUpdate.error) {
+    return {
+      error:
+        secondUpdate.error.message,
+    }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function deleteProjectStepStatusDefinitionAction(
+  statusId: string,
+  projectId: string,
+  replacementStatusId: string,
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+  } = permission
+
+  const {
+    data: statuses,
+    error: statusesError,
+  } = await supabase
+    .from('project_step_statuses')
+    .select(
+      'id,name,behavior,position',
+    )
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .eq(
+      'is_archived',
+      false,
+    )
+    .order(
+      'position',
+      { ascending: true },
+    )
+
+  if (statusesError) {
+    return {
+      error:
+        statusesError.message,
+    }
+  }
+
+  const list =
+    statuses || []
+
+  if (list.length <= 1) {
+    return {
+      error:
+        'Não é possível excluir o último status do projeto.',
+    }
+  }
+
+  const current =
+    list.find(
+      (status: any) =>
+        status.id === statusId,
+    )
+
+  if (!current) {
+    return {
+      error:
+        'Status não encontrado.',
+    }
+  }
+
+  const {
+    count,
+    error: countError,
+  } = await supabase
+    .from('project_steps')
+    .select(
+      'id',
+      {
+        count: 'exact',
+        head: true,
+      },
+    )
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .eq(
+      'status_id',
+      statusId,
+    )
+
+  if (countError) {
+    return {
+      error:
+        countError.message,
+    }
+  }
+
+  const usage =
+    Number(count || 0)
+
+  if (usage > 0) {
+    if (!replacementStatusId) {
+      return {
+        error:
+          'Escolha para qual status as etapas serão transferidas.',
+      }
+    }
+
+    if (
+      replacementStatusId ===
+      statusId
+    ) {
+      return {
+        error:
+          'O status de destino deve ser diferente.',
+      }
+    }
+
+    const replacement =
+      list.find(
+        (status: any) =>
+          status.id ===
+          replacementStatusId,
+      )
+
+    if (!replacement) {
+      return {
+        error:
+          'Status de destino inválido.',
+      }
+    }
+
+    const replacementBehavior =
+      normalizeProjectStepBehavior(
+        replacement.behavior,
+      )
+
+    if (!replacementBehavior) {
+      return {
+        error:
+          'Comportamento do status de destino inválido.',
+      }
+    }
+
+    const moveResult =
+      await supabase
+        .from('project_steps')
+        .update({
+          status_id:
+            replacementStatusId,
+
+          status:
+            projectStepBehaviorToLegacyStatus(
+              replacementBehavior,
+            ),
+        })
+        .eq(
+          'work_item_id',
+          projectId,
+        )
+        .eq(
+          'status_id',
+          statusId,
+        )
+
+    if (moveResult.error) {
+      return {
+        error:
+          moveResult.error.message,
+      }
+    }
+  }
+
+  const deleteResult =
+    await supabase
+      .from(
+        'project_step_statuses',
+      )
+      .delete()
+      .eq('id', statusId)
+      .eq(
+        'work_item_id',
+        projectId,
+      )
+
+  if (deleteResult.error) {
+    return {
+      error:
+        deleteResult.error.message,
+    }
+  }
+
+  const remaining =
+    list.filter(
+      (status: any) =>
+        status.id !== statusId,
+    )
+
+  for (
+    let index = 0;
+    index < remaining.length;
+    index += 1
+  ) {
+    const status =
+      remaining[index]
+
+    const reorderResult =
+      await supabase
+        .from(
+          'project_step_statuses',
+        )
+        .update({
+          position: index,
+        })
+        .eq(
+          'id',
+          status.id,
+        )
+
+    if (reorderResult.error) {
+      return {
+        error:
+          reorderResult.error.message,
+      }
+    }
+  }
+
+  const syncResult =
+    await syncProjectStatusFromSteps(
+      supabase,
+      projectId,
+    )
+
+  if ('error' in syncResult) {
+    return syncResult
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_status_deleted',
+    current.name,
+    null,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function createProjectStepDynamicAction(
+  formData: FormData,
+) {
+  const projectId =
+    value(
+      formData,
+      'work_item_id',
+    )
+
+  if (!projectId) {
+    return {
+      error:
+        'Projeto inválido.',
+    }
+  }
+
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+  } = permission
+
+  const title =
+    value(formData, 'title')
+
+  if (
+    title.length < 2 ||
+    title.length > 140
+  ) {
+    return {
+      error:
+        'O título da etapa deve ter entre 2 e 140 caracteres.',
+    }
+  }
+
+  const startDate =
+    value(
+      formData,
+      'start_date',
+    )
+
+  const endDate =
+    value(
+      formData,
+      'end_date',
+    )
+
+  const dateValidation =
+    validateProjectStepDates(
+      startDate,
+      endDate,
+    )
+
+  if ('error' in dateValidation) {
+    return dateValidation
+  }
+
+  const statusId =
+    value(
+      formData,
+      'status_id',
+    )
+
+  const statusResult =
+    await getProjectStepStatusDefinition(
+      supabase,
+      statusId,
+      projectId,
+    )
+
+  if ('error' in statusResult) {
+    return statusResult
+  }
+
+  const {
+    data: lastStep,
+    error: positionError,
+  } = await supabase
+    .from('project_steps')
+    .select('position')
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .order(
+      'position',
+      { ascending: false },
+    )
+    .limit(1)
+    .maybeSingle()
+
+  if (positionError) {
+    return {
+      error:
+        positionError.message,
+    }
+  }
+
+  const {
+    data: created,
+    error,
+  } = await supabase
+    .from('project_steps')
+    .insert({
+      work_item_id:
+        projectId,
+
+      title,
+
+      responsible_id:
+        nullable(
+          formData,
+          'responsible_id',
+        ),
+
+      status_id:
+        statusId,
+
+      status:
+        projectStepBehaviorToLegacyStatus(
+          statusResult.data
+            .behavior,
+        ),
+
+      start_date:
+        startDate,
+
+      end_date:
+        endDate,
+
+      position:
+        Number(
+          lastStep?.position ??
+            -1,
+        ) + 1,
+
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+    })
+    .select('id,title')
+    .single()
+
+  if (
+    error ||
+    !created
+  ) {
+    return {
+      error:
+        error?.message ||
+        'Erro ao criar etapa.',
+    }
+  }
+
+  const syncResult =
+    await syncProjectStatusFromSteps(
+      supabase,
+      projectId,
+    )
+
+  if ('error' in syncResult) {
+    return syncResult
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_created',
+    null,
+    title,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    id: created.id,
+  }
+}
+
+export async function updateProjectStepDynamicAction(
+  stepId: string,
+  projectId: string,
+  formData: FormData,
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+  } = permission
+
+  const title =
+    value(formData, 'title')
+
+  if (
+    title.length < 2 ||
+    title.length > 140
+  ) {
+    return {
+      error:
+        'O título da etapa deve ter entre 2 e 140 caracteres.',
+    }
+  }
+
+  const startDate =
+    value(
+      formData,
+      'start_date',
+    )
+
+  const endDate =
+    value(
+      formData,
+      'end_date',
+    )
+
+  const dateValidation =
+    validateProjectStepDates(
+      startDate,
+      endDate,
+    )
+
+  if ('error' in dateValidation) {
+    return dateValidation
+  }
+
+  const statusId =
+    value(
+      formData,
+      'status_id',
+    )
+
+  const statusResult =
+    await getProjectStepStatusDefinition(
+      supabase,
+      statusId,
+      projectId,
+    )
+
+  if ('error' in statusResult) {
+    return statusResult
+  }
+
+  const {
+    data: existing,
+    error: existingError,
+  } = await supabase
+    .from('project_steps')
+    .select('id,title')
+    .eq('id', stepId)
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .maybeSingle()
+
+  if (
+    existingError ||
+    !existing
+  ) {
+    return {
+      error:
+        'Etapa não encontrada.',
+    }
+  }
+
+  const { error } =
+    await supabase
+      .from('project_steps')
+      .update({
+        title,
+
+        responsible_id:
+          nullable(
+            formData,
+            'responsible_id',
+          ),
+
+        status_id:
+          statusId,
+
+        status:
+          projectStepBehaviorToLegacyStatus(
+            statusResult.data
+              .behavior,
+          ),
+
+        start_date:
+          startDate,
+
+        end_date:
+          endDate,
+
+        notes:
+          nullable(
+            formData,
+            'notes',
+          ),
+      })
+      .eq('id', stepId)
+      .eq(
+        'work_item_id',
+        projectId,
+      )
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  const syncResult =
+    await syncProjectStatusFromSteps(
+      supabase,
+      projectId,
+    )
+
+  if ('error' in syncResult) {
+    return syncResult
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_updated',
+    existing.title,
+    title,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function updateProjectStepStatusDynamicAction(
+  stepId: string,
+  projectId: string,
+  statusId: string,
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+  } = permission
+
+  const statusResult =
+    await getProjectStepStatusDefinition(
+      supabase,
+      statusId,
+      projectId,
+    )
+
+  if ('error' in statusResult) {
+    return statusResult
+  }
+
+  const {
+    data: step,
+    error: stepError,
+  } = await supabase
+    .from('project_steps')
+    .select(
+      'id,status,status_id',
+    )
+    .eq('id', stepId)
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .maybeSingle()
+
+  if (
+    stepError ||
+    !step
+  ) {
+    return {
+      error:
+        'Etapa não encontrada.',
+    }
+  }
+
+  const legacyStatus =
+    projectStepBehaviorToLegacyStatus(
+      statusResult.data.behavior,
+    )
+
+  const { error } =
+    await supabase
+      .from('project_steps')
+      .update({
+        status_id:
+          statusId,
+
+        status:
+          legacyStatus,
+      })
+      .eq('id', stepId)
+      .eq(
+        'work_item_id',
+        projectId,
+      )
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  const syncResult =
+    await syncProjectStatusFromSteps(
+      supabase,
+      projectId,
+    )
+
+  if ('error' in syncResult) {
+    return syncResult
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_status_changed',
+    step.status_id ||
+      step.status ||
+      null,
+    statusId,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function deleteProjectStepDynamicAction(
+  stepId: string,
+  projectId: string,
+) {
+  const permission =
+    await canOperateWorkItem(
+      projectId,
+    )
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+  } = permission
+
+  const {
+    data: step,
+    error: stepError,
+  } = await supabase
+    .from('project_steps')
+    .select('id,title')
+    .eq('id', stepId)
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .maybeSingle()
+
+  if (
+    stepError ||
+    !step
+  ) {
+    return {
+      error:
+        'Etapa não encontrada.',
+    }
+  }
+
+  const { error } =
+    await supabase
+      .from('project_steps')
+      .delete()
+      .eq('id', stepId)
+      .eq(
+        'work_item_id',
+        projectId,
+      )
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  const {
+    data: remaining,
+    error: remainingError,
+  } = await supabase
+    .from('project_steps')
+    .select('id,position')
+    .eq(
+      'work_item_id',
+      projectId,
+    )
+    .order(
+      'position',
+      { ascending: true },
+    )
+
+  if (remainingError) {
+    return {
+      error:
+        remainingError.message,
+    }
+  }
+
+  for (
+    let index = 0;
+    index <
+    (
+      remaining || []
+    ).length;
+    index += 1
+  ) {
+    const item =
+      (
+        remaining || []
+      )[index]
+
+    const reorderResult =
+      await supabase
+        .from('project_steps')
+        .update({
+          position: index,
+        })
+        .eq('id', item.id)
+
+    if (reorderResult.error) {
+      return {
+        error:
+          reorderResult.error.message,
+      }
+    }
+  }
+
+  const syncResult =
+    await syncProjectStatusFromSteps(
+      supabase,
+      projectId,
+    )
+
+  if ('error' in syncResult) {
+    return syncResult
+  }
+
+  await addHistory(
+    projectId,
+    user.id,
+    'project_step_deleted',
+    step.title,
+    null,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
