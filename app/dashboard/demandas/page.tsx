@@ -1,12 +1,35 @@
-import { unstable_noStore as noStore } from 'next/cache'
+
+import {
+  unstable_noStore as noStore,
+} from 'next/cache'
+
 import { createClient } from '@/lib/supabase/server'
+
 import DemandasView from './DemandasView'
 
-function mapById(items: any[] | null | undefined) {
-  return new Map((Array.isArray(items) ? items : []).filter(Boolean).map((item) => [item.id, item]))
+function mapById(
+  items:
+    | any[]
+    | null
+    | undefined,
+) {
+  return new Map(
+    (
+      Array.isArray(items)
+        ? items
+        : []
+    )
+      .filter(Boolean)
+      .map((item) => [
+        item.id,
+        item,
+      ]),
+  )
 }
 
-export const dynamic = 'force-dynamic'
+export const dynamic =
+  'force-dynamic'
+
 export const revalidate = 0
 
 export default async function DemandasPage() {
@@ -14,60 +37,239 @@ export default async function DemandasPage() {
 
   const supabase = createClient()
 
-  const [demandsResult, clientsResult, profilesResult, clientServicesResult, servicesResult] = await Promise.all([
+  const [
+    demandsResult,
+    clientsResult,
+    profilesResult,
+    clientServicesResult,
+    servicesResult,
+    boardsResult,
+    columnsResult,
+  ] = await Promise.all([
     supabase
       .from('work_items')
-      .select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at')
-      .not('status', 'in', '(archived,cancelled)')
-      .order('updated_at', { ascending: false })
-      .limit(300),
+      .select(
+        [
+          'id',
+          'title',
+          'description',
+          'type',
+          'origin',
+          'destino',
+          'status',
+          'priority',
+          'client_id',
+          'client_service_id',
+          'responsible_id',
+          'created_by',
+          'board_id',
+          'board_column_id',
+          'internal_deadline',
+          'final_deadline',
+          'drive_link',
+          'notes',
+          'created_at',
+          'updated_at',
+          'closed_at',
+        ].join(','),
+      )
+      .not(
+        'status',
+        'in',
+        '(archived,cancelled)',
+      )
+      .order(
+        'updated_at',
+        { ascending: false },
+      )
+      .limit(500),
+
     supabase
       .from('clients')
-      .select('id,name,segment,status')
+      .select(
+        'id,name,segment,status',
+      )
       .eq('status', 'active')
       .order('name'),
+
     supabase
       .from('profiles')
-      .select('id,full_name,role,is_active')
+      .select(
+        'id,full_name,role,is_active',
+      )
       .eq('is_active', true)
       .order('full_name'),
+
     supabase
       .from('client_services')
-      .select('id,client_id,service_catalog_id,status')
+      .select(
+        [
+          'id',
+          'client_id',
+          'service_catalog_id',
+          'status',
+        ].join(','),
+      )
       .eq('status', 'active'),
+
     supabase
       .from('service_catalog')
       .select('id,name')
       .eq('is_active', true)
       .order('name'),
+
+    supabase
+      .from('boards')
+      .select(
+        'id,name,color,status',
+      )
+      .eq('status', 'active')
+      .order('name'),
+
+    supabase
+      .from('board_columns')
+      .select(
+        [
+          'id',
+          'board_id',
+          'name',
+          'color',
+          'operational_status',
+          'position',
+        ].join(','),
+      )
+      .order(
+        'position',
+        { ascending: true },
+      ),
   ])
 
-  const clients = clientsResult.data || []
-  const profiles = profilesResult.data || []
-  const services = servicesResult.data || []
-  const clientServicesRaw = clientServicesResult.data || []
+  const clients =
+    clientsResult.data || []
 
-  const clientsById = mapById(clients)
-  const profilesById = mapById(profiles)
-  const servicesById = mapById(services)
+  const profiles =
+    profilesResult.data || []
 
-  const demands = (demandsResult.data || []).map((item: any) => ({
-    ...item,
-    client: item.client_id ? clientsById.get(item.client_id) || null : null,
-    responsible: item.responsible_id ? profilesById.get(item.responsible_id) || null : null,
-  }))
+  const services =
+    servicesResult.data || []
 
-  const clientServices = clientServicesRaw.map((item: any) => ({
-    ...item,
-    service: item.service_catalog_id ? servicesById.get(item.service_catalog_id) || null : null,
-  }))
+  const boards =
+    boardsResult.data || []
+
+  const columns =
+    columnsResult.data || []
+
+  const clientServicesRaw =
+    clientServicesResult.data || []
+
+  const clientsById =
+    mapById(clients)
+
+  const profilesById =
+    mapById(profiles)
+
+  const servicesById =
+    mapById(services)
+
+  const boardsById =
+    mapById(boards)
+
+  const columnsById =
+    mapById(columns)
+
+  const clientServices =
+    clientServicesRaw.map(
+      (item: any) => ({
+        ...item,
+        service:
+          item.service_catalog_id
+            ? servicesById.get(
+                item.service_catalog_id,
+              ) || null
+            : null,
+      }),
+    )
+
+  const clientServicesById =
+    mapById(clientServices)
+
+  const demands =
+    (
+      demandsResult.data || []
+    ).map((item: any) => ({
+      ...item,
+
+      client:
+        item.client_id
+          ? clientsById.get(
+              item.client_id,
+            ) || null
+          : null,
+
+      responsible:
+        item.responsible_id
+          ? profilesById.get(
+              item.responsible_id,
+            ) || null
+          : null,
+
+      client_service:
+        item.client_service_id
+          ? clientServicesById.get(
+              item.client_service_id,
+            ) || null
+          : null,
+
+      board:
+        item.board_id
+          ? boardsById.get(
+              item.board_id,
+            ) || null
+          : null,
+
+      board_column:
+        item.board_column_id
+          ? columnsById.get(
+              item.board_column_id,
+            ) || null
+          : null,
+    }))
 
   const loadErrors = [
-    demandsResult.error ? `Demandas: ${demandsResult.error.message}` : null,
-    clientsResult.error ? `Clientes: ${clientsResult.error.message}` : null,
-    profilesResult.error ? `Responsáveis: ${profilesResult.error.message}` : null,
-    clientServicesResult.error ? `Serviços do cliente: ${clientServicesResult.error.message}` : null,
-    servicesResult.error ? `Catálogo de serviços: ${servicesResult.error.message}` : null,
+    demandsResult.error
+      ? 'Demandas: ' +
+        demandsResult.error.message
+      : null,
+
+    clientsResult.error
+      ? 'Clientes: ' +
+        clientsResult.error.message
+      : null,
+
+    profilesResult.error
+      ? 'Responsáveis: ' +
+        profilesResult.error.message
+      : null,
+
+    clientServicesResult.error
+      ? 'Serviços do cliente: ' +
+        clientServicesResult.error.message
+      : null,
+
+    servicesResult.error
+      ? 'Catálogo de serviços: ' +
+        servicesResult.error.message
+      : null,
+
+    boardsResult.error
+      ? 'Quadros: ' +
+        boardsResult.error.message
+      : null,
+
+    columnsResult.error
+      ? 'Colunas: ' +
+        columnsResult.error.message
+      : null,
   ].filter(Boolean) as string[]
 
   return (
@@ -75,7 +277,11 @@ export default async function DemandasPage() {
       demands={demands}
       clients={clients}
       profiles={profiles}
-      clientServices={clientServices}
+      clientServices={
+        clientServices
+      }
+      boards={boards}
+      boardColumns={columns}
       loadErrors={loadErrors}
     />
   )

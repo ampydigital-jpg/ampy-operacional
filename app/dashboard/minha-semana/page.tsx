@@ -32,9 +32,9 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
     const key = ymd(day)
     return {
       dia: formatDateShort(key),
-      demandas: weekDemands.filter((item: any) => item.internal_deadline === key || item.final_deadline === key || String(item.created_at || '').slice(0, 10) === key).length,
+      demandas: weekDemands.filter((item: any) => item.final_deadline === key).length,
       eventos: events.filter((event: any) => String(event.starts_at || '').slice(0, 10) === key).length,
-      entregas: weekDemands.filter((item: any) => isDone(item) && (item.internal_deadline === key || item.final_deadline === key || String(item.closed_at || item.updated_at || '').slice(0, 10) === key)).length,
+      entregas: weekDemands.filter((item: any) => isDone(item) && (item.final_deadline === key)).length,
     }
   })
 

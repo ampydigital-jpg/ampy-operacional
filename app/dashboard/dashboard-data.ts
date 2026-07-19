@@ -73,13 +73,12 @@ export function formatMonth(date: Date) {
 }
 
 export function getDemandDate(item: any) {
-  return item.final_deadline || item.internal_deadline || null
+  return item.final_deadline || null
 }
-
 export function getDemandDates(item: any) {
-  return [item.internal_deadline, item.final_deadline].filter(Boolean) as string[]
+  return [item.final_deadline]
+    .filter(Boolean) as string[]
 }
-
 export function isDone(item: any) {
   return DONE_STATUSES.includes(String(item.status || ''))
 }
@@ -97,13 +96,17 @@ export function isInDateRange(key: string | null | undefined, startKey: string, 
   return Boolean(key && key >= startKey && key < endKey)
 }
 
-export function demandTouchesRange(item: any, startKey: string, endKey: string) {
-  const dates = getDemandDates(item)
-  if (dates.some((date) => isInDateRange(date, startKey, endKey))) return true
-  const created = String(item.created_at || '').slice(0, 10)
-  return isInDateRange(created, startKey, endKey)
+export function demandTouchesRange(
+  item: any,
+  startKey: string,
+  endKey: string,
+) {
+  return isInDateRange(
+    item.final_deadline,
+    startKey,
+    endKey,
+  )
 }
-
 export function typeName(type?: string | null) {
   return typeLabels[String(type || '')] || String(type || 'Operação')
 }
@@ -157,15 +160,40 @@ export function localHour(value?: string | null) {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 }
 
-export function summarizeItems(items: any[], limit = 5) {
-  return items.slice(0, limit).map((item) => ({
-    label: item.title || 'Sem título',
-    value: item.final_deadline || item.internal_deadline ? formatDateShort(item.final_deadline || item.internal_deadline) : 'sem prazo',
-    meta: `${item.client?.name || 'Interno Ampy'} · ${item.responsible?.full_name || 'sem responsável'}`,
-    tone: toneForDemand(item),
-  }))
-}
+export function summarizeItems(
+  items: any[],
+  limit = 5,
+) {
+  return items
+    .slice(0, limit)
+    .map((item) => ({
+      label:
+        item.title ||
+        'Sem título',
 
+      value:
+        item.final_deadline
+          ? formatDateShort(
+              item.final_deadline,
+            )
+          : 'sem prazo final',
+
+      meta:
+        (
+          item.client?.name ||
+          'Interno Ampy'
+        ) +
+        ' · ' +
+        (
+          item.responsible
+            ?.full_name ||
+          'sem responsável'
+        ),
+
+      tone:
+        toneForDemand(item),
+    }))
+}
 export function summarizeEvents(events: any[], limit = 5) {
   return events.slice(0, limit).map((event) => ({
     label: event.title || 'Agenda sem título',

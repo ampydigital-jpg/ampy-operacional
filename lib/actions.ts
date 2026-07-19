@@ -2646,3 +2646,460 @@ export async function updateBoardPeriodDemandAction(
     success: true,
   }
 }
+
+/* =========================================================
+   AMPY-V17-A16 — CRIAÇÃO UNIFICADA DE DEMANDAS
+   ========================================================= */
+
+function demandPeriodDateLabel(
+  input: string,
+) {
+  const parts =
+    String(input).split('-')
+
+  if (parts.length !== 3) {
+    return input
+  }
+
+  return (
+    parts[2] +
+    '/' +
+    parts[1]
+  )
+}
+
+function demandPeriodTitle(
+  clientName: string,
+  startDate: string,
+  finalDate: string,
+) {
+  return (
+    clientName
+      .trim()
+      .toUpperCase() +
+    ' - ' +
+    demandPeriodDateLabel(
+      startDate,
+    ) +
+    ' - ' +
+    demandPeriodDateLabel(
+      finalDate,
+    )
+  )
+}
+
+export async function createDemandFromDemandasAction(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const demandKind =
+    value(
+      formData,
+      'demand_kind',
+    )
+
+  if (
+    demandKind !== 'quadro' &&
+    demandKind !== 'avulsa'
+  ) {
+    return {
+      error:
+        'Selecione Quadro ou Extra.',
+    }
+  }
+
+  const startDate =
+    value(
+      formData,
+      'internal_deadline',
+    )
+
+  const finalDate =
+    value(
+      formData,
+      'final_deadline',
+    )
+
+  if (!startDate) {
+    return {
+      error:
+        'Informe a data inicial.',
+    }
+  }
+
+  if (!finalDate) {
+    return {
+      error:
+        'Informe a data final.',
+    }
+  }
+
+  if (
+    finalDate < startDate
+  ) {
+    return {
+      error:
+        'A data final não pode ser anterior à data inicial.',
+    }
+  }
+
+  const priority =
+    value(
+      formData,
+      'priority',
+    ) || 'normal'
+
+  if (
+    ![
+      'low',
+      'normal',
+      'high',
+      'urgent',
+    ].includes(priority)
+  ) {
+    return {
+      error:
+        'Prioridade inválida.',
+    }
+  }
+
+  const clientId =
+    nullable(
+      formData,
+      'client_id',
+    )
+
+  const clientServiceId =
+    nullable(
+      formData,
+      'client_service_id',
+    )
+
+  const linkValidation =
+    await validateWorkItemLinks(
+      supabase,
+      clientId,
+      clientServiceId,
+    )
+
+  if (
+    'error' in linkValidation
+  ) {
+    return {
+      error:
+        linkValidation.error,
+    }
+  }
+
+  const requestedResponsible =
+    nullable(
+      formData,
+      'responsible_id',
+    )
+
+  const responsibleId =
+    isManager(profile.role)
+      ? requestedResponsible
+      : user.id
+
+  if (!responsibleId) {
+    return {
+      error:
+        'Selecione o responsável.',
+    }
+  }
+
+  let payload: any = null
+
+  if (
+    demandKind === 'quadro'
+  ) {
+    const boardId =
+      value(
+        formData,
+        'board_id',
+      )
+
+    const boardColumnId =
+      value(
+        formData,
+        'board_column_id',
+      )
+
+    if (!boardId) {
+      return {
+        error:
+          'Selecione o Quadro.',
+      }
+    }
+
+    if (!boardColumnId) {
+      return {
+        error:
+          'Selecione a coluna.',
+      }
+    }
+
+    if (!clientId) {
+      return {
+        error:
+          'Selecione o cliente.',
+      }
+    }
+
+    const [
+      boardResult,
+      columnResult,
+      clientResult,
+    ] = await Promise.all([
+      supabase
+        .from('boards')
+        .select(
+          'id,name,status',
+        )
+        .eq('id', boardId)
+        .eq('status', 'active')
+        .maybeSingle(),
+
+      supabase
+        .from('board_columns')
+        .select(
+          [
+            'id',
+            'board_id',
+            'name',
+            'operational_status',
+          ].join(','),
+        )
+        .eq(
+          'id',
+          boardColumnId,
+        )
+        .eq(
+          'board_id',
+          boardId,
+        )
+        .maybeSingle(),
+
+      supabase
+        .from('clients')
+        .select(
+          'id,name,status',
+        )
+        .eq('id', clientId)
+        .eq('status', 'active')
+        .maybeSingle(),
+    ])
+
+    const board =
+      boardResult.data
+
+    const column =
+      columnResult.data
+
+    const client =
+      clientResult.data
+
+    if (
+      boardResult.error ||
+      !board
+    ) {
+      return {
+        error:
+          'Quadro inválido ou inativo.',
+      }
+    }
+
+    if (
+      columnResult.error ||
+      !column ||
+      column.board_id !==
+        boardId
+    ) {
+      return {
+        error:
+          'A coluna não pertence ao Quadro selecionado.',
+      }
+    }
+
+    if (
+      clientResult.error ||
+      !client
+    ) {
+      return {
+        error:
+          'Cliente inválido ou inativo.',
+      }
+    }
+
+    payload = {
+      title:
+        demandPeriodTitle(
+          client.name,
+          startDate,
+          finalDate,
+        ),
+
+      description: null,
+
+      type:
+        String(
+          column.name ||
+          'Quadro',
+        ),
+
+      origin: 'planned',
+      destino: 'quadro',
+
+      status:
+        column.operational_status ||
+        'not_started',
+
+      priority,
+
+      client_id: clientId,
+
+      client_service_id:
+        clientServiceId,
+
+      responsible_id:
+        responsibleId,
+
+      created_by: user.id,
+
+      board_id: boardId,
+
+      board_column_id:
+        boardColumnId,
+
+      internal_deadline:
+        startDate,
+
+      final_deadline:
+        finalDate,
+
+      drive_link:
+        nullable(
+          formData,
+          'drive_link',
+        ),
+
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+    }
+  } else {
+    const title =
+      value(
+        formData,
+        'title',
+      )
+
+    if (!title) {
+      return {
+        error:
+          'Informe o título do Extra.',
+      }
+    }
+
+    payload = {
+      title,
+      description: null,
+      type: 'Extra',
+
+      origin:
+        clientId
+          ? 'planned'
+          : 'internal',
+
+      destino: 'avulsa',
+      status: 'not_started',
+      priority,
+
+      client_id: clientId,
+
+      client_service_id:
+        clientServiceId,
+
+      responsible_id:
+        responsibleId,
+
+      created_by: user.id,
+
+      board_id: null,
+
+      board_column_id: null,
+
+      internal_deadline:
+        startDate,
+
+      final_deadline:
+        finalDate,
+
+      drive_link:
+        nullable(
+          formData,
+          'drive_link',
+        ),
+
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+    }
+  }
+
+  if (!payload) {
+    return {
+      error:
+        'Não foi possível preparar a demanda.',
+    }
+  }
+
+  const {
+    data: created,
+    error,
+  } = await supabase
+    .from('work_items')
+    .insert(payload)
+    .select('id,title')
+    .single()
+
+  if (error || !created) {
+    return {
+      error:
+        error?.message ||
+        'Erro ao criar demanda.',
+    }
+  }
+
+  await addHistory(
+    created.id,
+    user.id,
+    'created',
+    null,
+    created.title,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    id: created.id,
+  }
+}

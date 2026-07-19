@@ -20,7 +20,7 @@ export default async function DiaPage() {
   const events = source.events
   const open = demands.filter(isOpen)
 
-  const dueToday = open.filter((item: any) => item.final_deadline === todayKey || item.internal_deadline === todayKey)
+  const dueToday = open.filter((item: any) => item.final_deadline === todayKey)
   const late = open.filter((item: any) => isLate(item, todayKey))
   const urgent = open.filter((item: any) => item.priority === 'urgent' || item.priority === 'high')
   const doneToday = demands.filter((item: any) => isDone(item) && String(item.closed_at || item.updated_at || '').slice(0, 10) === todayKey)
@@ -32,7 +32,13 @@ export default async function DiaPage() {
     .sort((a: any, b: any) => {
       const pa = a.priority === 'urgent' ? 0 : a.priority === 'high' ? 1 : 2
       const pb = b.priority === 'urgent' ? 0 : b.priority === 'high' ? 1 : 2
-      return pa - pb || String(a.final_deadline || a.internal_deadline || '').localeCompare(String(b.final_deadline || b.internal_deadline || ''))
+      return pa - pb || String(
+  a.final_deadline || '',
+).localeCompare(
+  String(
+    b.final_deadline || '',
+  ),
+)
     })
 
   return (
@@ -56,7 +62,7 @@ export default async function DiaPage() {
         { title: 'Agenda do dia', subtitle: 'Recorte da agenda com horário e vínculo operacional.', items: summarizeEvents(events, 6) },
       ]}
       summaries={[
-        { title: 'Demandas do dia', subtitle: 'Prazos internos ou finais para hoje.', items: summarizeItems(dueToday, 6) },
+        { title: 'Demandas do dia', subtitle: 'Demandas com prazo final para hoje.', items: summarizeItems(dueToday, 6) },
         { title: 'Atrasadas', subtitle: 'Demandas abertas fora do prazo.', items: summarizeItems(late, 6) },
         { title: 'Prioridades', subtitle: 'Itens marcados como alta ou urgente.', items: summarizeItems(urgent, 6) },
         { title: 'Entregues hoje', subtitle: 'Concluídas ou entregues no dia.', items: summarizeItems(doneToday, 6) },

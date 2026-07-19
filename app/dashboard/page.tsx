@@ -35,7 +35,7 @@ export default async function DashboardPage() {
   const monthDone = monthDemands.filter(isDone)
   const deliveryPct = monthDemands.length ? Math.round((monthDone.length / monthDemands.length) * 100) : 0
   const weekDemands = open.filter((item: any) => demandTouchesRange(item, weekStartKey, weekEndKey))
-  const dayDemands = open.filter((item: any) => item.final_deadline === todayKey || item.internal_deadline === todayKey)
+  const dayDemands = open.filter((item: any) => item.final_deadline === todayKey)
   const todayEvents = events.filter((event: any) => String(event.starts_at || '').slice(0, 10) === todayKey)
   const weekEvents = events.filter((event: any) => {
     const key = String(event.starts_at || '').slice(0, 10)
@@ -51,7 +51,12 @@ export default async function DashboardPage() {
     }
   })
 
-  const sectorData = countBy(demands.filter((item: any) => String(item.created_at || '').slice(0, 10) >= last30Key || getDemandDate(item) >= last30Key), (item: any) => typeName(item.type)).slice(0, 7)
+  const sectorData = countBy(demands.filter((item: any) => String(
+  getDemandDate(item) || '',
+) >= last30Key &&
+String(
+  getDemandDate(item) || '',
+) <= todayKey), (item: any) => typeName(item.type)).slice(0, 7)
   const statusData = countBy(demands, (item: any) => statusName(item.status)).slice(0, 7)
   const weekQueue = [...late, ...weekDemands]
     .filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index)
