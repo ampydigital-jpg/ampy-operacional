@@ -1,5 +1,7 @@
 'use client'
 
+// AMPY-V17-A18.2 — PROJETOS COMPACTOS E EXPANSÍVEIS
+
 // AMPY-V17-A18 — STATUS PERSONALIZADOS POR PROJETO
 
 import {
@@ -281,6 +283,13 @@ export default function ProjectsWorkspace({
     error,
     setError,
   ] = useState('')
+
+  const [
+    expandedProjectId,
+    setExpandedProjectId,
+  ] = useState<string | null>(
+    null,
+  )
 
   const activeServices =
     formClient
@@ -696,6 +705,18 @@ export default function ProjectsWorkspace({
     window.location.reload()
   }
 
+
+  function toggleProject(
+    projectId: string,
+  ) {
+    setExpandedProjectId(
+      (current) =>
+        current === projectId
+          ? null
+          : projectId,
+    )
+  }
+
   return (
     <div className="projects-v18-page">
       <div className="topbar">
@@ -884,10 +905,43 @@ export default function ProjectsWorkspace({
 
               return (
                 <article
-                  className="projects-v18-card"
+                  className={`projects-v18-card ${
+                    expandedProjectId === item.id
+                      ? 'is-expanded'
+                      : 'is-collapsed'
+                  }`}
                   key={item.id}
                 >
-                  <div className="projects-v18-card-head">
+                  <div
+                  className="projects-v18-card-head"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={
+                    expandedProjectId ===
+                    item.id
+                  }
+                  aria-label={
+                    expandedProjectId ===
+                    item.id
+                      ? 'Recolher projeto'
+                      : 'Abrir projeto'
+                  }
+                  onClick={() =>
+                    toggleProject(item.id)
+                  }
+                  onKeyDown={(event) => {
+                    if (
+                      event.key ===
+                        'Enter' ||
+                      event.key === ' '
+                    ) {
+                      event.preventDefault()
+                      toggleProject(
+                        item.id,
+                      )
+                    }
+                  }}
+                >
                     <div>
                       <h3>
                         {item.title}
@@ -968,6 +1022,9 @@ export default function ProjectsWorkspace({
                     </div>
                   </div>
 
+                {expandedProjectId ===
+                  item.id && (
+                  <>
                   <div className="projects-v18-statusbar">
                     <div className="projects-v18-statuschips">
                       {statuses.map(
@@ -1218,6 +1275,8 @@ export default function ProjectsWorkspace({
                       Nova etapa
                     </button>
                   </div>
+                  </>
+                )}
                 </article>
               )
             },
