@@ -3860,21 +3860,21 @@ async function syncProjectStatusFromSteps(
   if (
     behaviors.length > 0 &&
     behaviors.every(
-      (behavior) =>
+      (behavior: string) =>
         behavior === 'done',
     )
   ) {
     nextStatus = 'done'
   } else if (
     behaviors.some(
-      (behavior) =>
+      (behavior: string) =>
         behavior === 'blocked',
     )
   ) {
     nextStatus = 'blocked'
   } else if (
     behaviors.some(
-      (behavior) =>
+      (behavior: string) =>
         behavior === 'active',
     )
   ) {
