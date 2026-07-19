@@ -1,3 +1,4 @@
+
 'use client'
 
 import {
@@ -6,10 +7,11 @@ import {
   type DragEvent,
   type FormEvent,
 } from 'react'
+
 import {
   createBoardAction,
   createBoardColumnAction,
-  createBoardColumnDemandAction,
+  createBoardPeriodDemandAction,
   deleteBoardAction,
   deleteBoardColumnAction,
   deleteWorkItemAction,
@@ -17,7 +19,7 @@ import {
   reorderBoardColumnsAction,
   updateBoardAction,
   updateBoardColumnAction,
-  updateBoardColumnDemandAction,
+  updateBoardPeriodDemandAction,
 } from '@/lib/actions'
 
 const BOARD_COLORS = [
@@ -42,32 +44,6 @@ const COLUMN_COLORS = [
   '#DC2626',
 ] as const
 
-const STATUS_OPTIONS = [
-  ['not_started', 'Não iniciada'],
-  ['in_progress', 'Em andamento'],
-  ['waiting', 'Aguardando'],
-  ['blocked', 'Bloqueada'],
-  ['in_review', 'Em revisão'],
-  ['awaiting_approval', 'Ag. aprovação'],
-  ['approved', 'Aprovada'],
-  ['scheduled', 'Programada'],
-  ['delivered', 'Entregue'],
-  ['done', 'Concluída'],
-] as const
-
-const TYPES = [
-  'Planejamento',
-  'Captação',
-  'Edição',
-  'Design',
-  'Organização de Feed',
-  'Programação',
-  'Tráfego',
-  'Reunião',
-  'Relatório',
-  'Interno',
-]
-
 const PRIORITY_LABEL: Record<string, string> = {
   urgent: 'Urgente',
   high: 'Alta',
@@ -75,42 +51,104 @@ const PRIORITY_LABEL: Record<string, string> = {
   low: 'Baixa',
 }
 
-function dateValue(value?: string | null) {
-  return value ? String(value).slice(0, 10) : ''
+function dateValue(
+  value?: string | null,
+) {
+  return value
+    ? String(value).slice(0, 10)
+    : ''
 }
 
-function formatDate(value?: string | null) {
-  return value
-    ? new Date(`${String(value).slice(0, 10)}T12:00:00`)
-        .toLocaleDateString('pt-BR')
-    : 'Sem prazo'
+function formatDateShort(
+  value?: string | null,
+) {
+  if (!value) return '--/--'
+
+  return new Date(
+    String(value).slice(0, 10) +
+      'T12:00:00',
+  ).toLocaleDateString(
+    'pt-BR',
+    {
+      day: '2-digit',
+      month: '2-digit',
+    },
+  )
+}
+
+function formatPeriodTitle(
+  clientName: string,
+  start: string,
+  end: string,
+) {
+  if (!clientName || !start || !end) {
+    return 'O título será gerado automaticamente'
+  }
+
+  return (
+    clientName.toUpperCase() +
+    ' - ' +
+    formatDateShort(start) +
+    ' - ' +
+    formatDateShort(end)
+  )
+}
+
+function deadlineState(
+  value?: string | null,
+) {
+  const deadline = dateValue(value)
+
+  if (!deadline) return 'missing'
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const target = new Date(
+    deadline + 'T12:00:00',
+  )
+  target.setHours(0, 0, 0, 0)
+
+  const difference = Math.ceil(
+    (
+      target.getTime() -
+      today.getTime()
+    ) /
+      86400000,
+  )
+
+  if (difference < 0) return 'overdue'
+  if (difference === 0) return 'today'
+  if (difference <= 3) return 'soon'
+
+  return 'normal'
 }
 
 function cardTone(item: any) {
-  const status = String(item.status || '')
-  const deadline = dateValue(
-    item.final_deadline || item.internal_deadline,
+  const finalState = deadlineState(
+    item.final_deadline,
   )
-  const today = new Date().toISOString().slice(0, 10)
 
-  if (['done', 'delivered', 'approved'].includes(status)) {
+  if (
+    ['done', 'delivered', 'approved']
+      .includes(String(item.status || ''))
+  ) {
     return 'success'
   }
 
   if (
-    (deadline && deadline < today) ||
-    ['blocked', 'cancelled'].includes(status)
+    finalState === 'overdue' ||
+    ['blocked', 'cancelled']
+      .includes(String(item.status || ''))
   ) {
     return 'danger'
   }
 
   if (
-    [
-      'not_started',
-      'waiting',
-      'awaiting_approval',
-      'scheduled',
-    ].includes(status)
+    finalState === 'today' ||
+    finalState === 'soon' ||
+    ['waiting', 'awaiting_approval']
+      .includes(String(item.status || ''))
   ) {
     return 'warning'
   }
@@ -130,82 +168,188 @@ export default function BoardWorkspace({
   loadErrors = [],
 }: any) {
   const [items, setItems] = useState<any[]>(
-    Array.isArray(demands) ? demands : [],
+    Array.isArray(demands)
+      ? demands
+      : [],
   )
-  const [boardColumns, setBoardColumns] = useState<any[]>(
-    Array.isArray(columns) ? columns : [],
+
+  const [
+    boardColumns,
+    setBoardColumns,
+  ] = useState<any[]>(
+    Array.isArray(columns)
+      ? columns
+      : [],
   )
+
   const [query, setQuery] = useState('')
-  const [clientId, setClientId] = useState('all')
-  const [responsibleId, setResponsibleId] = useState('all')
-  const [dragCardId, setDragCardId] =
-    useState<string | null>(null)
-  const [dragColumnId, setDragColumnId] =
-    useState<string | null>(null)
-  const [demandModal, setDemandModal] = useState<
+  const [clientId, setClientId] =
+    useState('all')
+  const [
+    responsibleId,
+    setResponsibleId,
+  ] = useState('all')
+
+  const [
+    dragCardId,
+    setDragCardId,
+  ] = useState<string | null>(null)
+
+  const [
+    dragColumnId,
+    setDragColumnId,
+  ] = useState<string | null>(null)
+
+  const [
+    demandModal,
+    setDemandModal,
+  ] = useState<
     'create' | 'edit' | null
   >(null)
-  const [editing, setEditing] = useState<any | null>(null)
-  const [selectedColumnId, setSelectedColumnId] =
-    useState('')
-  const [formClient, setFormClient] = useState('')
-  const [boardCreateOpen, setBoardCreateOpen] =
-    useState(false)
-  const [deleteColumn, setDeleteColumn] =
+
+  const [editing, setEditing] =
     useState<any | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+
+  const [
+    selectedColumnId,
+    setSelectedColumnId,
+  ] = useState('')
+
+  const [
+    formClient,
+    setFormClient,
+  ] = useState('')
+
+  const [
+    formStart,
+    setFormStart,
+  ] = useState('')
+
+  const [
+    formEnd,
+    setFormEnd,
+  ] = useState('')
+
+  const [
+    boardCreateOpen,
+    setBoardCreateOpen,
+  ] = useState(false)
+
+  const [
+    deleteColumn,
+    setDeleteColumn,
+  ] = useState<any | null>(null)
+
+  const [
+    personalizeColumn,
+    setPersonalizeColumn,
+  ] = useState<any | null>(null)
+
+  const [
+    personalizeColor,
+    setPersonalizeColor,
+  ] = useState('#64748B')
+
+  const [loading, setLoading] =
+    useState(false)
+
+  const [error, setError] =
+    useState('')
 
   const activeBoard =
-    boards.find((board: any) => board.id === activeBoardId) ||
-    null
+    boards.find(
+      (board: any) =>
+        board.id === activeBoardId,
+    ) || null
+
+  const selectedClient =
+    clients.find(
+      (client: any) =>
+        client.id === formClient,
+    ) || null
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase()
+    const term =
+      query.trim().toLowerCase()
 
     return items.filter((item: any) => {
       const matchesSearch =
         !term ||
-        String(item.title || '').toLowerCase().includes(term) ||
+        String(item.title || '')
+          .toLowerCase()
+          .includes(term) ||
         String(item.client?.name || '')
           .toLowerCase()
           .includes(term)
 
       return (
         matchesSearch &&
-        (clientId === 'all' || item.client_id === clientId) &&
-        (responsibleId === 'all' ||
-          item.responsible_id === responsibleId)
+        (
+          clientId === 'all' ||
+          item.client_id === clientId
+        ) &&
+        (
+          responsibleId === 'all' ||
+          item.responsible_id ===
+            responsibleId
+        )
       )
     })
-  }, [items, query, clientId, responsibleId])
+  }, [
+    items,
+    query,
+    clientId,
+    responsibleId,
+  ])
 
-  const activeServices = formClient
-    ? clientServices.filter(
-        (service: any) =>
-          service.client_id === formClient &&
-          service.status === 'active',
-      )
-    : []
+  const activeServices =
+    formClient
+      ? clientServices.filter(
+          (service: any) =>
+            service.client_id ===
+              formClient &&
+            service.status === 'active',
+        )
+      : []
 
-  function cardsInColumn(columnId: string) {
+  function cardsInColumn(
+    columnId: string,
+  ) {
     return filtered.filter(
-      (item: any) => item.board_column_id === columnId,
+      (item: any) =>
+        item.board_column_id ===
+        columnId,
     )
   }
 
-  function openCreateDemand(columnId: string) {
+  function openCreateDemand(
+    columnId: string,
+  ) {
     setEditing(null)
     setSelectedColumnId(columnId)
     setFormClient('')
+    setFormStart('')
+    setFormEnd('')
     setError('')
     setDemandModal('create')
   }
 
   function openEditDemand(item: any) {
     setEditing(item)
-    setSelectedColumnId(item.board_column_id || '')
-    setFormClient(item.client_id || '')
+    setSelectedColumnId(
+      item.board_column_id || '',
+    )
+    setFormClient(
+      item.client_id || '',
+    )
+    setFormStart(
+      dateValue(
+        item.internal_deadline,
+      ),
+    )
+    setFormEnd(
+      dateValue(item.final_deadline),
+    )
     setError('')
     setDemandModal('edit')
   }
@@ -214,18 +358,40 @@ export default function BoardWorkspace({
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
+
+    if (!activeBoard) {
+      setError(
+        'Selecione um Quadro.',
+      )
+      return
+    }
+
     setLoading(true)
     setError('')
 
-    const formData = new FormData(event.currentTarget)
+    const formData =
+      new FormData(event.currentTarget)
+
+    formData.set(
+      'board_id',
+      activeBoard.id,
+    )
+
+    formData.set(
+      'board_column_id',
+      selectedColumnId,
+    )
 
     const result =
-      demandModal === 'edit' && editing
-        ? await updateBoardColumnDemandAction(
+      demandModal === 'edit' &&
+      editing
+        ? await updateBoardPeriodDemandAction(
             editing.id,
             formData,
           )
-        : await createBoardColumnDemandAction(formData)
+        : await createBoardPeriodDemandAction(
+            formData,
+          )
 
     if ('error' in result) {
       setError(
@@ -242,14 +408,25 @@ export default function BoardWorkspace({
   async function archiveDemand() {
     if (!editing) return
 
-    if (!confirm('Arquivar esta demanda?')) return
+    const confirmed = confirm(
+      'Arquivar esta demanda?',
+    )
+
+    if (!confirmed) return
 
     setLoading(true)
+    setError('')
 
-    const result = await deleteWorkItemAction(editing.id)
+    const result =
+      await deleteWorkItemAction(
+        editing.id,
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao arquivar demanda.')
+      setError(
+        result.error ||
+          'Erro ao arquivar demanda.',
+      )
       setLoading(false)
       return
     }
@@ -263,9 +440,11 @@ export default function BoardWorkspace({
   ) {
     if (!cardId) return
 
-    const targetColumn = boardColumns.find(
-      (column) => column.id === columnId,
-    )
+    const targetColumn =
+      boardColumns.find(
+        (column: any) =>
+          column.id === columnId,
+      )
 
     if (!targetColumn) return
 
@@ -276,17 +455,21 @@ export default function BoardWorkspace({
         item.id === cardId
           ? {
               ...item,
-              board_column_id: columnId,
-              status: targetColumn.operational_status,
+              board_column_id:
+                columnId,
+              status:
+                targetColumn
+                  .operational_status,
             }
           : item,
       ),
     )
 
-    const result = await moveBoardCardAction(
-      cardId,
-      columnId,
-    )
+    const result =
+      await moveBoardCardAction(
+        cardId,
+        columnId,
+      )
 
     if ('error' in result) {
       setItems(previous)
@@ -300,24 +483,41 @@ export default function BoardWorkspace({
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
+
     setLoading(true)
     setError('')
 
-    const formData = new FormData(event.currentTarget)
-    formData.set('status', 'active')
-    formData.set('description', '')
+    const formData =
+      new FormData(event.currentTarget)
 
-    const result = await createBoardAction(formData)
+    formData.set(
+      'status',
+      'active',
+    )
+    formData.set(
+      'description',
+      '',
+    )
+
+    const result =
+      await createBoardAction(formData)
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao criar Quadro.')
+      setError(
+        result.error ||
+          'Erro ao criar Quadro.',
+      )
       setLoading(false)
       return
     }
 
-    if ('id' in result && result.id) {
+    if (
+      'id' in result &&
+      result.id
+    ) {
       window.location.href =
-        `/dashboard/quadro?board=${result.id}`
+        '/dashboard/quadro?board=' +
+        result.id
       return
     }
 
@@ -331,24 +531,32 @@ export default function BoardWorkspace({
     if (!activeBoard) return
 
     const formData = new FormData()
+
     formData.set('name', name)
     formData.set(
       'description',
       activeBoard.description || '',
     )
     formData.set('color', color)
-    formData.set('status', 'active')
+    formData.set(
+      'status',
+      'active',
+    )
 
     setLoading(true)
     setError('')
 
-    const result = await updateBoardAction(
-      activeBoard.id,
-      formData,
-    )
+    const result =
+      await updateBoardAction(
+        activeBoard.id,
+        formData,
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao atualizar Quadro.')
+      setError(
+        result.error ||
+          'Erro ao atualizar Quadro.',
+      )
       setLoading(false)
       return
     }
@@ -364,11 +572,17 @@ export default function BoardWorkspace({
       activeBoard.name,
     )?.trim()
 
-    if (!nextName || nextName === activeBoard.name) return
+    if (
+      !nextName ||
+      nextName === activeBoard.name
+    ) {
+      return
+    }
 
     await saveBoard(
       nextName,
-      activeBoard.color || '#2563EB',
+      activeBoard.color ||
+        '#2563EB',
     )
   }
 
@@ -376,8 +590,9 @@ export default function BoardWorkspace({
     if (!activeBoard) return
 
     const confirmed = confirm(
-      `Excluir o Quadro "${activeBoard.name}"?\n\n` +
-        'As demandas não serão apagadas.',
+      'Excluir o Quadro "' +
+        activeBoard.name +
+        '"?\n\nAs demandas não serão apagadas.',
     )
 
     if (!confirmed) return
@@ -385,37 +600,62 @@ export default function BoardWorkspace({
     setLoading(true)
     setError('')
 
-    const result = await deleteBoardAction(activeBoard.id)
+    const result =
+      await deleteBoardAction(
+        activeBoard.id,
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao excluir Quadro.')
+      setError(
+        result.error ||
+          'Erro ao excluir Quadro.',
+      )
       setLoading(false)
       return
     }
 
-    window.location.href = '/dashboard/quadro'
+    window.location.href =
+      '/dashboard/quadro'
   }
 
   async function createColumn() {
     if (!activeBoard) return
 
-    const name = prompt('Nome da nova coluna:')?.trim()
+    const name = prompt(
+      'Nome da nova coluna:',
+    )?.trim()
 
     if (!name) return
 
     const formData = new FormData()
-    formData.set('board_id', activeBoard.id)
+
+    formData.set(
+      'board_id',
+      activeBoard.id,
+    )
     formData.set('name', name)
-    formData.set('color', '#64748B')
-    formData.set('operational_status', 'not_started')
+    formData.set(
+      'color',
+      '#64748B',
+    )
+    formData.set(
+      'operational_status',
+      'not_started',
+    )
 
     setLoading(true)
     setError('')
 
-    const result = await createBoardColumnAction(formData)
+    const result =
+      await createBoardColumnAction(
+        formData,
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao criar coluna.')
+      setError(
+        result.error ||
+          'Erro ao criar coluna.',
+      )
       setLoading(false)
       return
     }
@@ -428,28 +668,39 @@ export default function BoardWorkspace({
     patch: Partial<{
       name: string
       color: string
-      operational_status: string
     }>,
   ) {
     const formData = new FormData()
-    formData.set('name', patch.name ?? column.name)
-    formData.set('color', patch.color ?? column.color)
+
+    formData.set(
+      'name',
+      patch.name ?? column.name,
+    )
+    formData.set(
+      'color',
+      patch.color ?? column.color,
+    )
+
     formData.set(
       'operational_status',
-      patch.operational_status ??
-        column.operational_status,
+      column.operational_status ||
+        'not_started',
     )
 
     setLoading(true)
     setError('')
 
-    const result = await updateBoardColumnAction(
-      column.id,
-      formData,
-    )
+    const result =
+      await updateBoardColumnAction(
+        column.id,
+        formData,
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao editar coluna.')
+      setError(
+        result.error ||
+          'Erro ao editar coluna.',
+      )
       setLoading(false)
       return
     }
@@ -457,25 +708,66 @@ export default function BoardWorkspace({
     window.location.reload()
   }
 
-  async function renameColumn(column: any) {
+  async function renameColumn(
+    column: any,
+  ) {
     const nextName = prompt(
       'Novo nome da coluna:',
       column.name,
     )?.trim()
 
-    if (!nextName || nextName === column.name) return
+    if (
+      !nextName ||
+      nextName === column.name
+    ) {
+      return
+    }
 
-    await updateColumn(column, { name: nextName })
+    await updateColumn(
+      column,
+      { name: nextName },
+    )
   }
 
-  async function persistColumnOrder(next: any[]) {
+  function openPersonalizeColumn(
+    column: any,
+  ) {
+    setPersonalizeColumn(column)
+    setPersonalizeColor(
+      column.color || '#64748B',
+    )
+    setError('')
+  }
+
+  async function submitPersonalizeColumn(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+
+    if (!personalizeColumn) return
+
+    await updateColumn(
+      personalizeColumn,
+      {
+        color: personalizeColor,
+      },
+    )
+  }
+
+  async function persistColumnOrder(
+    next: any[],
+  ) {
     const previous = boardColumns
+
     setBoardColumns(next)
 
-    const result = await reorderBoardColumnsAction(
-      activeBoardId,
-      next.map((column) => column.id),
-    )
+    const result =
+      await reorderBoardColumnsAction(
+        activeBoardId,
+        next.map(
+          (column) => column.id,
+        ),
+      )
 
     if ('error' in result) {
       setBoardColumns(previous)
@@ -483,46 +775,50 @@ export default function BoardWorkspace({
     }
   }
 
-  async function moveColumn(
-    columnId: string,
-    direction: -1 | 1,
+  async function dropColumn(
+    targetColumnId: string,
   ) {
-    const index = boardColumns.findIndex(
-      (column) => column.id === columnId,
-    )
-    const target = index + direction
-
-    if (index < 0 || target < 0 || target >= boardColumns.length) {
-      return
-    }
-
-    const next = [...boardColumns]
-    const [moved] = next.splice(index, 1)
-    next.splice(target, 0, moved)
-
-    await persistColumnOrder(next)
-  }
-
-  async function dropColumn(targetColumnId: string) {
-    if (!dragColumnId || dragColumnId === targetColumnId) {
+    if (
+      !dragColumnId ||
+      dragColumnId === targetColumnId
+    ) {
       setDragColumnId(null)
       return
     }
 
-    const sourceIndex = boardColumns.findIndex(
-      (column) => column.id === dragColumnId,
-    )
-    const targetIndex = boardColumns.findIndex(
-      (column) => column.id === targetColumnId,
-    )
+    const sourceIndex =
+      boardColumns.findIndex(
+        (column) =>
+          column.id === dragColumnId,
+      )
 
-    if (sourceIndex < 0 || targetIndex < 0) return
+    const targetIndex =
+      boardColumns.findIndex(
+        (column) =>
+          column.id ===
+          targetColumnId,
+      )
+
+    if (
+      sourceIndex < 0 ||
+      targetIndex < 0
+    ) {
+      return
+    }
 
     const next = [...boardColumns]
-    const [moved] = next.splice(sourceIndex, 1)
-    next.splice(targetIndex, 0, moved)
+
+    const [moved] =
+      next.splice(sourceIndex, 1)
+
+    next.splice(
+      targetIndex,
+      0,
+      moved,
+    )
 
     setDragColumnId(null)
+
     await persistColumnOrder(next)
   }
 
@@ -533,21 +829,30 @@ export default function BoardWorkspace({
 
     if (!deleteColumn) return
 
-    const formData = new FormData(event.currentTarget)
+    const formData =
+      new FormData(event.currentTarget)
+
     const targetColumnId =
-      String(formData.get('target_column_id') || '') ||
-      null
+      String(
+        formData.get(
+          'target_column_id',
+        ) || '',
+      ) || null
 
     setLoading(true)
     setError('')
 
-    const result = await deleteBoardColumnAction(
-      deleteColumn.id,
-      targetColumnId,
-    )
+    const result =
+      await deleteBoardColumnAction(
+        deleteColumn.id,
+        targetColumnId,
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Erro ao excluir coluna.')
+      setError(
+        result.error ||
+          'Erro ao excluir coluna.',
+      )
       setLoading(false)
       return
     }
@@ -555,13 +860,21 @@ export default function BoardWorkspace({
     window.location.reload()
   }
 
+  function allowDrop(
+    event: DragEvent<HTMLElement>,
+  ) {
+    event.preventDefault()
+  }
+
   return (
-    <div className="page-wrap ops-page board-a14-page">
+    <div className="page-wrap ops-page board-a14-page board-a15-page">
       <div className="topbar">
         <div>
-          <div className="tb-title">Quadro</div>
+          <div className="tb-title">
+            Quadro
+          </div>
           <div className="tb-sub">
-            Quadros e colunas configuráveis por fluxo operacional.
+            Quadros e colunas configuráveis.
           </div>
         </div>
 
@@ -569,7 +882,11 @@ export default function BoardWorkspace({
           <i className="ti ti-search" />
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) =>
+              setQuery(
+                event.target.value,
+              )
+            }
             placeholder="Buscar demanda ou cliente."
           />
         </div>
@@ -578,51 +895,83 @@ export default function BoardWorkspace({
       <div className="board-a14-toolbar">
         <div className="board-a14-selector">
           <span>Quadro ativo</span>
+
           <select
             className="fi compact"
             value={activeBoardId}
             onChange={(event) => {
               window.location.href =
-                `/dashboard/quadro?board=${event.target.value}`
+                '/dashboard/quadro?board=' +
+                event.target.value
             }}
           >
             {!boards.length && (
-              <option value="">Nenhum Quadro cadastrado</option>
-            )}
-            {boards.map((board: any) => (
-              <option key={board.id} value={board.id}>
-                {board.name}
+              <option value="">
+                Nenhum Quadro cadastrado
               </option>
-            ))}
+            )}
+
+            {boards.map(
+              (board: any) => (
+                <option
+                  key={board.id}
+                  value={board.id}
+                >
+                  {board.name}
+                </option>
+              ),
+            )}
           </select>
         </div>
 
         <select
           className="fi compact"
           value={clientId}
-          onChange={(event) => setClientId(event.target.value)}
+          onChange={(event) =>
+            setClientId(
+              event.target.value,
+            )
+          }
         >
-          <option value="all">Todos os clientes</option>
-          {clients.map((client: any) => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-            </option>
-          ))}
+          <option value="all">
+            Todos os clientes
+          </option>
+
+          {clients.map(
+            (client: any) => (
+              <option
+                key={client.id}
+                value={client.id}
+              >
+                {client.name}
+              </option>
+            ),
+          )}
         </select>
 
         <select
           className="fi compact"
           value={responsibleId}
           onChange={(event) =>
-            setResponsibleId(event.target.value)
+            setResponsibleId(
+              event.target.value,
+            )
           }
         >
-          <option value="all">Todos os responsáveis</option>
-          {profiles.map((profile: any) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.full_name}
-            </option>
-          ))}
+          <option value="all">
+            Todos os responsáveis
+          </option>
+
+          {profiles.map(
+            (profile: any) => (
+              <option
+                key={profile.id}
+                value={profile.id}
+              >
+                {profile.full_name}
+              </option>
+            ),
+          )}
         </select>
 
         {canManage && (
@@ -639,54 +988,67 @@ export default function BoardWorkspace({
           </button>
         )}
 
-        {canManage && activeBoard && (
-          <details className="board-a14-menu">
-            <summary
-              className="board-a14-icon"
-              title="Opções do Quadro"
-            >
-              <i className="ti ti-dots" />
-            </summary>
-
-            <div className="board-a14-menu-popover">
-              <button type="button" onClick={renameBoard}>
-                <i className="ti ti-edit" />
-                Renomear
-              </button>
-
-              <div className="board-a14-menu-label">
-                Cor da borda
-              </div>
-
-              <div className="board-a14-palette">
-                {BOARD_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={
-                      activeBoard.color === color
-                        ? 'board-a14-swatch selected'
-                        : 'board-a14-swatch'
-                    }
-                    style={{ backgroundColor: color }}
-                    onClick={() =>
-                      saveBoard(activeBoard.name, color)
-                    }
-                  />
-                ))}
-              </div>
-
-              <button
-                className="danger-option"
-                type="button"
-                onClick={removeBoard}
+        {canManage &&
+          activeBoard && (
+            <details className="board-a14-menu">
+              <summary
+                className="board-a14-icon"
+                title="Opções do Quadro"
               >
-                <i className="ti ti-trash" />
-                Excluir Quadro
-              </button>
-            </div>
-          </details>
-        )}
+                <i className="ti ti-dots" />
+              </summary>
+
+              <div className="board-a14-menu-popover">
+                <button
+                  type="button"
+                  onClick={renameBoard}
+                >
+                  <i className="ti ti-edit" />
+                  Renomear
+                </button>
+
+                <div className="board-a14-menu-label">
+                  Cor da borda
+                </div>
+
+                <div className="board-a14-palette">
+                  {BOARD_COLORS.map(
+                    (color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={
+                          activeBoard.color ===
+                          color
+                            ? 'board-a14-swatch selected'
+                            : 'board-a14-swatch'
+                        }
+                        style={{
+                          backgroundColor:
+                            color,
+                        }}
+                        onClick={() =>
+                          saveBoard(
+                            activeBoard.name,
+                            color,
+                          )
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+
+                <button
+                  className="danger-option"
+                  type="button"
+                  onClick={removeBoard}
+                >
+                  <i className="ti ti-trash" />
+                  Excluir Quadro
+                </button>
+              </div>
+            </details>
+          )}
       </div>
 
       {activeBoard && (
@@ -694,14 +1056,20 @@ export default function BoardWorkspace({
           className="board-a14-heading"
           style={{
             borderLeftColor:
-              activeBoard.color || '#2563EB',
+              activeBoard.color ||
+              '#2563EB',
           }}
         >
           <div>
-            <strong>{activeBoard.name}</strong>
+            <strong>
+              {activeBoard.name}
+            </strong>
+
             <span>
-              {boardColumns.length} coluna(s) • {filtered.length}{' '}
-              demanda(s)
+              {boardColumns.length}
+              {' '}coluna(s) •{' '}
+              {filtered.length}
+              {' '}demanda(s)
             </span>
           </div>
 
@@ -721,7 +1089,9 @@ export default function BoardWorkspace({
       {loadErrors.length > 0 && (
         <div className="notice notice-err">
           <i className="ti ti-alert-circle" />
-          <span>{loadErrors.join(' • ')}</span>
+          <span>
+            {loadErrors.join(' • ')}
+          </span>
         </div>
       )}
 
@@ -739,7 +1109,7 @@ export default function BoardWorkspace({
             Nenhum Quadro ativo
           </div>
           <div className="empty-sub">
-            Crie o primeiro Quadro para iniciar a operação.
+            Crie o primeiro Quadro para iniciar.
           </div>
         </div>
       ) : (
@@ -747,242 +1117,278 @@ export default function BoardWorkspace({
           className="board-a14-canvas"
           style={{
             borderColor:
-              activeBoard.color || '#2563EB',
+              activeBoard.color ||
+              '#2563EB',
           }}
         >
-          {boardColumns.map((column: any, index: number) => {
-            const columnItems = cardsInColumn(column.id)
+          {boardColumns.map(
+            (column: any) => {
+              const columnItems =
+                cardsInColumn(
+                  column.id,
+                )
 
-            return (
-              <section
-                className="board-a14-column"
-                key={column.id}
-                style={{
-                  borderTopColor:
-                    column.color || '#64748B',
-                }}
-              >
-                <header
-                  className="board-a14-column-head"
-                  onDragOver={(event) =>
-                    event.preventDefault()
-                  }
-                  onDrop={() => dropColumn(column.id)}
+              return (
+                <section
+                  className="board-a14-column"
+                  key={column.id}
+                  style={{
+                    borderTopColor:
+                      column.color ||
+                      '#64748B',
+                  }}
                 >
-                  <button
-                    className="board-a14-column-grip"
-                    type="button"
-                    title="Arrastar coluna"
-                    draggable={canManage}
-                    onDragStart={(event) => {
-                      event.stopPropagation()
-                      setDragColumnId(column.id)
-                    }}
-                    onDragEnd={() => setDragColumnId(null)}
-                  >
-                    <i className="ti ti-grip-vertical" />
-                  </button>
-
-                  <div className="board-a14-column-title">
-                    <span
-                      style={{
-                        backgroundColor:
-                          column.color || '#64748B',
-                      }}
-                    />
-                    <div>
-                      <strong>{column.name}</strong>
-                      <small>{columnItems.length} card(s)</small>
-                    </div>
-                  </div>
-
-                  <button
-                    className="board-a14-column-icon"
-                    type="button"
-                    title="Nova demanda nesta coluna"
-                    onClick={() =>
-                      openCreateDemand(column.id)
+                  <header
+                    className="board-a14-column-head"
+                    onDragOver={allowDrop}
+                    onDrop={() =>
+                      dropColumn(
+                        column.id,
+                      )
                     }
                   >
-                    <i className="ti ti-plus" />
-                  </button>
+                    <button
+                      className="board-a14-column-grip"
+                      type="button"
+                      title="Arrastar coluna"
+                      draggable={canManage}
+                      onDragStart={(
+                        event,
+                      ) => {
+                        event.stopPropagation()
+                        setDragColumnId(
+                          column.id,
+                        )
+                      }}
+                      onDragEnd={() =>
+                        setDragColumnId(
+                          null,
+                        )
+                      }
+                    >
+                      <i className="ti ti-grip-vertical" />
+                    </button>
 
-                  {canManage && (
-                    <details className="board-a14-column-menu">
-                      <summary
-                        className="board-a14-column-icon"
-                        title="Editar coluna"
-                      >
-                        <i className="ti ti-dots-vertical" />
-                      </summary>
+                    <div className="board-a14-column-title">
+                      <span
+                        style={{
+                          backgroundColor:
+                            column.color ||
+                            '#64748B',
+                        }}
+                      />
 
-                      <div className="board-a14-column-popover">
-                        <button
-                          type="button"
-                          onClick={() => renameColumn(column)}
+                      <div>
+                        <strong>
+                          {column.name}
+                        </strong>
+                        <small>
+                          {
+                            columnItems.length
+                          }{' '}
+                          card(s)
+                        </small>
+                      </div>
+                    </div>
+
+                    <button
+                      className="board-a14-column-icon"
+                      type="button"
+                      title="Nova demanda nesta coluna"
+                      onClick={() =>
+                        openCreateDemand(
+                          column.id,
+                        )
+                      }
+                    >
+                      <i className="ti ti-plus" />
+                    </button>
+
+                    {canManage && (
+                      <details className="board-a14-column-menu board-a15-column-menu">
+                        <summary
+                          className="board-a14-column-icon"
+                          title="Opções da coluna"
                         >
-                          <i className="ti ti-edit" />
-                          Renomear
-                        </button>
+                          <i className="ti ti-dots-vertical" />
+                        </summary>
 
-                        <div className="board-a14-menu-label">
-                          Cor da coluna
-                        </div>
-
-                        <div className="board-a14-palette">
-                          {COLUMN_COLORS.map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              className={
-                                column.color === color
-                                  ? 'board-a14-swatch selected'
-                                  : 'board-a14-swatch'
-                              }
-                              style={{
-                                backgroundColor: color,
-                              }}
-                              onClick={() =>
-                                updateColumn(column, { color })
-                              }
-                            />
-                          ))}
-                        </div>
-
-                        <label className="board-a14-status-field">
-                          <span>Status operacional</span>
-                          <select
-                            className="fi compact"
-                            value={column.operational_status}
-                            onChange={(event) =>
-                              updateColumn(column, {
-                                operational_status:
-                                  event.target.value,
-                              })
-                            }
-                          >
-                            {STATUS_OPTIONS.map(
-                              ([value, label]) => (
-                                <option
-                                  key={value}
-                                  value={value}
-                                >
-                                  {label}
-                                </option>
-                              ),
-                            )}
-                          </select>
-                        </label>
-
-                        <div className="board-a14-order-actions">
+                        <div className="board-a14-column-popover board-a15-column-popover">
                           <button
                             type="button"
-                            disabled={index === 0}
                             onClick={() =>
-                              moveColumn(column.id, -1)
+                              renameColumn(
+                                column,
+                              )
                             }
                           >
-                            <i className="ti ti-arrow-left" />
-                            Esquerda
+                            <i className="ti ti-edit" />
+                            Renomear
                           </button>
 
                           <button
+                            type="button"
+                            onClick={() =>
+                              openPersonalizeColumn(
+                                column,
+                              )
+                            }
+                          >
+                            <i className="ti ti-palette" />
+                            Personalizar
+                          </button>
+
+                          <button
+                            className="danger-option"
                             type="button"
                             disabled={
-                              index ===
-                              boardColumns.length - 1
+                              boardColumns.length <=
+                              1
                             }
                             onClick={() =>
-                              moveColumn(column.id, 1)
+                              setDeleteColumn(
+                                column,
+                              )
                             }
                           >
-                            Direita
-                            <i className="ti ti-arrow-right" />
+                            <i className="ti ti-trash" />
+                            Excluir coluna
                           </button>
                         </div>
+                      </details>
+                    )}
+                  </header>
 
-                        <button
-                          className="danger-option"
-                          type="button"
-                          disabled={boardColumns.length <= 1}
-                          onClick={() =>
-                            setDeleteColumn(column)
-                          }
-                        >
-                          <i className="ti ti-trash" />
-                          Excluir coluna
-                        </button>
+                  <div
+                    className="board-a14-column-scroll"
+                    onDragOver={allowDrop}
+                    onDrop={() =>
+                      moveCard(
+                        dragCardId,
+                        column.id,
+                      )
+                    }
+                  >
+                    {columnItems.map(
+                      (item: any) => {
+                        const finalState =
+                          deadlineState(
+                            item.final_deadline,
+                          )
+
+                        return (
+                          <article
+                            key={item.id}
+                            className="board-a14-card board-a15-card"
+                            data-tone={cardTone(
+                              item,
+                            )}
+                            draggable
+                            onDragStart={(
+                              event,
+                            ) => {
+                              event.stopPropagation()
+                              setDragCardId(
+                                item.id,
+                              )
+                            }}
+                            onDragEnd={() =>
+                              setDragCardId(
+                                null,
+                              )
+                            }
+                            onClick={() =>
+                              openEditDemand(
+                                item,
+                              )
+                            }
+                          >
+                            <div className="board-a15-card-status">
+                              <span
+                                className={
+                                  'board-a15-priority ' +
+                                  (
+                                    item.priority ||
+                                    'normal'
+                                  )
+                                }
+                              >
+                                {PRIORITY_LABEL[
+                                  item.priority
+                                ] ||
+                                  'Normal'}
+                              </span>
+
+                              <span
+                                className={
+                                  'board-a15-final ' +
+                                  finalState
+                                }
+                              >
+                                FINAL{' '}
+                                {formatDateShort(
+                                  item.final_deadline,
+                                )}
+                              </span>
+
+                              {item.drive_link ? (
+                                <a
+                                  className="board-a15-plan"
+                                  href={
+                                    item.drive_link
+                                  }
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Abrir documento pai do planejamento"
+                                  onClick={(
+                                    event,
+                                  ) =>
+                                    event.stopPropagation()
+                                  }
+                                  onMouseDown={(
+                                    event,
+                                  ) =>
+                                    event.stopPropagation()
+                                  }
+                                >
+                                  PLAN
+                                  <i className="ti ti-external-link" />
+                                </a>
+                              ) : (
+                                <span className="board-a15-plan missing">
+                                  SEM PLAN
+                                </span>
+                              )}
+                            </div>
+
+                            <h3>
+                              {item.title}
+                            </h3>
+
+                            <div className="board-a15-card-responsible">
+                              <i className="ti ti-user" />
+                              <span>
+                                {item
+                                  .responsible
+                                  ?.full_name ||
+                                  'Sem responsável'}
+                              </span>
+                            </div>
+                          </article>
+                        )
+                      },
+                    )}
+
+                    {!columnItems.length && (
+                      <div className="board-a14-column-empty">
+                        Solte um card aqui
                       </div>
-                    </details>
-                  )}
-                </header>
-
-                <div
-                  className="board-a14-column-scroll"
-                  onDragOver={(event) =>
-                    event.preventDefault()
-                  }
-                  onDrop={() =>
-                    moveCard(dragCardId, column.id)
-                  }
-                >
-                  {columnItems.map((item: any) => (
-                    <article
-                      key={item.id}
-                      className="board-a14-card"
-                      data-tone={cardTone(item)}
-                      draggable
-                      onDragStart={(event) => {
-                        event.stopPropagation()
-                        setDragCardId(item.id)
-                      }}
-                      onDragEnd={() => setDragCardId(null)}
-                      onClick={() => openEditDemand(item)}
-                    >
-                      <div className="board-a14-card-top">
-                        <span
-                          className={`priority-dot ${item.priority}`}
-                        />
-                        <span>
-                          {PRIORITY_LABEL[item.priority] ||
-                            'Normal'}
-                        </span>
-                      </div>
-
-                      <h3>{item.title}</h3>
-
-                      <p>
-                        {item.client?.name || 'Interno Ampy'}
-                        {' • '}
-                        {item.type || 'Demanda'}
-                      </p>
-
-                      <div className="board-a14-card-meta">
-                        <span>
-                          <i className="ti ti-user" />
-                          {item.responsible?.full_name ||
-                            'Sem responsável'}
-                        </span>
-                        <span>
-                          <i className="ti ti-calendar" />
-                          {formatDate(
-                            item.final_deadline ||
-                              item.internal_deadline,
-                          )}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-
-                  {!columnItems.length && (
-                    <div className="board-a14-column-empty">
-                      Solte um card aqui
-                    </div>
-                  )}
-                </div>
-              </section>
-            )
-          })}
+                    )}
+                  </div>
+                </section>
+              )
+            },
+          )}
 
           {canManage && (
             <button
@@ -1000,11 +1406,15 @@ export default function BoardWorkspace({
       {demandModal && (
         <div
           className="modal-ov"
-          onClick={() => setDemandModal(null)}
+          onClick={() =>
+            setDemandModal(null)
+          }
         >
           <div
             className="modal context-modal-wide"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
             <div className="modal-head">
               <div>
@@ -1013,15 +1423,18 @@ export default function BoardWorkspace({
                     ? 'Editar demanda'
                     : 'Nova demanda'}
                 </div>
+
                 <div className="modal-sub">
-                  O card permanece sincronizado com Demandas.
+                  Cliente e período geram o título automaticamente.
                 </div>
               </div>
 
               <button
                 className="mclose"
                 type="button"
-                onClick={() => setDemandModal(null)}
+                onClick={() =>
+                  setDemandModal(null)
+                }
               >
                 <i className="ti ti-x" />
               </button>
@@ -1029,139 +1442,131 @@ export default function BoardWorkspace({
 
             <form onSubmit={submitDemand}>
               <div className="modal-body">
-                <div className="fg">
-                  <label className="fl">Título *</label>
-                  <input
-                    className="fi"
-                    name="title"
-                    required
-                    defaultValue={editing?.title || ''}
-                  />
+                <input
+                  type="hidden"
+                  name="board_id"
+                  value={activeBoardId}
+                />
+
+                <div className="board-a15-title-preview">
+                  <span>
+                    Título automático
+                  </span>
+                  <strong>
+                    {formatPeriodTitle(
+                      selectedClient?.name ||
+                        '',
+                      formStart,
+                      formEnd,
+                    )}
+                  </strong>
                 </div>
 
-                <div className="frow">
-                  <div className="fg">
-                    <label className="fl">Coluna *</label>
-                    <select
-                      className="fi"
-                      name="board_column_id"
-                      required
-                      value={selectedColumnId}
-                      onChange={(event) =>
-                        setSelectedColumnId(
-                          event.target.value,
-                        )
-                      }
+                <div className="fg">
+                  <label className="fl">
+                    Coluna *
+                  </label>
+
+                  <select
+                    className="fi"
+                    name="board_column_id"
+                    required
+                    value={
+                      selectedColumnId
+                    }
+                    onChange={(event) =>
+                      setSelectedColumnId(
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option
+                      value=""
+                      disabled
                     >
-                      {boardColumns.map((column) => (
+                      Escolha a coluna
+                    </option>
+
+                    {boardColumns.map(
+                      (column: any) => (
                         <option
                           key={column.id}
                           value={column.id}
                         >
                           {column.name}
                         </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="fg">
-                    <label className="fl">Cliente</label>
-                    <select
-                      className="fi"
-                      name="client_id"
-                      value={formClient}
-                      onChange={(event) =>
-                        setFormClient(event.target.value)
-                      }
-                    >
-                      <option value="">Interno Ampy</option>
-                      {clients.map((client: any) => (
-                        <option
-                          key={client.id}
-                          value={client.id}
-                        >
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      ),
+                    )}
+                  </select>
                 </div>
 
                 <div className="frow">
                   <div className="fg">
-                    <label className="fl">Serviço</label>
+                    <label className="fl">
+                      Cliente *
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="client_id"
+                      required
+                      value={formClient}
+                      onChange={(event) =>
+                        setFormClient(
+                          event.target.value,
+                        )
+                      }
+                    >
+                      <option
+                        value=""
+                        disabled
+                      >
+                        Selecione o cliente
+                      </option>
+
+                      {clients.map(
+                        (client: any) => (
+                          <option
+                            key={client.id}
+                            value={client.id}
+                          >
+                            {client.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Serviço
+                    </label>
+
                     <select
                       className="fi"
                       name="client_service_id"
                       defaultValue={
-                        editing?.client_service_id || ''
+                        editing
+                          ?.client_service_id ||
+                        ''
                       }
                     >
                       <option value="">
                         Sem serviço específico
                       </option>
-                      {activeServices.map((service: any) => (
-                        <option
-                          key={service.id}
-                          value={service.id}
-                        >
-                          {service.service?.name || 'Serviço'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
 
-                  <div className="fg">
-                    <label className="fl">Tipo</label>
-                    <select
-                      className="fi"
-                      name="type"
-                      defaultValue={
-                        editing?.type || 'Planejamento'
-                      }
-                    >
-                      {TYPES.map((type) => (
-                        <option key={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="frow">
-                  <div className="fg">
-                    <label className="fl">Responsável</label>
-                    <select
-                      className="fi"
-                      name="responsible_id"
-                      defaultValue={
-                        editing?.responsible_id || ''
-                      }
-                    >
-                      <option value="">Definir depois</option>
-                      {profiles.map((profile: any) => (
-                        <option
-                          key={profile.id}
-                          value={profile.id}
-                        >
-                          {profile.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="fg">
-                    <label className="fl">Prioridade</label>
-                    <select
-                      className="fi"
-                      name="priority"
-                      defaultValue={
-                        editing?.priority || 'normal'
-                      }
-                    >
-                      <option value="low">Baixa</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">Alta</option>
-                      <option value="urgent">Urgente</option>
+                      {activeServices.map(
+                        (service: any) => (
+                          <option
+                            key={service.id}
+                            value={service.id}
+                          >
+                            {service.service
+                              ?.name ||
+                              'Serviço'}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1169,56 +1574,144 @@ export default function BoardWorkspace({
                 <div className="frow">
                   <div className="fg">
                     <label className="fl">
-                      Prazo interno
+                      Início *
                     </label>
+
                     <input
                       className="fi"
                       type="date"
                       name="internal_deadline"
-                      defaultValue={dateValue(
-                        editing?.internal_deadline,
-                      )}
+                      required
+                      value={formStart}
+                      onChange={(event) =>
+                        setFormStart(
+                          event.target.value,
+                        )
+                      }
                     />
                   </div>
 
                   <div className="fg">
-                    <label className="fl">Prazo final</label>
+                    <label className="fl">
+                      Final *
+                    </label>
+
                     <input
                       className="fi"
                       type="date"
                       name="final_deadline"
-                      defaultValue={dateValue(
-                        editing?.final_deadline,
-                      )}
+                      required
+                      min={
+                        formStart ||
+                        undefined
+                      }
+                      value={formEnd}
+                      onChange={(event) =>
+                        setFormEnd(
+                          event.target.value,
+                        )
+                      }
                     />
                   </div>
                 </div>
 
-                <div className="fg">
-                  <label className="fl">Descrição</label>
-                  <textarea
-                    className="fi"
-                    name="description"
-                    defaultValue={editing?.description || ''}
-                  />
+                <div className="frow">
+                  <div className="fg">
+                    <label className="fl">
+                      Responsável *
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="responsible_id"
+                      required
+                      defaultValue={
+                        editing
+                          ?.responsible_id ||
+                        ''
+                      }
+                    >
+                      <option
+                        value=""
+                        disabled
+                      >
+                        Selecione o responsável
+                      </option>
+
+                      {profiles.map(
+                        (profile: any) => (
+                          <option
+                            key={profile.id}
+                            value={profile.id}
+                          >
+                            {profile.full_name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Prioridade *
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="priority"
+                      required
+                      defaultValue={
+                        editing?.priority ||
+                        'normal'
+                      }
+                    >
+                      <option value="low">
+                        Baixa
+                      </option>
+                      <option value="normal">
+                        Normal
+                      </option>
+                      <option value="high">
+                        Alta
+                      </option>
+                      <option value="urgent">
+                        Urgente
+                      </option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="fg">
-                  <label className="fl">Link do Drive</label>
+                  <label className="fl">
+                    Link do Drive — PLAN
+                  </label>
+
                   <input
                     className="fi"
                     type="url"
                     name="drive_link"
-                    defaultValue={editing?.drive_link || ''}
+                    placeholder="Link do documento pai do planejamento"
+                    defaultValue={
+                      editing?.drive_link ||
+                      ''
+                    }
                   />
                 </div>
 
                 <div className="fg">
-                  <label className="fl">Observações</label>
+                  <label className="fl">
+                    Observação
+                  </label>
+
                   <textarea
                     className="fi"
                     name="notes"
-                    defaultValue={editing?.notes || ''}
+                    rows={4}
+                    defaultValue={
+                      editing?.notes ||
+                      editing?.description ||
+                      ''
+                    }
                   />
                 </div>
 
@@ -1244,7 +1737,9 @@ export default function BoardWorkspace({
                 <button
                   className="bsec"
                   type="button"
-                  onClick={() => setDemandModal(null)}
+                  onClick={() =>
+                    setDemandModal(null)
+                  }
                 >
                   Cancelar
                 </button>
@@ -1265,27 +1760,159 @@ export default function BoardWorkspace({
         </div>
       )}
 
-      {boardCreateOpen && (
+      {personalizeColumn && (
         <div
           className="modal-ov"
-          onClick={() => setBoardCreateOpen(false)}
+          onClick={() =>
+            setPersonalizeColumn(
+              null,
+            )
+          }
         >
           <div
-            className="modal"
-            onClick={(event) => event.stopPropagation()}
+            className="modal board-a15-personalize-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
             <div className="modal-head">
               <div>
-                <div className="modal-title">Novo Quadro</div>
+                <div className="modal-title">
+                  Personalizar coluna
+                </div>
                 <div className="modal-sub">
-                  O novo Quadro receberá colunas iniciais
-                  editáveis.
+                  {personalizeColumn.name}
                 </div>
               </div>
+
               <button
                 className="mclose"
                 type="button"
-                onClick={() => setBoardCreateOpen(false)}
+                onClick={() =>
+                  setPersonalizeColumn(
+                    null,
+                  )
+                }
+              >
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={
+                submitPersonalizeColumn
+              }
+            >
+              <div className="modal-body">
+                <div className="fg">
+                  <label className="fl">
+                    Cor da coluna
+                  </label>
+
+                  <div className="board-a15-personalize-palette">
+                    {COLUMN_COLORS.map(
+                      (color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={
+                            personalizeColor ===
+                            color
+                              ? 'board-a15-personalize-swatch selected'
+                              : 'board-a15-personalize-swatch'
+                          }
+                          style={{
+                            backgroundColor:
+                              color,
+                          }}
+                          onClick={() =>
+                            setPersonalizeColor(
+                              color,
+                            )
+                          }
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  className="board-a15-color-preview"
+                  style={{
+                    borderTopColor:
+                      personalizeColor,
+                  }}
+                >
+                  <span
+                    style={{
+                      backgroundColor:
+                        personalizeColor,
+                    }}
+                  />
+                  <strong>
+                    {
+                      personalizeColumn.name
+                    }
+                  </strong>
+                </div>
+              </div>
+
+              <div className="modal-foot">
+                <button
+                  className="bsec"
+                  type="button"
+                  onClick={() =>
+                    setPersonalizeColumn(
+                      null,
+                    )
+                  }
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  className="bpri"
+                  disabled={loading}
+                >
+                  Salvar personalização
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {boardCreateOpen && (
+        <div
+          className="modal-ov"
+          onClick={() =>
+            setBoardCreateOpen(false)
+          }
+        >
+          <div
+            className="modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="modal-head">
+              <div>
+                <div className="modal-title">
+                  Novo Quadro
+                </div>
+                <div className="modal-sub">
+                  O novo Quadro receberá colunas editáveis.
+                </div>
+              </div>
+
+              <button
+                className="mclose"
+                type="button"
+                onClick={() =>
+                  setBoardCreateOpen(
+                    false,
+                  )
+                }
               >
                 <i className="ti ti-x" />
               </button>
@@ -1294,7 +1921,10 @@ export default function BoardWorkspace({
             <form onSubmit={submitBoard}>
               <div className="modal-body">
                 <div className="fg">
-                  <label className="fl">Nome *</label>
+                  <label className="fl">
+                    Nome *
+                  </label>
+
                   <input
                     className="fi"
                     name="name"
@@ -1305,7 +1935,10 @@ export default function BoardWorkspace({
                 </div>
 
                 <div className="fg">
-                  <label className="fl">Cor da borda</label>
+                  <label className="fl">
+                    Cor da borda
+                  </label>
+
                   <input
                     className="fi context-color-input"
                     type="color"
@@ -1319,15 +1952,22 @@ export default function BoardWorkspace({
                 <button
                   className="bsec"
                   type="button"
-                  onClick={() => setBoardCreateOpen(false)}
+                  onClick={() =>
+                    setBoardCreateOpen(
+                      false,
+                    )
+                  }
                 >
                   Cancelar
                 </button>
+
                 <button
                   className="bpri"
                   disabled={loading}
                 >
-                  {loading ? 'Criando...' : 'Criar Quadro'}
+                  {loading
+                    ? 'Criando...'
+                    : 'Criar Quadro'}
                 </button>
               </div>
             </form>
@@ -1338,11 +1978,15 @@ export default function BoardWorkspace({
       {deleteColumn && (
         <div
           className="modal-ov"
-          onClick={() => setDeleteColumn(null)}
+          onClick={() =>
+            setDeleteColumn(null)
+          }
         >
           <div
             className="modal"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
             <div className="modal-head">
               <div>
@@ -1353,52 +1997,83 @@ export default function BoardWorkspace({
                   Os cards nunca serão apagados.
                 </div>
               </div>
+
               <button
                 className="mclose"
                 type="button"
-                onClick={() => setDeleteColumn(null)}
+                onClick={() =>
+                  setDeleteColumn(null)
+                }
               >
                 <i className="ti ti-x" />
               </button>
             </div>
 
-            <form onSubmit={confirmDeleteColumn}>
+            <form
+              onSubmit={
+                confirmDeleteColumn
+              }
+            >
               <div className="modal-body">
                 <div className="notice notice-warn">
                   <span>
-                    Coluna: <b>{deleteColumn.name}</b> •{' '}
-                    {cardsInColumn(deleteColumn.id).length}{' '}
+                    Coluna:{' '}
+                    <b>
+                      {deleteColumn.name}
+                    </b>
+                    {' • '}
+                    {
+                      cardsInColumn(
+                        deleteColumn.id,
+                      ).length
+                    }{' '}
                     card(s)
                   </span>
                 </div>
 
-                {cardsInColumn(deleteColumn.id).length > 0 && (
+                {cardsInColumn(
+                  deleteColumn.id,
+                ).length > 0 && (
                   <div className="fg">
                     <label className="fl">
                       Mover cards para *
                     </label>
+
                     <select
                       className="fi"
                       name="target_column_id"
                       required
                       defaultValue=""
                     >
-                      <option value="" disabled>
+                      <option
+                        value=""
+                        disabled
+                      >
                         Escolha a coluna de destino
                       </option>
+
                       {boardColumns
                         .filter(
                           (column) =>
-                            column.id !== deleteColumn.id,
+                            column.id !==
+                            deleteColumn.id,
                         )
-                        .map((column) => (
-                          <option
-                            key={column.id}
-                            value={column.id}
-                          >
-                            {column.name}
-                          </option>
-                        ))}
+                        .map(
+                          (column) => (
+                            <option
+                              key={
+                                column.id
+                              }
+                              value={
+                                column.id
+                              }
+                            >
+                              {
+                                column.name
+                              }
+                            </option>
+                          ),
+                        )}
                     </select>
                   </div>
                 )}
@@ -1408,10 +2083,15 @@ export default function BoardWorkspace({
                 <button
                   className="bsec"
                   type="button"
-                  onClick={() => setDeleteColumn(null)}
+                  onClick={() =>
+                    setDeleteColumn(
+                      null,
+                    )
+                  }
                 >
                   Cancelar
                 </button>
+
                 <button
                   className="bpri danger-button"
                   disabled={loading}

@@ -2213,3 +2213,401 @@ export async function moveBoardCardAction(
 
   return { success: true }
 }
+
+/* =========================================================
+   AMPY-V17-A15 — DEMANDAS DO QUADRO POR CLIENTE E PERÍODO
+   ========================================================= */
+
+function boardPeriodDateLabel(
+  input: string,
+) {
+  const parts = input.split('-')
+
+  if (parts.length !== 3) {
+    return input
+  }
+
+  return parts[2] + '/' + parts[1]
+}
+
+function boardPeriodTitle(
+  clientName: string,
+  startDate: string,
+  finalDate: string,
+) {
+  return (
+    clientName.trim().toUpperCase() +
+    ' - ' +
+    boardPeriodDateLabel(startDate) +
+    ' - ' +
+    boardPeriodDateLabel(finalDate)
+  )
+}
+
+async function validateBoardPeriodDemand(
+  supabase: any,
+  formData: FormData,
+) {
+  const boardId =
+    value(formData, 'board_id')
+
+  const columnId =
+    value(
+      formData,
+      'board_column_id',
+    )
+
+  const clientId =
+    value(formData, 'client_id')
+
+  const clientServiceId =
+    nullable(
+      formData,
+      'client_service_id',
+    )
+
+  const responsibleId =
+    value(
+      formData,
+      'responsible_id',
+    )
+
+  const startDate =
+    value(
+      formData,
+      'internal_deadline',
+    )
+
+  const finalDate =
+    value(
+      formData,
+      'final_deadline',
+    )
+
+  const priority =
+    value(formData, 'priority') ||
+    'normal'
+
+  if (!boardId) {
+    return {
+      error:
+        'Selecione o Quadro.',
+    } as const
+  }
+
+  if (!columnId) {
+    return {
+      error:
+        'Selecione a coluna.',
+    } as const
+  }
+
+  if (!clientId) {
+    return {
+      error:
+        'Selecione o cliente.',
+    } as const
+  }
+
+  if (!responsibleId) {
+    return {
+      error:
+        'Selecione o responsável.',
+    } as const
+  }
+
+  if (!startDate) {
+    return {
+      error:
+        'Informe a data de início.',
+    } as const
+  }
+
+  if (!finalDate) {
+    return {
+      error:
+        'Informe a data final.',
+    } as const
+  }
+
+  if (finalDate < startDate) {
+    return {
+      error:
+        'A data final não pode ser anterior à data de início.',
+    } as const
+  }
+
+  if (
+    ![
+      'low',
+      'normal',
+      'high',
+      'urgent',
+    ].includes(priority)
+  ) {
+    return {
+      error:
+        'Prioridade inválida.',
+    } as const
+  }
+
+  const [
+    boardResult,
+    columnResult,
+    clientResult,
+    responsibleResult,
+  ] = await Promise.all([
+    supabase
+      .from('boards')
+      .select('id,status')
+      .eq('id', boardId)
+      .eq('status', 'active')
+      .maybeSingle(),
+
+    supabase
+      .from('board_columns')
+      .select(
+        'id,board_id,operational_status',
+      )
+      .eq('id', columnId)
+      .maybeSingle(),
+
+    supabase
+      .from('clients')
+      .select('id,name,status')
+      .eq('id', clientId)
+      .eq('status', 'active')
+      .maybeSingle(),
+
+    supabase
+      .from('profiles')
+      .select('id,is_active')
+      .eq('id', responsibleId)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ])
+
+  if (
+    boardResult.error ||
+    !boardResult.data
+  ) {
+    return {
+      error:
+        'Quadro inválido ou inativo.',
+    } as const
+  }
+
+  if (
+    columnResult.error ||
+    !columnResult.data ||
+    columnResult.data.board_id !==
+      boardId
+  ) {
+    return {
+      error:
+        'A coluna não pertence ao Quadro selecionado.',
+    } as const
+  }
+
+  if (
+    clientResult.error ||
+    !clientResult.data
+  ) {
+    return {
+      error:
+        'Cliente inválido ou inativo.',
+    } as const
+  }
+
+  if (
+    responsibleResult.error ||
+    !responsibleResult.data
+  ) {
+    return {
+      error:
+        'Responsável inválido ou inativo.',
+    } as const
+  }
+
+  const linksValidation =
+    await validateWorkItemLinks(
+      supabase,
+      clientId,
+      clientServiceId,
+    )
+
+  if ('error' in linksValidation) {
+    return linksValidation
+  }
+
+  const notes =
+    nullable(formData, 'notes')
+
+  return {
+    data: {
+      title: boardPeriodTitle(
+        clientResult.data.name,
+        startDate,
+        finalDate,
+      ),
+      description: null,
+      type: 'Demanda do Quadro',
+      status:
+        columnResult.data
+          .operational_status ||
+        'not_started',
+      priority,
+      destino: 'quadro',
+      board_id: boardId,
+      board_column_id: columnId,
+      client_id: clientId,
+      client_service_id:
+        clientServiceId,
+      responsible_id:
+        responsibleId,
+      internal_deadline:
+        startDate,
+      final_deadline:
+        finalDate,
+      drive_link:
+        nullable(
+          formData,
+          'drive_link',
+        ),
+      notes,
+      blocked_reason: null,
+    },
+  } as const
+}
+
+export async function createBoardPeriodDemandAction(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const validation =
+    await validateBoardPeriodDemand(
+      supabase,
+      formData,
+    )
+
+  if ('error' in validation) {
+    return validation
+  }
+
+  const { data, error } =
+    await supabase
+      .from('work_items')
+      .insert({
+        ...validation.data,
+        created_by: user.id,
+      })
+      .select('id,title')
+      .single()
+
+  if (error || !data) {
+    return {
+      error:
+        error?.message ||
+        'Erro ao criar demanda.',
+    }
+  }
+
+  await addHistory(
+    data.id,
+    user.id,
+    'created',
+    null,
+    data.title,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    id: data.id,
+  }
+}
+
+export async function updateBoardPeriodDemandAction(
+  id: string,
+  formData: FormData,
+) {
+  const permission =
+    await canOperateWorkItem(id)
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+    item,
+  } = permission
+
+  const validation =
+    await validateBoardPeriodDemand(
+      supabase,
+      formData,
+    )
+
+  if ('error' in validation) {
+    return validation
+  }
+
+  const { error } =
+    await supabase
+      .from('work_items')
+      .update(validation.data)
+      .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  if (
+    item.title !==
+    validation.data.title
+  ) {
+    await addHistory(
+      id,
+      user.id,
+      'title',
+      item.title,
+      validation.data.title,
+    )
+  }
+
+  if (
+    item.status !==
+    validation.data.status
+  ) {
+    await addHistory(
+      id,
+      user.id,
+      'status',
+      item.status,
+      validation.data.status,
+    )
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
