@@ -5035,3 +5035,367 @@ tr:hover td,
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   AMPY-V17-A16.3 — LAYOUT DEMANDAS E QUADRO
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   DEMANDAS — FLUXO VERTICAL SEM SCROLL LATERAL
+   --------------------------------------------------------- */
+
+.demandas-a16-page {
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding-bottom: 20px !important;
+}
+
+/* Cabeçalho com altura real para não cortar filtros/status */
+
+.demandas-a16-page .topbar {
+  position: relative !important;
+  z-index: 20 !important;
+
+  display: flex !important;
+  height: auto !important;
+  min-height: 78px !important;
+
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  flex-wrap: wrap !important;
+  gap: 10px 18px !important;
+
+  padding: 12px 20px !important;
+
+  overflow: visible !important;
+}
+
+.demandas-a16-page .topbar > div:first-child {
+  min-width: 240px !important;
+  flex: 1 1 300px !important;
+}
+
+.demandas-a16-page .topbar .tb-title {
+  margin-bottom: 3px !important;
+}
+
+.demandas-a16-page .topbar .tb-sub {
+  line-height: 1.4 !important;
+}
+
+.demandas-a16-page .topbar-actions {
+  display: flex !important;
+  min-width: 0 !important;
+
+  flex: 0 1 auto !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+
+  gap: 10px !important;
+  margin-left: auto !important;
+}
+
+.demandas-a16-page .topbar-actions .sbox {
+  width: min(360px, 34vw) !important;
+  min-width: 250px !important;
+  max-width: 100% !important;
+}
+
+.demandas-a16-page .topbar-actions .sbox input {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Status: todos visíveis, sem faixa horizontal */
+
+.demandas-a16-statuses {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+
+  gap: 7px !important;
+  row-gap: 7px !important;
+
+  width: auto !important;
+  margin: 10px 20px !important;
+  padding: 0 !important;
+
+  overflow: visible !important;
+}
+
+.demandas-a16-statuses button {
+  flex: 0 0 auto !important;
+}
+
+/* Filtros responsivos dentro da largura disponível */
+
+.demandas-a16-filters {
+  display: grid !important;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(175px, 1fr)
+    ) !important;
+
+  gap: 8px !important;
+
+  width: auto !important;
+  min-width: 0 !important;
+
+  margin:
+    0
+    20px
+    12px !important;
+}
+
+.demandas-a16-filters .fi {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.demandas-a16-count {
+  margin:
+    8px
+    20px
+    10px !important;
+}
+
+/* Tabela totalmente contida na tela */
+
+.demandas-a16-table-wrap {
+  width: auto !important;
+  min-width: 0 !important;
+
+  margin:
+    0
+    20px
+    18px !important;
+
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.demandas-a16-table {
+  width: 100% !important;
+  min-width: 0 !important;
+
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.demandas-a16-table th,
+.demandas-a16-table td {
+  min-width: 0 !important;
+
+  padding:
+    10px
+    8px !important;
+
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Distribuição proporcional das colunas */
+
+.demandas-a16-table th:nth-child(1),
+.demandas-a16-table td:nth-child(1) {
+  width: 22% !important;
+}
+
+.demandas-a16-table th:nth-child(2),
+.demandas-a16-table td:nth-child(2) {
+  width: 14% !important;
+}
+
+.demandas-a16-table th:nth-child(3),
+.demandas-a16-table td:nth-child(3) {
+  width: 7% !important;
+}
+
+.demandas-a16-table th:nth-child(4),
+.demandas-a16-table td:nth-child(4) {
+  width: 14% !important;
+}
+
+.demandas-a16-table th:nth-child(5),
+.demandas-a16-table td:nth-child(5) {
+  width: 7% !important;
+}
+
+.demandas-a16-table th:nth-child(6),
+.demandas-a16-table td:nth-child(6) {
+  width: 7% !important;
+}
+
+.demandas-a16-table th:nth-child(7),
+.demandas-a16-table td:nth-child(7) {
+  width: 10% !important;
+}
+
+.demandas-a16-table th:nth-child(8),
+.demandas-a16-table td:nth-child(8) {
+  width: 7% !important;
+}
+
+.demandas-a16-table th:nth-child(9),
+.demandas-a16-table td:nth-child(9) {
+  width: 10% !important;
+}
+
+.demandas-a16-table th:nth-child(10),
+.demandas-a16-table td:nth-child(10) {
+  width: 42px !important;
+}
+
+/* Textos podem quebrar linha sem aumentar a tela */
+
+.demandas-a16-title,
+.demandas-a16-table td strong,
+.demandas-a16-table td small,
+.demandas-a16-context-link {
+  max-width: 100% !important;
+
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.demandas-a16-origin,
+.demandas-a16-priority,
+.demandas-a16-final {
+  max-width: 100% !important;
+}
+
+.demandas-a16-status {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+
+  padding:
+    5px
+    6px !important;
+
+  text-overflow: ellipsis !important;
+}
+
+/* ---------------------------------------------------------
+   QUADRO — PEQUENO AUMENTO DA ÁREA OPERACIONAL
+   --------------------------------------------------------- */
+
+.board-a14-page .board-a14-canvas {
+  height:
+    calc(
+      100vh - 245px
+    ) !important;
+
+  min-height: 535px !important;
+  max-height: 760px !important;
+}
+
+/* Mantém a função correta do Quadro */
+
+.board-a14-page .board-a14-canvas {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.board-a14-page .board-a14-column-scroll {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* ---------------------------------------------------------
+   ADAPTAÇÃO PARA TELAS INTERMEDIÁRIAS
+   --------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .demandas-a16-page .topbar-actions {
+    width: 100% !important;
+    margin-left: 0 !important;
+
+    justify-content: flex-start !important;
+  }
+
+  .demandas-a16-page .topbar-actions .sbox {
+    width: min(480px, 100%) !important;
+  }
+
+  .demandas-a16-filters {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(150px, 1fr)
+      ) !important;
+  }
+
+  /* Oculta informações secundárias antes de criar scroll */
+
+  .demandas-a16-table th:nth-child(3),
+  .demandas-a16-table td:nth-child(3),
+  .demandas-a16-table th:nth-child(5),
+  .demandas-a16-table td:nth-child(5) {
+    display: none !important;
+  }
+
+  .board-a14-page .board-a14-canvas {
+    height:
+      calc(
+        100vh - 285px
+      ) !important;
+
+    min-height: 510px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .demandas-a16-page .topbar,
+  .demandas-a16-statuses,
+  .demandas-a16-filters,
+  .demandas-a16-count,
+  .demandas-a16-table-wrap {
+    margin-left: 12px !important;
+    margin-right: 12px !important;
+  }
+
+  .demandas-a16-page .topbar {
+    padding:
+      12px !important;
+  }
+
+  .demandas-a16-filters {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(140px, 1fr)
+      ) !important;
+  }
+
+  .demandas-a16-table th:nth-child(4),
+  .demandas-a16-table td:nth-child(4),
+  .demandas-a16-table th:nth-child(8),
+  .demandas-a16-table td:nth-child(8) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .demandas-a16-page .topbar-actions {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .demandas-a16-page .topbar-actions .sbox,
+  .demandas-a16-page .topbar-actions .bpri {
+    width: 100% !important;
+  }
+
+  .demandas-a16-filters {
+    grid-template-columns:
+      1fr !important;
+  }
+}
