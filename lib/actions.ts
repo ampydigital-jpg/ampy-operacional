@@ -3096,3 +3096,528 @@ export async function createDemandFromDemandasAction(
     id: created.id,
   }
 }
+
+/* =========================================================
+   AMPY-V17-A17 — ACTIONS DE PROJETOS PADRONIZADOS
+   ========================================================= */
+
+function validateStandardProjectDates(
+  startDate: string,
+  finalDate: string,
+) {
+  if (!startDate) {
+    return {
+      error:
+        'Informe a data inicial.',
+    } as const
+  }
+
+  if (!finalDate) {
+    return {
+      error:
+        'Informe a data final.',
+    } as const
+  }
+
+  if (finalDate < startDate) {
+    return {
+      error:
+        'A data final não pode ser anterior à data inicial.',
+    } as const
+  }
+
+  return {
+    ok: true,
+  } as const
+}
+
+function validateStandardProjectPriority(
+  priority: string,
+) {
+  if (
+    ![
+      'low',
+      'normal',
+      'high',
+      'urgent',
+    ].includes(priority)
+  ) {
+    return {
+      error:
+        'Prioridade inválida.',
+    } as const
+  }
+
+  return {
+    ok: true,
+  } as const
+}
+
+function normalizeStandardProjectStatus(
+  input: string,
+) {
+  return VALID_WORK_ITEM_STATUSES.includes(
+    input as WorkItemStatus,
+  )
+    ? input
+    : 'not_started'
+}
+
+export async function createStandardProjectAction(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const title =
+    value(formData, 'title')
+
+  if (!title) {
+    return {
+      error:
+        'Informe o título do projeto.',
+    }
+  }
+
+  const startDate =
+    value(
+      formData,
+      'internal_deadline',
+    )
+
+  const finalDate =
+    value(
+      formData,
+      'final_deadline',
+    )
+
+  const dateValidation =
+    validateStandardProjectDates(
+      startDate,
+      finalDate,
+    )
+
+  if ('error' in dateValidation) {
+    return dateValidation
+  }
+
+  const priority =
+    value(
+      formData,
+      'priority',
+    ) || 'normal'
+
+  const priorityValidation =
+    validateStandardProjectPriority(
+      priority,
+    )
+
+  if (
+    'error' in
+    priorityValidation
+  ) {
+    return priorityValidation
+  }
+
+  const clientId =
+    nullable(
+      formData,
+      'client_id',
+    )
+
+  const clientServiceId =
+    nullable(
+      formData,
+      'client_service_id',
+    )
+
+  const linkValidation =
+    await validateWorkItemLinks(
+      supabase,
+      clientId,
+      clientServiceId,
+    )
+
+  if ('error' in linkValidation) {
+    return {
+      error:
+        linkValidation.error,
+    }
+  }
+
+  if (clientId) {
+    const {
+      data: client,
+      error: clientError,
+    } = await supabase
+      .from('clients')
+      .select('id,status')
+      .eq('id', clientId)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (
+      clientError ||
+      !client
+    ) {
+      return {
+        error:
+          'Cliente inválido ou inativo.',
+      }
+    }
+  }
+
+  const requestedResponsible =
+    nullable(
+      formData,
+      'responsible_id',
+    )
+
+  const responsibleId =
+    isManager(profile.role)
+      ? requestedResponsible
+      : user.id
+
+  if (!responsibleId) {
+    return {
+      error:
+        'Selecione o responsável.',
+    }
+  }
+
+  const status =
+    normalizeStandardProjectStatus(
+      value(formData, 'status'),
+    )
+
+  const closed =
+    [
+      'done',
+      'delivered',
+      'cancelled',
+      'archived',
+    ].includes(status)
+
+  const payload: any = {
+    title,
+    description: null,
+    type: 'Projeto',
+
+    origin:
+      clientId
+        ? 'planned'
+        : 'internal',
+
+    destino: 'projeto',
+    status,
+    priority,
+
+    client_id: clientId,
+
+    client_service_id:
+      clientServiceId,
+
+    responsible_id:
+      responsibleId,
+
+    created_by: user.id,
+
+    internal_deadline:
+      startDate,
+
+    final_deadline:
+      finalDate,
+
+    drive_link:
+      nullable(
+        formData,
+        'drive_link',
+      ),
+
+    notes:
+      nullable(
+        formData,
+        'notes',
+      ),
+
+    board_id: null,
+    board_column_id: null,
+
+    closed_at:
+      closed
+        ? new Date()
+            .toISOString()
+        : null,
+  }
+
+  const {
+    data: created,
+    error,
+  } = await supabase
+    .from('work_items')
+    .insert(payload)
+    .select('id,title')
+    .single()
+
+  if (error || !created) {
+    return {
+      error:
+        error?.message ||
+        'Erro ao criar projeto.',
+    }
+  }
+
+  await addHistory(
+    created.id,
+    user.id,
+    'project_created',
+    null,
+    title,
+  )
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    id: created.id,
+  }
+}
+
+export async function updateStandardProjectAction(
+  id: string,
+  formData: FormData,
+) {
+  const permission =
+    await canOperateWorkItem(id)
+
+  if ('error' in permission) {
+    return permission
+  }
+
+  const {
+    supabase,
+    user,
+    profile,
+    item,
+  } = permission
+
+  const title =
+    value(formData, 'title')
+
+  if (!title) {
+    return {
+      error:
+        'Informe o título do projeto.',
+    }
+  }
+
+  const startDate =
+    value(
+      formData,
+      'internal_deadline',
+    )
+
+  const finalDate =
+    value(
+      formData,
+      'final_deadline',
+    )
+
+  const dateValidation =
+    validateStandardProjectDates(
+      startDate,
+      finalDate,
+    )
+
+  if ('error' in dateValidation) {
+    return dateValidation
+  }
+
+  const priority =
+    value(
+      formData,
+      'priority',
+    ) || 'normal'
+
+  const priorityValidation =
+    validateStandardProjectPriority(
+      priority,
+    )
+
+  if (
+    'error' in
+    priorityValidation
+  ) {
+    return priorityValidation
+  }
+
+  const clientId =
+    nullable(
+      formData,
+      'client_id',
+    )
+
+  const clientServiceId =
+    nullable(
+      formData,
+      'client_service_id',
+    )
+
+  const linkValidation =
+    await validateWorkItemLinks(
+      supabase,
+      clientId,
+      clientServiceId,
+    )
+
+  if ('error' in linkValidation) {
+    return {
+      error:
+        linkValidation.error,
+    }
+  }
+
+  if (clientId) {
+    const {
+      data: client,
+      error: clientError,
+    } = await supabase
+      .from('clients')
+      .select('id,status')
+      .eq('id', clientId)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (
+      clientError ||
+      !client
+    ) {
+      return {
+        error:
+          'Cliente inválido ou inativo.',
+      }
+    }
+  }
+
+  const requestedResponsible =
+    nullable(
+      formData,
+      'responsible_id',
+    )
+
+  const responsibleId =
+    isManager(profile.role)
+      ? requestedResponsible
+      : user.id
+
+  if (!responsibleId) {
+    return {
+      error:
+        'Selecione o responsável.',
+    }
+  }
+
+  const status =
+    normalizeStandardProjectStatus(
+      value(formData, 'status'),
+    )
+
+  const closed =
+    [
+      'done',
+      'delivered',
+      'cancelled',
+      'archived',
+    ].includes(status)
+
+  const payload: any = {
+    title,
+    description: null,
+    type: 'Projeto',
+
+    origin:
+      clientId
+        ? 'planned'
+        : 'internal',
+
+    destino: 'projeto',
+    status,
+    priority,
+
+    client_id: clientId,
+
+    client_service_id:
+      clientServiceId,
+
+    responsible_id:
+      responsibleId,
+
+    internal_deadline:
+      startDate,
+
+    final_deadline:
+      finalDate,
+
+    drive_link:
+      nullable(
+        formData,
+        'drive_link',
+      ),
+
+    notes:
+      nullable(
+        formData,
+        'notes',
+      ),
+
+    board_id: null,
+    board_column_id: null,
+
+    closed_at:
+      closed
+        ? new Date()
+            .toISOString()
+        : null,
+  }
+
+  const { error } =
+    await supabase
+      .from('work_items')
+      .update(payload)
+      .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  await addHistory(
+    id,
+    user.id,
+    'project_updated',
+    item.status,
+    status,
+  )
+
+  revalidateOperationalPaths()
+
+  revalidatePath(
+    '/dashboard/demandas/' +
+      id,
+  )
+
+  return {
+    success: true,
+  }
+}

@@ -1,16 +1,18 @@
 'use client'
 
+// AMPY-V17-A17 — PROJETOS PADRONIZADOS
+
 import {
   useMemo,
   useState,
   type FormEvent,
 } from 'react'
 import {
-  createProjectAction,
+  createStandardProjectAction,
   createProjectStepAction,
   deleteProjectStepAction,
   deleteWorkItemAction,
-  updateContextWorkItemAction,
+  updateStandardProjectAction,
   updateProjectStepAction,
   updateProjectStepStatusAction,
 } from '@/lib/actions'
@@ -45,19 +47,6 @@ const STATUS_BADGE: Record<string, string> = {
   archived: 'bmut',
 }
 
-const TYPES = [
-  'Planejamento',
-  'Captação',
-  'Edição',
-  'Design',
-  'Organização de Feed',
-  'Programação',
-  'Tráfego',
-  'Reunião',
-  'Relatório',
-  'Interno',
-]
-
 function dateValue(value?: string | null) {
   return value ? String(value).slice(0, 10) : ''
 }
@@ -79,6 +68,7 @@ export default function ProjectsWorkspace({
   demands = [],
   clients = [],
   profiles = [],
+  clientServices = [],
   loadErrors = [],
 }: any) {
   const safeDemands = Array.isArray(demands)
@@ -90,6 +80,11 @@ export default function ProjectsWorkspace({
   const safeProfiles = Array.isArray(profiles)
     ? profiles.filter(Boolean)
     : []
+
+  const safeClientServices =
+    Array.isArray(clientServices)
+      ? clientServices.filter(Boolean)
+      : []
 
   const [query, setQuery] = useState('')
   const [clientId, setClientId] = useState('all')
@@ -107,8 +102,30 @@ export default function ProjectsWorkspace({
     useState<any | null>(null)
   const [stepProject, setStepProject] =
     useState<any | null>(null)
+  const [formClient, setFormClient] =
+    useState('')
+
+  const [formService, setFormService] =
+    useState('')
+
+  const [formStart, setFormStart] =
+    useState('')
+
+  const [formFinal, setFormFinal] =
+    useState('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const activeServices =
+    formClient
+      ? safeClientServices.filter(
+          (item: any) =>
+            item.client_id ===
+              formClient &&
+            item.status === 'active',
+        )
+      : []
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -139,12 +156,32 @@ export default function ProjectsWorkspace({
 
   function newProject() {
     setEditingProject(null)
+    setFormClient('')
+    setFormService('')
+    setFormStart('')
+    setFormFinal('')
     setError('')
     setProjectModal('create')
   }
 
   function editProject(project: any) {
     setEditingProject(project)
+    setFormClient(
+      project.client_id || '',
+    )
+    setFormService(
+      project.client_service_id || '',
+    )
+    setFormStart(
+      dateValue(
+        project.internal_deadline,
+      ),
+    )
+    setFormFinal(
+      dateValue(
+        project.final_deadline,
+      ),
+    )
     setError('')
     setProjectModal('edit')
   }
@@ -160,11 +197,11 @@ export default function ProjectsWorkspace({
 
     const result =
       projectModal === 'edit' && editingProject
-        ? await updateContextWorkItemAction(
+        ? await updateStandardProjectAction(
             editingProject.id,
             formData,
           )
-        : await createProjectAction(formData)
+        : await createStandardProjectAction(formData)
 
     if ('error' in result) {
       setError(result.error || 'Erro ao salvar projeto.')
@@ -396,8 +433,10 @@ export default function ProjectsWorkspace({
                     <h3>{item.title}</h3>
                     <p>
                       {item.client?.name || 'Interno Ampy'}
-                      {' • '}
-                      {item.type || 'Projeto'}
+              {' • '}
+              {item.client_service
+                ?.service?.name ||
+                'Projeto'}
                     </p>
                   </div>
 
@@ -570,173 +609,268 @@ export default function ProjectsWorkspace({
                   value="project"
                 />
 
-                <div className="fg">
-                  <label className="fl">Título *</label>
-                  <input
-                    className="fi"
-                    name="title"
-                    required
-                    defaultValue={
-                      editingProject?.title || ''
-                    }
-                  />
-                </div>
 
-                <div className="frow">
-                  <div className="fg">
-                    <label className="fl">Cliente</label>
-                    <select
-                      className="fi"
-                      name="client_id"
-                      defaultValue={
-                        editingProject?.client_id || ''
-                      }
+          <div className="fg">
+            <label className="fl">
+              Título *
+            </label>
+
+            <input
+              className="fi"
+              name="title"
+              required
+              minLength={2}
+              maxLength={180}
+              defaultValue={
+                editingProject?.title || ''
+              }
+              placeholder="Nome do projeto"
+            />
+          </div>
+
+          <div className="frow">
+            <div className="fg">
+              <label className="fl">
+                Cliente
+              </label>
+
+              <select
+                className="fi"
+                name="client_id"
+                value={formClient}
+                onChange={(event) => {
+                  setFormClient(
+                    event.target.value,
+                  )
+                  setFormService('')
+                }}
+              >
+                <option value="">
+                  Interno Ampy
+                </option>
+
+                {safeClients.map(
+                  (client: any) => (
+                    <option
+                      key={client.id}
+                      value={client.id}
                     >
-                      <option value="">Interno Ampy</option>
-                      {safeClients.map((client: any) => (
-                        <option
-                          key={client.id}
-                          value={client.id}
-                        >
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      {client.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
 
-                  <div className="fg">
-                    <label className="fl">Responsável</label>
-                    <select
-                      className="fi"
-                      name="responsible_id"
-                      defaultValue={
-                        editingProject?.responsible_id || ''
-                      }
+            <div className="fg">
+              <label className="fl">
+                Serviço
+              </label>
+
+              <select
+                className="fi"
+                name="client_service_id"
+                value={formService}
+                disabled={!formClient}
+                onChange={(event) =>
+                  setFormService(
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">
+                  {formClient
+                    ? 'Sem serviço específico'
+                    : 'Selecione o cliente primeiro'}
+                </option>
+
+                {activeServices.map(
+                  (item: any) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
                     >
-                      <option value="">Definir depois</option>
-                      {safeProfiles.map((profile: any) => (
-                        <option
-                          key={profile.id}
-                          value={profile.id}
-                        >
-                          {profile.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                      {item.service?.name ||
+                        'Serviço'}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+          </div>
 
-                <div className="frow">
-                  <div className="fg">
-                    <label className="fl">Tipo</label>
-                    <select
-                      className="fi"
-                      name="type"
-                      defaultValue={
-                        editingProject?.type || 'Planejamento'
-                      }
+          <div className="frow">
+            <div className="fg">
+              <label className="fl">
+                Responsável *
+              </label>
+
+              <select
+                className="fi"
+                name="responsible_id"
+                required
+                defaultValue={
+                  editingProject
+                    ?.responsible_id || ''
+                }
+              >
+                <option
+                  value=""
+                  disabled
+                >
+                  Selecione o responsável
+                </option>
+
+                {safeProfiles.map(
+                  (profile: any) => (
+                    <option
+                      key={profile.id}
+                      value={profile.id}
                     >
-                      {TYPES.map((type) => (
-                        <option key={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
+                      {profile.full_name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
 
-                  <div className="fg">
-                    <label className="fl">Status</label>
-                    <select
-                      className="fi"
-                      name="status"
-                      defaultValue={
-                        editingProject?.status || 'not_started'
-                      }
+            <div className="fg">
+              <label className="fl">
+                Status *
+              </label>
+
+              <select
+                className="fi"
+                name="status"
+                required
+                defaultValue={
+                  editingProject?.status ||
+                  'not_started'
+                }
+              >
+                {Object.entries(
+                  STATUS_LABEL,
+                ).map(
+                  ([value, label]) => (
+                    <option
+                      key={value}
+                      value={value}
                     >
-                      {Object.entries(STATUS_LABEL).map(
-                        ([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
 
-                  <div className="fg">
-                    <label className="fl">Prioridade</label>
-                    <select
-                      className="fi"
-                      name="priority"
-                      defaultValue={
-                        editingProject?.priority || 'normal'
-                      }
-                    >
-                      <option value="low">Baixa</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">Alta</option>
-                      <option value="urgent">Urgente</option>
-                    </select>
-                  </div>
-                </div>
+            <div className="fg">
+              <label className="fl">
+                Prioridade *
+              </label>
 
-                <div className="frow">
-                  <div className="fg">
-                    <label className="fl">
-                      Data inicial
-                    </label>
-                    <input
-                      className="fi"
-                      type="date"
-                      name="internal_deadline"
-                      defaultValue={dateValue(
-                        editingProject?.internal_deadline,
-                      )}
-                    />
-                  </div>
+              <select
+                className="fi"
+                name="priority"
+                required
+                defaultValue={
+                  editingProject?.priority ||
+                  'normal'
+                }
+              >
+                <option value="low">
+                  Baixa
+                </option>
+                <option value="normal">
+                  Normal
+                </option>
+                <option value="high">
+                  Alta
+                </option>
+                <option value="urgent">
+                  Urgente
+                </option>
+              </select>
+            </div>
+          </div>
 
-                  <div className="fg">
-                    <label className="fl">Prazo final</label>
-                    <input
-                      className="fi"
-                      type="date"
-                      name="final_deadline"
-                      defaultValue={dateValue(
-                        editingProject?.final_deadline,
-                      )}
-                    />
-                  </div>
-                </div>
+          <div className="frow">
+            <div className="fg">
+              <label className="fl">
+                Início *
+              </label>
 
-                <div className="fg">
-                  <label className="fl">Descrição</label>
-                  <textarea
-                    className="fi"
-                    name="description"
-                    defaultValue={
-                      editingProject?.description || ''
-                    }
-                  />
-                </div>
+              <input
+                className="fi"
+                type="date"
+                name="internal_deadline"
+                required
+                value={formStart}
+                onChange={(event) =>
+                  setFormStart(
+                    event.target.value,
+                  )
+                }
+              />
+            </div>
 
-                <div className="fg">
-                  <label className="fl">Link do Drive</label>
-                  <input
-                    className="fi"
-                    type="url"
-                    name="drive_link"
-                    defaultValue={
-                      editingProject?.drive_link || ''
-                    }
-                  />
-                </div>
+            <div className="fg">
+              <label className="fl">
+                Final *
+              </label>
 
-                <div className="fg">
-                  <label className="fl">Observações</label>
-                  <textarea
-                    className="fi"
-                    name="notes"
-                    defaultValue={editingProject?.notes || ''}
-                  />
-                </div>
+              <input
+                className="fi"
+                type="date"
+                name="final_deadline"
+                required
+                min={
+                  formStart ||
+                  undefined
+                }
+                value={formFinal}
+                onChange={(event) =>
+                  setFormFinal(
+                    event.target.value,
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          <div className="fg">
+            <label className="fl">
+              Link do Drive
+            </label>
+
+            <input
+              className="fi"
+              type="url"
+              name="drive_link"
+              defaultValue={
+                editingProject?.drive_link ||
+                ''
+              }
+              placeholder="https://drive.google.com/..."
+            />
+          </div>
+
+          <div className="fg">
+            <label className="fl">
+              Observação
+            </label>
+
+            <textarea
+              className="fi"
+              name="notes"
+              rows={4}
+              defaultValue={
+                editingProject?.notes ||
+                editingProject?.description ||
+                ''
+              }
+              placeholder="Contexto, entregáveis, orientação ou informações do projeto."
+            />
+          </div>
 
                 {error && (
                   <div className="notice notice-err">
@@ -893,7 +1027,7 @@ export default function ProjectsWorkspace({
                   </div>
 
                   <div className="fg">
-                    <label className="fl">Fim</label>
+                    <label className="fl">Final</label>
                     <input
                       className="fi"
                       type="date"
