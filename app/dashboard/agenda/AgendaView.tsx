@@ -336,15 +336,14 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     setShowModal(false)
     window.location.reload()
   }
-    setShowModal(false); window.location.reload()
-  }
+
   async function move(eventId: string, date: string) {
     const result = await moveCalendarEventAction(eventId, date)
     if ('error' in result) alert(result.error); else window.location.reload()
   }
 
   function renderEventButton(event: any, compact = false) {
-    const [, label, color] = eventType(event.type)
+    const [, , label, color] = eventType(event.type)
     return <button
       className={compact ? 'calendar-event' : 'timeline-event'}
       key={event.id}
@@ -373,7 +372,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       <div className="agenda-filters">
         <select className="fi compact" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}><option value="all">Todos os clientes</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
         <select className="fi compact" value={profileFilter} onChange={(e) => setProfileFilter(e.target.value)}><option value="all">Toda equipe</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select>
-        <select className="fi compact" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}><option value="all">Todos os tipos</option>{EVENT_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
+        <select className="fi compact" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}><option value="all">Todos os tipos</option>{EVENT_TYPES.map(([id, code, label]) => <option key={id} value={id}>{code} — {label}</option>)}</select>
         <select className="fi compact" value={demandFilter} onChange={(e) => setDemandFilter(e.target.value)}><option value="all">Todas demandas</option>{safeDemands.map((demand: any) => <option key={demand.id} value={demand.id}>{demand.title}</option>)}</select>
         <button className={`fb ${showHoliday ? 'on' : ''}`} onClick={() => setShowHoliday(!showHoliday)}>Feriados</button>
         <button className={`fb ${showOpportunities ? 'on' : ''}`} onClick={() => setShowOpportunities(!showOpportunities)}>Datas de marketing</button>
@@ -435,12 +434,12 @@ export default function AgendaView({ events, clients, profiles, demands, period,
         </section>
         <aside className="agenda-side">
           <div className="side-card"><div className="stitle">Próximas agendas</div>{filteredEvents.slice(0, 8).map((event: any) => <button key={event.id} className="next-event" onClick={() => openEdit(event)}><span>{localTime(event.starts_at)}</span><div><b>{event.title}</b><small>{event.client?.name || event.responsible?.full_name || 'Interno Ampy'}</small></div></button>)}{filteredEvents.length === 0 && <div className="range-empty">Nenhuma agenda no período.</div>}</div>
-          <div className="side-card"><div className="stitle">Legenda</div>{EVENT_TYPES.map(([id, label, color]) => <div className="legend-row" key={id}><i style={{ background: color }} /> {label}</div>)}</div>
+          <div className="side-card"><div className="stitle">Legenda</div>{EVENT_TYPES.map(([id, code, label, color]) => <div className="legend-row" key={id}><i style={{ background: color }} /> {code} — {label}</div>)}</div>
         </aside>
       </div>
     </div>
     {showModal && <div className="modal-ov" onClick={() => setShowModal(false)}><div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-head"><div><div className="modal-title">{editing ? 'Editar agenda' : 'Nova agenda'}</div><div className="modal-sub">Agenda cria blocos de execução. O prazo de demanda não é alterado ao mover a agenda.</div></div><button className="mclose" onClick={() => setShowModal(false)}><i className="ti ti-x" /></button></div>
+
 
 <form onSubmit={submit}>
               <div className="modal-head">

@@ -1644,7 +1644,7 @@ export async function deleteCalendarEventAction(
 }
 
 
-export async function inviteMemberActionexport async function inviteMemberAction(formData: FormData) {
+export async function inviteMemberAction(formData: FormData) {
   const { profile } = await getCurrentProfile()
   if (!profile || !isAdmin(profile.role)) return forbidden('Somente Administração ou Direção podem criar acessos.')
   const email = value(formData, 'email')
