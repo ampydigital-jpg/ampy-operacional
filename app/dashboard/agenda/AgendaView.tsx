@@ -4,6 +4,7 @@
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
 // AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
 // AMPY-V17-A19.5 — CONFIRMAÇÃO, CORES E CONTATO PERSONALIZADO
+// AMPY-V17-A19.6 — REFINO VISUAL DO MODAL DA AGENDA
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -700,10 +701,10 @@ export default function AgendaView({ events, clients, profiles, demands, period,
         </aside>
       </div>
     </div>
-    {showModal && <div className="modal-ov" onClick={() => setShowModal(false)}><div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
+    {showModal && <div className="modal-ov" onClick={() => setShowModal(false)}><div className="modal modal-wide agenda-a19-modal" onClick={(e) => e.stopPropagation()}>
 
 
-<form onSubmit={submit}>
+<form className="agenda-a19-form" onSubmit={submit}>
               <div className="modal-head">
                 <div>
                   <h2>
@@ -782,13 +783,14 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                 </div>
 
 
-                <div className="frow agenda-a19-second-row">
+
+                <div className="agenda-a19-link-shell">
                   <div className="fg agenda-a19-link-field">
                     <label className="fl">
                       Vínculo
                     </label>
 
-                    <div className="agenda-a19-link-options">
+                    <div className="agenda-a19-link-options agenda-a19-link-segmented">
                       <label
                         className={
                           contactMode ===
@@ -824,7 +826,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                           }}
                         />
 
-                        Cliente
+                        <i className="ti ti-building-store" />
+
+                        <span>
+                          Cliente
+                        </span>
                       </label>
 
                       <label
@@ -862,7 +868,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                           }}
                         />
 
-                        Nome personalizado
+                        <i className="ti ti-user-plus" />
+
+                        <span>
+                          Nome personalizado
+                        </span>
                       </label>
 
                       <label
@@ -901,141 +911,163 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                           }}
                         />
 
-                        Interno Ampy
+                        <i className="ti ti-home" />
+
+                        <span>
+                          Interno Ampy
+                        </span>
                       </label>
                     </div>
+                  </div>
 
-                    {contactMode ===
-                      'client' && (
-                      <select
-                        className="fi"
-                        name="client_id"
-                        required
-                        value={
-                          selectedClientId
-                        }
-                        onChange={(event) => {
-                          const nextId =
-                            event.target
-                              .value
+                  <div className="frow agenda-a19-contact-row">
+                    <div className="fg">
+                      <label className="fl">
+                        {contactMode ===
+                        'client'
+                          ? 'Cliente'
+                          : contactMode ===
+                              'custom'
+                            ? 'Nome personalizado'
+                            : 'Identificação'}
+                      </label>
 
-                          setSelectedClientId(
-                            nextId,
-                          )
+                      {contactMode ===
+                        'client' && (
+                        <select
+                          className="fi"
+                          name="client_id"
+                          required
+                          value={
+                            selectedClientId
+                          }
+                          onChange={(event) => {
+                            const nextId =
+                              event.target
+                                .value
 
-                          const nextClient =
-                            safeClients.find(
-                              (
-                                client: any,
-                              ) =>
-                                client.id ===
-                                nextId,
+                            setSelectedClientId(
+                              nextId,
                             )
 
-                          const nextEnd =
-                            nextClient
-                              ?.fim_contrato ||
-                            nextClient
-                              ?.ended_at ||
-                            ''
+                            const nextClient =
+                              safeClients.find(
+                                (
+                                  client: any,
+                                ) =>
+                                  client.id ===
+                                  nextId,
+                              )
 
-                          setRecurrenceUntil(
-                            nextEnd,
-                          )
+                            const nextEnd =
+                              nextClient
+                                ?.fim_contrato ||
+                              nextClient
+                                ?.ended_at ||
+                              ''
 
-                          setRecurrenceEndMode(
-                            nextEnd
-                              ? 'contract'
-                              : 'manual',
-                          )
-                        }}
+                            setRecurrenceUntil(
+                              nextEnd,
+                            )
+
+                            setRecurrenceEndMode(
+                              nextEnd
+                                ? 'contract'
+                                : 'manual',
+                            )
+                          }}
+                        >
+                          <option value="">
+                            Selecione o cliente
+                          </option>
+
+                          {safeClients.map(
+                            (
+                              client: any,
+                            ) => (
+                              <option
+                                key={
+                                  client.id
+                                }
+                                value={
+                                  client.id
+                                }
+                              >
+                                {client.name}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      )}
+
+                      {contactMode ===
+                        'custom' && (
+                        <input
+                          className="fi"
+                          name="custom_name"
+                          required
+                          value={customName}
+                          onChange={(event) =>
+                            setCustomName(
+                              event.target
+                                .value,
+                            )
+                          }
+                          placeholder="Nome do lead, parceiro ou contato"
+                          maxLength={120}
+                        />
+                      )}
+
+                      {contactMode ===
+                        'internal' && (
+                        <div className="agenda-a19-internal-hint">
+                          <i className="ti ti-home" />
+
+                          <span>
+                            AMPY
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="fg">
+                      <label className="fl">
+                        Responsável
+                      </label>
+
+                      <select
+                        className="fi"
+                        name="responsible_id"
+                        defaultValue={
+                          editing
+                            ?.responsible_id ||
+                          ''
+                        }
                       >
                         <option value="">
-                          Selecione o cliente
+                          Definir depois
                         </option>
 
-                        {safeClients.map(
+                        {safeProfiles.map(
                           (
-                            client: any,
+                            profile: any,
                           ) => (
                             <option
                               key={
-                                client.id
+                                profile.id
                               }
                               value={
-                                client.id
+                                profile.id
                               }
                             >
-                              {client.name}
+                              {
+                                profile.full_name
+                              }
                             </option>
                           ),
                         )}
                       </select>
-                    )}
-
-                    {contactMode ===
-                      'custom' && (
-                      <input
-                        className="fi"
-                        name="custom_name"
-                        required
-                        value={customName}
-                        onChange={(event) =>
-                          setCustomName(
-                            event.target
-                              .value,
-                          )
-                        }
-                        placeholder="Nome do lead, parceiro ou contato"
-                        maxLength={120}
-                      />
-                    )}
-
-                    {contactMode ===
-                      'internal' && (
-                      <div className="agenda-a19-internal-hint">
-                        O título utilizará AMPY.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="fg">
-                    <label className="fl">
-                      Responsável
-                    </label>
-
-                    <select
-                      className="fi"
-                      name="responsible_id"
-                      defaultValue={
-                        editing
-                          ?.responsible_id ||
-                        ''
-                      }
-                    >
-                      <option value="">
-                        Definir depois
-                      </option>
-
-                      {safeProfiles.map(
-                        (
-                          profile: any,
-                        ) => (
-                          <option
-                            key={
-                              profile.id
-                            }
-                            value={
-                              profile.id
-                            }
-                          >
-                            {
-                              profile.full_name
-                            }
-                          </option>
-                        ),
-                      )}
-                    </select>
+                    </div>
                   </div>
                 </div>
 
