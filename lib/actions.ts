@@ -415,6 +415,7 @@ type AmpyCalendarType =
   keyof typeof AMPY_CALENDAR_TYPES
 
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
+// AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
 const AMPY_RECURRENCE_CONFIG = {
   every_week: {
     days: 7,
@@ -846,11 +847,7 @@ export async function createCalendarEventAction(
         ]
 
   const autoRecurrence =
-    Boolean(recurrenceConfig) &&
-    value(
-      formData,
-      'auto_recurrence',
-    ) === 'on'
+    Boolean(recurrenceConfig)
 
   let recurrenceUntil:
     | string

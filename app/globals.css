@@ -6379,3 +6379,56 @@ tr:hover td,
     min-height: 74px;
   }
 }
+
+/* =========================================================
+   AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
+   ========================================================= */
+
+.agenda-a19-auto-active {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  border:
+    1px solid
+    rgba(109, 40, 217, 0.17);
+  border-radius: 12px;
+
+  background:
+    rgba(109, 40, 217, 0.07);
+}
+
+.agenda-a19-auto-active > i {
+  display: grid;
+  place-items: center;
+
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+
+  border-radius: 10px;
+
+  background: #6D28D9;
+  color: #FFFFFF;
+
+  font-size: 17px;
+}
+
+.agenda-a19-auto-active > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.agenda-a19-auto-active strong {
+  color: #4C1D95;
+  font-size: 12px;
+}
+
+.agenda-a19-auto-active span {
+  color: #64748B;
+  font-size: 11px;
+  line-height: 1.4;
+}

@@ -2,6 +2,7 @@
 
 // AMPY-V17-A19.1 — AGENDA RECORRENTE
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
+// AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -834,27 +835,25 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                 {!editing &&
                   recurrenceMode !== 'none' && (
                     <div className="agenda-a19-recurrence-box">
-                      <label className="agenda-a19-check agenda-a19-check-strong">
-                        <input
-                          type="checkbox"
+                      <input
+                          type="hidden"
                           name="auto_recurrence"
-                          checked={
-                            autoRecurrence
-                          }
-                          onChange={(
-                            event,
-                          ) =>
-                            setAutoRecurrence(
-                              event.target
-                                .checked,
-                            )
-                          }
+                          value="on"
                         />
 
-                        <span>
-                          Criar as próximas agendas automaticamente
-                        </span>
-                      </label>
+                        <div className="agenda-a19-auto-active">
+                          <i className="ti ti-repeat" />
+
+                          <div>
+                            <strong>
+                              Recorrência automática ativada
+                            </strong>
+
+                            <span>
+                              As próximas agendas serão criadas conforme o intervalo selecionado.
+                            </span>
+                          </div>
+                        </div>
 
                       <p>
                         Será criada uma ocorrência a cada{' '}
@@ -903,8 +902,9 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                             type="date"
                             name="recurrence_until"
                             required={
-                              autoRecurrence
-                            }
+                                recurrenceMode !==
+                                'none'
+                              }
                             min={
                               draft.date
                             }
