@@ -3,37 +3,45 @@
 // AMPY-V17-A19.1 — AGENDA RECORRENTE
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
 // AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
+// AMPY-V17-A19.5 — CONFIRMAÇÃO, CORES E CONTATO PERSONALIZADO
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { createCalendarEventAction, deleteCalendarEventAction, moveCalendarEventAction, updateCalendarEventAction } from '@/lib/actions'
+import {
+  createCalendarEventAction,
+  deleteCalendarEventAction,
+  moveCalendarEventAction,
+  toggleCalendarEventConfirmationAction,
+  updateCalendarEventAction,
+} from '@/lib/actions'
 import { getCalendarReferences } from '@/lib/calendar/calendar-data'
 import { dateKeyInAmpyTimezone } from '@/lib/date'
+
 
 const EVENT_TYPES = [
   [
     'reu_a',
     'REU A',
     'Reunião de alinhamento',
-    '#6D28D9',
+    '#22C55E',
   ],
   [
     'reu_c',
     'REU C',
     'Reunião comercial',
-    '#9333EA',
+    '#15803D',
   ],
   [
     'cap_e',
     'CAP E',
     'Captação externa',
-    '#C026D3',
+    '#1E3A8A',
   ],
   [
     'cap_s',
     'CAP S',
     'Captação em estúdio',
-    '#DB2777',
+    '#60A5FA',
   ],
   [
     'out_a',
@@ -42,6 +50,9 @@ const EVENT_TYPES = [
     '#64748B',
   ],
 ] as const
+
+const UNCONFIRMED_COLOR =
+  '#DC2626'
 
 const RECURRENCE_OPTIONS = [
   ['none', 'Não recorrente', 0],
@@ -194,6 +205,28 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   ] = useState('')
 
   const [
+    contactMode,
+    setContactMode,
+  ] = useState<
+    'client' |
+    'custom' |
+    'internal'
+  >('internal')
+
+  const [
+    customName,
+    setCustomName,
+  ] = useState('')
+
+  const [
+    recurrenceEndMode,
+    setRecurrenceEndMode,
+  ] = useState<
+    'contract' |
+    'manual'
+  >('manual')
+
+  const [
     recurrenceMode,
     setRecurrenceMode,
   ] = useState('none')
@@ -232,13 +265,22 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const selectedTypeData =
     eventType(selectedType)
 
+  const titleTarget =
+    contactMode === 'client'
+      ? selectedClient?.name
+      : contactMode === 'custom'
+        ? customName
+        : 'AMPY'
+
   const automaticTitle =
     selectedTypeData[1] +
     ' - ' +
     (
-      selectedClient?.name ||
+      String(
+        titleTarget || 'AMPY',
+      ).trim() ||
       'AMPY'
-    )
+    ).toUpperCase()
 
   const startDate = new Date(`${start}T12:00:00`)
   const endDate = new Date(`${end}T12:00:00`)
@@ -264,6 +306,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const rangeDays = useMemo(() => { const output = []; for (let d = new Date(startDate); d < endDate; d = addDays(d, 1)) output.push(new Date(d)); return output }, [start, end])
   const hours = useMemo(() => Array.from({ length: endHour - startHour }, (_, index) => startHour + index), [])
 
+
   function openCreate(
     date = start,
     startTime = '09:00',
@@ -273,23 +316,48 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     setDraft({
       date,
       startTime,
+
       endTime:
         addHour(startTime),
     })
 
     setSelectedType('reu_a')
     setSelectedClientId('')
+    setContactMode('internal')
+    setCustomName('')
     setRecurrenceMode('none')
     setAutoRecurrence(false)
     setRecurrenceUntil('')
+    setRecurrenceEndMode('manual')
     setSeriesScope('single')
     setError('')
     setShowModal(true)
   }
 
+
   function openEdit(
     event: any,
   ) {
+    const eventClient =
+      safeClients.find(
+        (client: any) =>
+          client.id ===
+          event.client_id,
+      ) || null
+
+    const contractEnd =
+      eventClient
+        ?.fim_contrato ||
+      eventClient
+        ?.ended_at ||
+      ''
+
+    const eventUntil =
+      String(
+        event.recurrence_until ||
+        '',
+      ).slice(0, 10)
+
     setEditing(event)
 
     setDraft({
@@ -322,6 +390,18 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       event.client_id || '',
     )
 
+    setContactMode(
+      event.client_id
+        ? 'client'
+        : event.custom_name
+          ? 'custom'
+          : 'internal',
+    )
+
+    setCustomName(
+      event.custom_name || '',
+    )
+
     setRecurrenceMode(
       recurrenceModeFromRule(
         event.recurrence_rule,
@@ -336,14 +416,24 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     )
 
     setRecurrenceUntil(
-      event.recurrence_until ||
-      '',
+      eventUntil,
+    )
+
+    setRecurrenceEndMode(
+      contractEnd &&
+      eventUntil ===
+        String(
+          contractEnd,
+        ).slice(0, 10)
+        ? 'contract'
+        : 'manual',
     )
 
     setSeriesScope('single')
     setError('')
     setShowModal(true)
   }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setLoading(true); setError('')
     const fd = new FormData(event.currentTarget)
@@ -385,26 +475,150 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     window.location.reload()
   }
 
+
+  async function toggleConfirmation() {
+    if (!editing) {
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    const nextConfirmed =
+      !Boolean(
+        editing.confirmed,
+      )
+
+    const result =
+      await toggleCalendarEventConfirmationAction(
+        editing.id,
+        nextConfirmed,
+      )
+
+    if ('error' in result) {
+      setError(
+        result.error ||
+        'Erro ao alterar a confirmação.',
+      )
+
+      setLoading(false)
+      return
+    }
+
+    setLoading(false)
+    setShowModal(false)
+    window.location.reload()
+  }
+
   async function move(eventId: string, date: string) {
     const result = await moveCalendarEventAction(eventId, date)
     if ('error' in result) alert(result.error); else window.location.reload()
   }
 
-  function renderEventButton(event: any, compact = false) {
-    const [, , label, color] = eventType(event.type)
-    return <button
-      className={compact ? 'calendar-event' : 'timeline-event'}
-      key={event.id}
-      draggable
-      onDragStart={(e) => e.dataTransfer.setData('event-id', event.id)}
-      onClick={(e) => { e.stopPropagation(); openEdit(event) }}
-      style={{ borderLeftColor: color, ...(compact ? {} : eventStyle(event)) }}
-      title={`${event.title} · ${label}`}
-    >
-      <span>{event.all_day ? 'Dia inteiro' : localTime(event.starts_at)}</span>
-      <b>{event.title}</b>
-      {!compact && <small>{event.client?.name || event.work_item?.title || label}</small>}
-    </button>
+
+  function renderEventButton(
+    event: any,
+    compact = false,
+  ) {
+    const [
+      ,
+      ,
+      label,
+      typeColor,
+    ] = eventType(
+      event.type,
+    )
+
+    const color =
+      event.confirmed
+        ? typeColor
+        : UNCONFIRMED_COLOR
+
+    return (
+      <button
+        className={
+          compact
+            ? 'calendar-event'
+            : 'timeline-event'
+        }
+        key={event.id}
+        draggable
+        onDragStart={(e) =>
+          e.dataTransfer.setData(
+            'event-id',
+            event.id,
+          )
+        }
+        onClick={(e) => {
+          e.stopPropagation()
+          openEdit(event)
+        }}
+        style={{
+          borderLeftColor:
+            color,
+
+          ...(compact
+            ? {}
+            : eventStyle(event)),
+        }}
+        title={
+          event.title +
+          ' · ' +
+          label +
+          ' · ' +
+          (
+            event.confirmed
+              ? 'Confirmada'
+              : 'Aguardando confirmação'
+          )
+        }
+      >
+        <span>
+          {event.all_day
+            ? 'Dia inteiro'
+            : localTime(
+                event.starts_at,
+              )}
+        </span>
+
+        <b>
+          {event.title}
+        </b>
+
+        <span
+          className={
+            'agenda-confirmation-status ' +
+            (
+              event.confirmed
+                ? 'is-confirmed'
+                : 'is-pending'
+            )
+          }
+        >
+          <i
+            style={{
+              backgroundColor:
+                color,
+            }}
+          />
+
+          {!compact && (
+            event.confirmed
+              ? 'Confirmada'
+              : 'Aguardando confirmação'
+          )}
+        </span>
+
+        {!compact && (
+          <small>
+            {event.client?.name ||
+              event.custom_name ||
+              event.work_item?.title ||
+              label}
+          </small>
+        )}
+      </button>
+    )
   }
 
   return <div className="page-wrap ops-page">
@@ -481,8 +695,8 @@ export default function AgendaView({ events, clients, profiles, demands, period,
           </div>}
         </section>
         <aside className="agenda-side">
-          <div className="side-card"><div className="stitle">Próximas agendas</div>{filteredEvents.slice(0, 8).map((event: any) => <button key={event.id} className="next-event" onClick={() => openEdit(event)}><span>{localTime(event.starts_at)}</span><div><b>{event.title}</b><small>{event.client?.name || event.responsible?.full_name || 'Interno Ampy'}</small></div></button>)}{filteredEvents.length === 0 && <div className="range-empty">Nenhuma agenda no período.</div>}</div>
-          <div className="side-card"><div className="stitle">Legenda</div>{EVENT_TYPES.map(([id, code, label, color]) => <div className="legend-row" key={id}><i style={{ background: color }} /> {code} — {label}</div>)}</div>
+          <div className="side-card"><div className="stitle">Próximas agendas</div>{filteredEvents.slice(0, 8).map((event: any) => <button key={event.id} className="next-event" onClick={() => openEdit(event)}><span>{localTime(event.starts_at)}</span><div><b>{event.title}</b><small>{event.client?.name || event.custom_name || event.responsible?.full_name || 'Interno Ampy'}</small></div></button>)}{filteredEvents.length === 0 && <div className="range-empty">Nenhuma agenda no período.</div>}</div>
+          <div className="side-card"><div className="stitle">Legenda</div><div className="legend-row agenda-pending-legend"><i style={{ background: UNCONFIRMED_COLOR }} /> Aguardando confirmação</div>{EVENT_TYPES.map(([id, code, label, color]) => <div className="legend-row" key={id}><i style={{ background: color }} /> {code} — {label}</div>)}</div>
         </aside>
       </div>
     </div>
@@ -499,7 +713,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   </h2>
 
                   <p>
-                    O título é criado automaticamente pelo tipo e pelo cliente.
+                    O título é criado automaticamente pelo tipo e pelo vínculo selecionado.
                   </p>
                 </div>
 
@@ -567,66 +781,222 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   </div>
                 </div>
 
+
                 <div className="frow agenda-a19-second-row">
-                  <div className="fg">
+                  <div className="fg agenda-a19-link-field">
                     <label className="fl">
-                      Cliente
+                      Vínculo
                     </label>
 
-                    <select
-                      className="fi"
-                      name="client_id"
-                      value={selectedClientId}
-                      onChange={(event) => {
-                        const nextId =
-                          event.target.value
+                    <div className="agenda-a19-link-options">
+                      <label
+                        className={
+                          contactMode ===
+                          'client'
+                            ? 'active'
+                            : ''
+                        }
+                      >
+                        <input
+                          type="radio"
+                          name="contact_mode"
+                          value="client"
+                          checked={
+                            contactMode ===
+                            'client'
+                          }
+                          onChange={() => {
+                            setContactMode(
+                              'client',
+                            )
 
-                        setSelectedClientId(
-                          nextId,
-                        )
+                            if (
+                              selectedContractEnd
+                            ) {
+                              setRecurrenceEndMode(
+                                'contract',
+                              )
 
-                        const nextClient =
-                          safeClients.find(
-                            (
-                              client: any,
-                            ) =>
-                              client.id ===
-                              nextId,
+                              setRecurrenceUntil(
+                                selectedContractEnd,
+                              )
+                            }
+                          }}
+                        />
+
+                        Cliente
+                      </label>
+
+                      <label
+                        className={
+                          contactMode ===
+                          'custom'
+                            ? 'active'
+                            : ''
+                        }
+                      >
+                        <input
+                          type="radio"
+                          name="contact_mode"
+                          value="custom"
+                          checked={
+                            contactMode ===
+                            'custom'
+                          }
+                          onChange={() => {
+                            setContactMode(
+                              'custom',
+                            )
+
+                            setSelectedClientId(
+                              '',
+                            )
+
+                            setRecurrenceEndMode(
+                              'manual',
+                            )
+
+                            setRecurrenceUntil(
+                              '',
+                            )
+                          }}
+                        />
+
+                        Nome personalizado
+                      </label>
+
+                      <label
+                        className={
+                          contactMode ===
+                          'internal'
+                            ? 'active'
+                            : ''
+                        }
+                      >
+                        <input
+                          type="radio"
+                          name="contact_mode"
+                          value="internal"
+                          checked={
+                            contactMode ===
+                            'internal'
+                          }
+                          onChange={() => {
+                            setContactMode(
+                              'internal',
+                            )
+
+                            setSelectedClientId(
+                              '',
+                            )
+
+                            setCustomName('')
+                            setRecurrenceEndMode(
+                              'manual',
+                            )
+
+                            setRecurrenceUntil(
+                              '',
+                            )
+                          }}
+                        />
+
+                        Interno Ampy
+                      </label>
+                    </div>
+
+                    {contactMode ===
+                      'client' && (
+                      <select
+                        className="fi"
+                        name="client_id"
+                        required
+                        value={
+                          selectedClientId
+                        }
+                        onChange={(event) => {
+                          const nextId =
+                            event.target
+                              .value
+
+                          setSelectedClientId(
+                            nextId,
                           )
 
-                        const nextEnd =
-                          nextClient
-                            ?.fim_contrato ||
-                          nextClient
-                            ?.ended_at ||
-                          ''
+                          const nextClient =
+                            safeClients.find(
+                              (
+                                client: any,
+                              ) =>
+                                client.id ===
+                                nextId,
+                            )
 
-                        setRecurrenceUntil(
-                          nextEnd,
-                        )
-                      }}
-                    >
-                      <option value="">
-                        Interno — Ampy
-                      </option>
+                          const nextEnd =
+                            nextClient
+                              ?.fim_contrato ||
+                            nextClient
+                              ?.ended_at ||
+                            ''
 
-                      {safeClients.map(
-                        (
-                          client: any,
-                        ) => (
-                          <option
-                            key={
-                              client.id
-                            }
-                            value={
-                              client.id
-                            }
-                          >
-                            {client.name}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                          setRecurrenceUntil(
+                            nextEnd,
+                          )
+
+                          setRecurrenceEndMode(
+                            nextEnd
+                              ? 'contract'
+                              : 'manual',
+                          )
+                        }}
+                      >
+                        <option value="">
+                          Selecione o cliente
+                        </option>
+
+                        {safeClients.map(
+                          (
+                            client: any,
+                          ) => (
+                            <option
+                              key={
+                                client.id
+                              }
+                              value={
+                                client.id
+                              }
+                            >
+                              {client.name}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    )}
+
+                    {contactMode ===
+                      'custom' && (
+                      <input
+                        className="fi"
+                        name="custom_name"
+                        required
+                        value={customName}
+                        onChange={(event) =>
+                          setCustomName(
+                            event.target
+                              .value,
+                          )
+                        }
+                        placeholder="Nome do lead, parceiro ou contato"
+                        maxLength={120}
+                      />
+                    )}
+
+                    {contactMode ===
+                      'internal' && (
+                      <div className="agenda-a19-internal-hint">
+                        O título utilizará AMPY.
+                      </div>
+                    )}
                   </div>
 
                   <div className="fg">
@@ -832,28 +1202,30 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   </div>
                 </div>
 
+
                 {!editing &&
-                  recurrenceMode !== 'none' && (
+                  recurrenceMode !==
+                    'none' && (
                     <div className="agenda-a19-recurrence-box">
                       <input
-                          type="hidden"
-                          name="auto_recurrence"
-                          value="on"
-                        />
+                        type="hidden"
+                        name="auto_recurrence"
+                        value="on"
+                      />
 
-                        <div className="agenda-a19-auto-active">
-                          <i className="ti ti-repeat" />
+                      <div className="agenda-a19-auto-active">
+                        <i className="ti ti-repeat" />
 
-                          <div>
-                            <strong>
-                              Recorrência automática ativada
-                            </strong>
+                        <div>
+                          <strong>
+                            Recorrência automática ativada
+                          </strong>
 
-                            <span>
-                              As próximas agendas serão criadas conforme o intervalo selecionado.
-                            </span>
-                          </div>
+                          <span>
+                            As próximas agendas serão criadas conforme o intervalo selecionado.
+                          </span>
                         </div>
+                      </div>
 
                       <p>
                         Será criada uma ocorrência a cada{' '}
@@ -863,7 +1235,83 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                         dias.
                       </p>
 
-                      {selectedContractEnd ? (
+                      {selectedContractEnd && (
+                        <div className="agenda-a19-contract-end">
+                          <span>
+                            Data final do contrato
+                          </span>
+
+                          <strong>
+                            {formatDate(
+                              selectedContractEnd,
+                            )}
+                          </strong>
+                        </div>
+                      )}
+
+                      <div className="agenda-a19-recurrence-end-options">
+                        {selectedContractEnd && (
+                          <label
+                            className={
+                              recurrenceEndMode ===
+                              'contract'
+                                ? 'active'
+                                : ''
+                            }
+                          >
+                            <input
+                              type="radio"
+                              name="recurrence_end_mode"
+                              value="contract"
+                              checked={
+                                recurrenceEndMode ===
+                                'contract'
+                              }
+                              onChange={() => {
+                                setRecurrenceEndMode(
+                                  'contract',
+                                )
+
+                                setRecurrenceUntil(
+                                  selectedContractEnd,
+                                )
+                              }}
+                            />
+
+                            Usar fim do contrato
+                          </label>
+                        )}
+
+                        <label
+                          className={
+                            recurrenceEndMode ===
+                            'manual'
+                              ? 'active'
+                              : ''
+                          }
+                        >
+                          <input
+                            type="radio"
+                            name="recurrence_end_mode"
+                            value="manual"
+                            checked={
+                              recurrenceEndMode ===
+                              'manual'
+                            }
+                            onChange={() =>
+                              setRecurrenceEndMode(
+                                'manual',
+                              )
+                            }
+                          />
+
+                          Escolher data manual
+                        </label>
+                      </div>
+
+                      {recurrenceEndMode ===
+                        'contract' &&
+                      selectedContractEnd ? (
                         <>
                           <input
                             type="hidden"
@@ -878,18 +1326,6 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                               selectedContractEnd
                             }
                           />
-
-                          <div className="agenda-a19-contract-end">
-                            <span>
-                              Termina no fim do contrato
-                            </span>
-
-                            <strong>
-                              {formatDate(
-                                selectedContractEnd,
-                              )}
-                            </strong>
-                          </div>
                         </>
                       ) : (
                         <div className="fg">
@@ -901,10 +1337,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                             className="fi"
                             type="date"
                             name="recurrence_until"
-                            required={
-                                recurrenceMode !==
-                                'none'
-                              }
+                            required
                             min={
                               draft.date
                             }
@@ -922,7 +1355,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                           />
 
                           <small>
-                            Obrigatório para agenda interna ou cliente sem fim de contrato.
+                            Esta data vale apenas para esta série e não altera o contrato.
                           </small>
                         </div>
                       )}
@@ -1020,7 +1453,33 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                 )}
               </div>
 
-              <div className="modal-foot">
+              <div className="modal-foot agenda-a19-modal-foot">
+                {editing && (
+                  <button
+                    type="button"
+                    className={
+                      editing.confirmed
+                        ? 'bsec agenda-unconfirm-button'
+                        : 'bpri agenda-confirm-button'
+                    }
+                    onClick={
+                      toggleConfirmation
+                    }
+                    disabled={loading}
+                  >
+                    <i
+                      className={
+                        editing.confirmed
+                          ? 'ti ti-circle-x'
+                          : 'ti ti-circle-check'
+                      }
+                    />
+
+                    {editing.confirmed
+                      ? 'Desconfirmar agenda'
+                      : 'Confirmar agenda'}
+                  </button>
+                )}
                 {editing && (
                   <button
                     type="button"

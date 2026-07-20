@@ -6432,3 +6432,175 @@ tr:hover td,
   font-size: 11px;
   line-height: 1.4;
 }
+
+/* =========================================================
+   AMPY-V17-A19.5 — CONFIRMAÇÃO, CORES E CONTATO
+   ========================================================= */
+
+.agenda-confirmation-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  width: fit-content;
+
+  color: #64748B;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.agenda-confirmation-status i {
+  display: block;
+
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+}
+
+.calendar-event .agenda-confirmation-status {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+}
+
+.timeline-event .agenda-confirmation-status {
+  margin-top: 3px;
+}
+
+.agenda-pending-legend {
+  padding-bottom: 8px;
+  margin-bottom: 5px;
+
+  border-bottom:
+    1px solid
+    rgba(220, 38, 38, 0.12);
+
+  color: #B91C1C;
+  font-weight: 700;
+}
+
+.agenda-a19-link-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.agenda-a19-link-options,
+.agenda-a19-recurrence-end-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.agenda-a19-link-options label,
+.agenda-a19-recurrence-end-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 10px;
+
+  border:
+    1px solid
+    #E2E8F0;
+  border-radius: 9px;
+
+  background: #FFFFFF;
+  color: #64748B;
+
+  cursor: pointer;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.agenda-a19-link-options label.active,
+.agenda-a19-recurrence-end-options label.active {
+  border-color:
+    rgba(109, 40, 217, 0.36);
+
+  background:
+    rgba(109, 40, 217, 0.07);
+
+  color: #5B21B6;
+}
+
+.agenda-a19-link-options input,
+.agenda-a19-recurrence-end-options input {
+  width: 13px;
+  height: 13px;
+
+  margin: 0;
+
+  accent-color: #6D28D9;
+}
+
+.agenda-a19-internal-hint {
+  display: flex;
+  align-items: center;
+
+  min-height: 42px;
+  padding: 0 12px;
+
+  border:
+    1px dashed
+    #CBD5E1;
+  border-radius: 10px;
+
+  background: #F8FAFC;
+  color: #64748B;
+
+  font-size: 11px;
+}
+
+.agenda-a19-recurrence-end-options {
+  padding-top: 2px;
+}
+
+.agenda-a19-modal-foot {
+  flex-wrap: wrap;
+}
+
+.agenda-confirm-button,
+.agenda-unconfirm-button {
+  margin-right: auto;
+}
+
+.agenda-confirm-button {
+  background: #15803D;
+  border-color: #15803D;
+}
+
+.agenda-confirm-button:hover {
+  background: #166534;
+  border-color: #166534;
+}
+
+.agenda-unconfirm-button {
+  border-color:
+    rgba(220, 38, 38, 0.28);
+
+  color: #B91C1C;
+}
+
+@media (max-width: 760px) {
+  .agenda-a19-link-options,
+  .agenda-a19-recurrence-end-options {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .agenda-a19-link-options label,
+  .agenda-a19-recurrence-end-options label {
+    width: 100%;
+  }
+
+  .agenda-confirm-button,
+  .agenda-unconfirm-button {
+    width: 100%;
+    margin-right: 0;
+  }
+}

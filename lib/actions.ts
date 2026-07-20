@@ -374,48 +374,63 @@ export async function deleteProjectStepAction(stepId: string, workItemId: string
    AMPY-V17-A19.1 — AGENDA RECORRENTE
    ========================================================= */
 
+
 const AMPY_CALENDAR_TYPES = {
   reu_a: {
     code: 'REU A',
+
     label:
       'Reunião de alinhamento',
-    color: '#6D28D9',
+
+    color: '#22C55E',
   },
 
   reu_c: {
     code: 'REU C',
+
     label:
       'Reunião comercial',
-    color: '#9333EA',
+
+    color: '#15803D',
   },
 
   cap_e: {
     code: 'CAP E',
+
     label:
       'Captação externa',
-    color: '#C026D3',
+
+    color: '#1E3A8A',
   },
 
   cap_s: {
     code: 'CAP S',
+
     label:
       'Captação em estúdio',
-    color: '#DB2777',
+
+    color: '#60A5FA',
   },
 
   out_a: {
     code: 'OUT A',
+
     label:
       'Outro alinhamento',
+
     color: '#64748B',
   },
 } as const
+
+const AMPY_UNCONFIRMED_COLOR =
+  '#DC2626'
 
 type AmpyCalendarType =
   keyof typeof AMPY_CALENDAR_TYPES
 
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
 // AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
+// AMPY-V17-A19.5 — CONFIRMAÇÃO, CORES E CONTATO PERSONALIZADO
 const AMPY_RECURRENCE_CONFIG = {
   every_week: {
     days: 7,
@@ -564,22 +579,38 @@ async function calendarClient(
   return data
 }
 
+
 function calendarAutomaticTitle(
   type: AmpyCalendarType,
   clientName?: string | null,
+  customName?: string | null,
 ) {
+  const target =
+    String(
+      clientName ||
+      customName ||
+      'AMPY',
+    ).trim() ||
+    'AMPY'
+
   return (
     AMPY_CALENDAR_TYPES[
       type
     ].code +
     ' - ' +
-    (
-      String(
-        clientName || 'AMPY',
-      ).trim() ||
-      'AMPY'
-    ).toUpperCase()
+    target.toUpperCase()
   )
+}
+
+function calendarEventColor(
+  type: AmpyCalendarType,
+  confirmed: boolean,
+) {
+  return confirmed
+    ? AMPY_CALENDAR_TYPES[
+        type
+      ].color
+    : AMPY_UNCONFIRMED_COLOR
 }
 
 async function findCalendarConflict(
@@ -817,6 +848,43 @@ export async function createCalendarEventAction(
       linked.clientId,
     )
 
+  const contactMode =
+    value(
+      formData,
+      'contact_mode',
+    )
+
+  const requestedCustomName =
+    nullable(
+      formData,
+      'custom_name',
+    )
+
+  const customName =
+    linked.clientId
+      ? null
+      : requestedCustomName
+
+  if (
+    contactMode === 'client' &&
+    !linked.clientId
+  ) {
+    return {
+      error:
+        'Selecione o cliente da agenda.',
+    }
+  }
+
+  if (
+    contactMode === 'custom' &&
+    !customName
+  ) {
+    return {
+      error:
+        'Informe o nome do lead, parceiro ou contato.',
+    }
+  }
+
   const type =
     validCalendarType(
       value(
@@ -829,6 +897,7 @@ export async function createCalendarEventAction(
     calendarAutomaticTitle(
       type,
       client?.name,
+      customName,
     )
 
   const recurrenceMode =
@@ -963,6 +1032,9 @@ export async function createCalendarEventAction(
         client_id:
           linked.clientId,
 
+        custom_name:
+          customName,
+
         work_item_id:
           nullable(
             formData,
@@ -981,9 +1053,10 @@ export async function createCalendarEventAction(
         all_day: allDay,
 
         color:
-          AMPY_CALENDAR_TYPES[
-            type
-          ].color,
+          calendarEventColor(
+            type,
+            false,
+          ),
 
         recurrence_rule:
           autoRecurrence &&
@@ -1100,7 +1173,7 @@ export async function updateCalendarEventAction(
   } = await supabase
     .from('calendar_events')
     .select(
-      'id,responsible_id,created_by,work_item_id,title,starts_at,ends_at,series_id',
+      'id,responsible_id,created_by,work_item_id,title,starts_at,ends_at,series_id,confirmed,type,custom_name',
     )
     .eq('id', id)
     .single()
@@ -1190,6 +1263,43 @@ export async function updateCalendarEventAction(
       linked.clientId,
     )
 
+  const contactMode =
+    value(
+      formData,
+      'contact_mode',
+    )
+
+  const requestedCustomName =
+    nullable(
+      formData,
+      'custom_name',
+    )
+
+  const customName =
+    linked.clientId
+      ? null
+      : requestedCustomName
+
+  if (
+    contactMode === 'client' &&
+    !linked.clientId
+  ) {
+    return {
+      error:
+        'Selecione o cliente da agenda.',
+    }
+  }
+
+  if (
+    contactMode === 'custom' &&
+    !customName
+  ) {
+    return {
+      error:
+        'Informe o nome do lead, parceiro ou contato.',
+    }
+  }
+
   const type =
     validCalendarType(
       value(
@@ -1202,6 +1312,7 @@ export async function updateCalendarEventAction(
     calendarAutomaticTitle(
       type,
       client?.name,
+      customName,
     )
 
   const scope =
@@ -1219,6 +1330,9 @@ export async function updateCalendarEventAction(
     client_id:
       linked.clientId,
 
+    custom_name:
+      customName,
+
     work_item_id:
       nullable(
         formData,
@@ -1232,9 +1346,12 @@ export async function updateCalendarEventAction(
       allDay,
 
     color:
-      AMPY_CALENDAR_TYPES[
-        type
-      ].color,
+      calendarEventColor(
+        type,
+        Boolean(
+          existing.confirmed,
+        ),
+      ),
 
     location:
       nullable(
@@ -1265,7 +1382,7 @@ export async function updateCalendarEventAction(
     } = await supabase
       .from('calendar_events')
       .select(
-        'id,starts_at,ends_at',
+        'id,starts_at,ends_at,confirmed',
       )
       .eq(
         'series_id',
@@ -1409,6 +1526,14 @@ export async function updateCalendarEventAction(
       .update({
         ...commonPayload,
 
+        color:
+          calendarEventColor(
+            type,
+            Boolean(
+              row.confirmed,
+            ),
+          ),
+
         starts_at:
           startsAt,
 
@@ -1447,6 +1572,108 @@ export async function updateCalendarEventAction(
 
   return {
     success: true,
+  }
+}
+
+
+export async function toggleCalendarEventConfirmationAction(
+  id: string,
+  confirmed: boolean,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const {
+    data: event,
+    error: readError,
+  } = await supabase
+    .from('calendar_events')
+    .select(
+      'id,type,responsible_id,created_by,work_item_id,title,confirmed',
+    )
+    .eq('id', id)
+    .single()
+
+  if (
+    readError ||
+    !event ||
+    (
+      !isManager(
+        profile.role,
+      ) &&
+      event.responsible_id !==
+        user.id &&
+      event.created_by !==
+        user.id
+    )
+  ) {
+    return forbidden(
+      'Você não possui permissão para confirmar esta agenda.',
+    )
+  }
+
+  const type =
+    validCalendarType(
+      event.type,
+    )
+
+  const {
+    error,
+  } = await supabase
+    .from('calendar_events')
+    .update({
+      confirmed,
+
+      color:
+        calendarEventColor(
+          type,
+          confirmed,
+        ),
+    })
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  if (
+    event.work_item_id
+  ) {
+    await addHistory(
+      event.work_item_id,
+      user.id,
+
+      confirmed
+        ? 'calendar_event_confirmed'
+        : 'calendar_event_unconfirmed',
+
+      event.confirmed
+        ? 'confirmed'
+        : 'unconfirmed',
+
+      confirmed
+        ? 'confirmed'
+        : 'unconfirmed',
+    )
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    confirmed,
   }
 }
 

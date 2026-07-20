@@ -172,7 +172,7 @@ export default async function AgendaPage({
     supabase
       .from('calendar_events')
       .select(
-        'id,title,type,client_id,work_item_id,responsible_id,starts_at,ends_at,all_day,color,recurrence_rule,series_id,series_sequence,recurrence_until,auto_recurrence,location,notes,confirmed,drive_link,created_by,created_at,updated_at',
+        'id,title,custom_name,type,client_id,work_item_id,responsible_id,starts_at,ends_at,all_day,color,recurrence_rule,series_id,series_sequence,recurrence_until,auto_recurrence,location,notes,confirmed,drive_link,created_by,created_at,updated_at',
       )
       .gte(
         'starts_at',
