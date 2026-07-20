@@ -96,72 +96,413 @@ async function validateCalendarLinks(supabase: ReturnType<typeof createClient>, 
   return { clientId: item.client_id || clientId, ok: true as const }
 }
 
-export async function createClientAction(formData: FormData) {
-  const { supabase, profile } = await getCurrentProfile()
-  if (!profile || !isManager(profile.role)) return forbidden()
-  const name = value(formData, 'name')
-  if (!name) return { error: 'Informe o nome do cliente.' }
-  const palette = [
-    { color: '#2563EB', bg: '#EAF2FF' }, { color: '#16A34A', bg: '#EAF7EF' },
-    { color: '#CA8A04', bg: '#FFF7E6' }, { color: '#DC2626', bg: '#FEECEC' },
-    { color: '#475467', bg: '#EEF2F7' },
-  ]
-  const color = palette[Math.floor(Math.random() * palette.length)]
-  const { error } = await supabase.from('clients').insert({
-    name,
-    segment: nullable(formData, 'segment') || '',
-    cidade: nullable(formData, 'cidade'),
-    status: value(formData, 'status') || 'active',
-    responsible_id: nullable(formData, 'responsible_id'),
-    main_contact_name: nullable(formData, 'main_contact_name'),
-    main_contact_email: nullable(formData, 'main_contact_email'),
-    main_contact_phone: nullable(formData, 'main_contact_phone'),
-    drive_folder_url: nullable(formData, 'drive_folder_url'),
-    briefing_url: nullable(formData, 'briefing_url'),
-    instagram: nullable(formData, 'instagram'),
-    notes: nullable(formData, 'notes'),
-    inicio_contrato: nullable(formData, 'inicio_contrato'),
-    fim_contrato: nullable(formData, 'fim_contrato'),
-    started_at: nullable(formData, 'inicio_contrato') || new Date().toISOString().slice(0, 10),
-    ended_at: nullable(formData, 'fim_contrato'),
-    avatar_initials: buildInitials(name),
-    avatar_color: color.color,
-    avatar_bg: color.bg,
-  })
-  if (error) return { error: error.message }
-  revalidateOperationalPaths()
-  return { success: true }
+
+const VALID_CLIENT_OPERATION_MODELS = [
+  'monthly',
+  'parallel',
+  'not_applicable',
+] as const
+
+function normalizeClientOperationModel(
+  input: string,
+) {
+  return VALID_CLIENT_OPERATION_MODELS.includes(
+    input as (
+      typeof VALID_CLIENT_OPERATION_MODELS
+    )[number],
+  )
+    ? input
+    : 'monthly'
 }
 
-export async function updateClientAction(formData: FormData) {
-  const { supabase, profile } = await getCurrentProfile()
-  if (!profile || !isManager(profile.role)) return forbidden()
-  const id = value(formData, 'id')
-  const name = value(formData, 'name')
-  if (!id || !name) return { error: 'Cliente inválido.' }
-  const { error } = await supabase.from('clients').update({
-    name,
-    segment: nullable(formData, 'segment') || '',
-    cidade: nullable(formData, 'cidade'),
-    status: value(formData, 'status') || 'active',
-    responsible_id: nullable(formData, 'responsible_id'),
-    main_contact_name: nullable(formData, 'main_contact_name'),
-    main_contact_email: nullable(formData, 'main_contact_email'),
-    main_contact_phone: nullable(formData, 'main_contact_phone'),
-    drive_folder_url: nullable(formData, 'drive_folder_url'),
-    briefing_url: nullable(formData, 'briefing_url'),
-    instagram: nullable(formData, 'instagram'),
-    notes: nullable(formData, 'notes'),
-    inicio_contrato: nullable(formData, 'inicio_contrato'),
-    fim_contrato: nullable(formData, 'fim_contrato'),
-    started_at: nullable(formData, 'inicio_contrato'),
-    ended_at: nullable(formData, 'fim_contrato'),
-  }).eq('id', id)
-  if (error) return { error: error.message }
-  revalidateOperationalPaths()
-  return { success: true }
+function normalizeClientSituation(
+  input: string,
+) {
+  return input ===
+    'inactive'
+      ? 'inactive'
+      : 'active'
 }
 
+export async function createClientAction(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    profile,
+  } =
+    await getCurrentProfile()
+
+  if (
+    !profile ||
+    !isManager(
+      profile.role,
+    )
+  ) {
+    return forbidden()
+  }
+
+  const name =
+    value(
+      formData,
+      'name',
+    )
+
+  if (!name) {
+    return {
+      error:
+        'Informe o nome do cliente.',
+    }
+  }
+
+  const status =
+    normalizeClientSituation(
+      value(
+        formData,
+        'status',
+      ),
+    )
+
+  const operationModel =
+    normalizeClientOperationModel(
+      value(
+        formData,
+        'operation_model',
+      ),
+    )
+
+  const strategicMapUrl =
+    nullable(
+      formData,
+      'strategic_map_url',
+    )
+
+  const {
+    error,
+  } = await supabase
+    .from('clients')
+    .insert({
+      name,
+
+      segment:
+        nullable(
+          formData,
+          'segment',
+        ) || '',
+
+      cidade:
+        nullable(
+          formData,
+          'cidade',
+        ),
+
+      status,
+
+      operation_model:
+        operationModel,
+
+      responsible_id:
+        nullable(
+          formData,
+          'responsible_id',
+        ),
+
+      main_contact_name:
+        nullable(
+          formData,
+          'main_contact_name',
+        ),
+
+      main_contact_email:
+        nullable(
+          formData,
+          'main_contact_email',
+        ),
+
+      main_contact_phone:
+        nullable(
+          formData,
+          'main_contact_phone',
+        ),
+
+      drive_folder_url:
+        nullable(
+          formData,
+          'drive_folder_url',
+        ),
+
+      strategic_map_url:
+        strategicMapUrl,
+
+      briefing_url:
+        strategicMapUrl,
+
+      logo_url:
+        nullable(
+          formData,
+          'logo_url',
+        ),
+
+      logo_storage_path:
+        nullable(
+          formData,
+          'logo_storage_path',
+        ),
+
+      instagram:
+        nullable(
+          formData,
+          'instagram',
+        ),
+
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+
+      inicio_contrato:
+        nullable(
+          formData,
+          'inicio_contrato',
+        ),
+
+      fim_contrato:
+        nullable(
+          formData,
+          'fim_contrato',
+        ),
+
+      started_at:
+        nullable(
+          formData,
+          'inicio_contrato',
+        ),
+
+      ended_at:
+        nullable(
+          formData,
+          'fim_contrato',
+        ),
+
+      avatar_initials:
+        buildInitials(name),
+
+      avatar_color:
+        '#475569',
+
+      avatar_bg:
+        '#F1F5F9',
+    })
+
+  if (error) {
+    return {
+      error:
+        error.message,
+    }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function updateClientAction(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    profile,
+  } =
+    await getCurrentProfile()
+
+  if (
+    !profile ||
+    !isManager(
+      profile.role,
+    )
+  ) {
+    return forbidden()
+  }
+
+  const id =
+    value(
+      formData,
+      'id',
+    )
+
+  const name =
+    value(
+      formData,
+      'name',
+    )
+
+  if (
+    !id ||
+    !name
+  ) {
+    return {
+      error:
+        'Cliente inválido.',
+    }
+  }
+
+  const status =
+    normalizeClientSituation(
+      value(
+        formData,
+        'status',
+      ),
+    )
+
+  const operationModel =
+    normalizeClientOperationModel(
+      value(
+        formData,
+        'operation_model',
+      ),
+    )
+
+  const strategicMapUrl =
+    nullable(
+      formData,
+      'strategic_map_url',
+    )
+
+  const {
+    error,
+  } = await supabase
+    .from('clients')
+    .update({
+      name,
+
+      segment:
+        nullable(
+          formData,
+          'segment',
+        ) || '',
+
+      cidade:
+        nullable(
+          formData,
+          'cidade',
+        ),
+
+      status,
+
+      operation_model:
+        operationModel,
+
+      responsible_id:
+        nullable(
+          formData,
+          'responsible_id',
+        ),
+
+      main_contact_name:
+        nullable(
+          formData,
+          'main_contact_name',
+        ),
+
+      main_contact_email:
+        nullable(
+          formData,
+          'main_contact_email',
+        ),
+
+      main_contact_phone:
+        nullable(
+          formData,
+          'main_contact_phone',
+        ),
+
+      drive_folder_url:
+        nullable(
+          formData,
+          'drive_folder_url',
+        ),
+
+      strategic_map_url:
+        strategicMapUrl,
+
+      briefing_url:
+        strategicMapUrl,
+
+      logo_url:
+        nullable(
+          formData,
+          'logo_url',
+        ),
+
+      logo_storage_path:
+        nullable(
+          formData,
+          'logo_storage_path',
+        ),
+
+      instagram:
+        nullable(
+          formData,
+          'instagram',
+        ),
+
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+
+      inicio_contrato:
+        nullable(
+          formData,
+          'inicio_contrato',
+        ),
+
+      fim_contrato:
+        nullable(
+          formData,
+          'fim_contrato',
+        ),
+
+      started_at:
+        nullable(
+          formData,
+          'inicio_contrato',
+        ),
+
+      ended_at:
+        nullable(
+          formData,
+          'fim_contrato',
+        ),
+
+      avatar_initials:
+        buildInitials(name),
+
+      avatar_color:
+        '#475569',
+
+      avatar_bg:
+        '#F1F5F9',
+    })
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error:
+        error.message,
+    }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
 
 export async function archiveClientAction(id: string, mode: 'archived' | 'inactive' = 'archived') {
   const { supabase, profile } = await getCurrentProfile()
