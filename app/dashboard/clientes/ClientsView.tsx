@@ -1,6 +1,8 @@
 
 'use client'
 
+// AMPY-V17-A21.1 — CORREÇÃO INTEGRAL DO PAINEL DE CLIENTES
+
 // AMPY-V17-A21 — PAINEL DE CLIENTES, LOGO E MAPA ESTRATÉGICO
 
 import {
@@ -2483,7 +2485,7 @@ function ClientFields({
             <input
               id={inputId}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               onChange={(
                 event,
               ) =>
