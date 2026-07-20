@@ -6327,3 +6327,55 @@ tr:hover td,
     flex-direction: column;
   }
 }
+
+/* =========================================================
+   AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
+   ========================================================= */
+
+.agenda-a19-top-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.35fr)
+    minmax(250px, 0.85fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.agenda-a19-top-grid .fg,
+.agenda-a19-second-row .fg,
+.agenda-a19-demand-row {
+  min-width: 0;
+}
+
+.agenda-a19-top-grid .agenda-a19-title-preview {
+  min-height: 86px;
+  justify-content: center;
+}
+
+.agenda-a19-top-type {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.agenda-a19-top-type .fi {
+  min-height: 50px;
+}
+
+.agenda-a19-second-row {
+  margin-top: 2px;
+}
+
+.agenda-a19-demand-row {
+  width: 100%;
+}
+
+@media (max-width: 820px) {
+  .agenda-a19-top-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .agenda-a19-top-grid .agenda-a19-title-preview {
+    min-height: 74px;
+  }
+}

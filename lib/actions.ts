@@ -414,6 +414,43 @@ const AMPY_CALENDAR_TYPES = {
 type AmpyCalendarType =
   keyof typeof AMPY_CALENDAR_TYPES
 
+// AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
+const AMPY_RECURRENCE_CONFIG = {
+  every_week: {
+    days: 7,
+    rule:
+      'FREQ=WEEKLY;INTERVAL=1',
+  },
+
+  every_2_weeks: {
+    days: 14,
+    rule:
+      'FREQ=WEEKLY;INTERVAL=2',
+  },
+
+  every_4_weeks: {
+    days: 28,
+    rule:
+      'FREQ=WEEKLY;INTERVAL=4',
+  },
+} as const
+
+type AmpyRecurrenceMode =
+  | keyof typeof AMPY_RECURRENCE_CONFIG
+  | 'none'
+
+function validRecurrenceMode(
+  input: string,
+): AmpyRecurrenceMode {
+  return Object.prototype
+    .hasOwnProperty.call(
+      AMPY_RECURRENCE_CONFIG,
+      input,
+    )
+      ? input as keyof typeof AMPY_RECURRENCE_CONFIG
+      : 'none'
+}
+
 function validCalendarType(
   input: string,
 ): AmpyCalendarType {
@@ -609,6 +646,7 @@ function recurrenceOccurrences(
   formData: FormData,
   allDay: boolean,
   recurrenceUntil: string,
+  intervalDays: number,
 ) {
   const firstStartDate =
     value(
@@ -646,7 +684,7 @@ function recurrenceOccurrences(
     sequence += 1
   ) {
     const offset =
-      sequence * 28
+      sequence * intervalDays
 
     const startDate =
       addDaysToDateKey(
@@ -793,14 +831,22 @@ export async function createCalendarEventAction(
     )
 
   const recurrenceMode =
-    value(
-      formData,
-      'recurrence_mode',
+    validRecurrenceMode(
+      value(
+        formData,
+        'recurrence_mode',
+      ),
     )
 
+  const recurrenceConfig =
+    recurrenceMode === 'none'
+      ? null
+      : AMPY_RECURRENCE_CONFIG[
+          recurrenceMode
+        ]
+
   const autoRecurrence =
-    recurrenceMode ===
-      'every_4_weeks' &&
+    Boolean(recurrenceConfig) &&
     value(
       formData,
       'auto_recurrence',
@@ -858,6 +904,7 @@ export async function createCalendarEventAction(
           formData,
           allDay,
           recurrenceUntil as string,
+          recurrenceConfig?.days || 28,
         )
       : [
           {
@@ -942,8 +989,9 @@ export async function createCalendarEventAction(
           ].color,
 
         recurrence_rule:
-          autoRecurrence
-            ? 'FREQ=WEEKLY;INTERVAL=4'
+          autoRecurrence &&
+          recurrenceConfig
+            ? recurrenceConfig.rule
             : null,
 
         series_id:

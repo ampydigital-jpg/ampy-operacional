@@ -1,6 +1,7 @@
 'use client'
 
 // AMPY-V17-A19.1 — AGENDA RECORRENTE
+// AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -40,6 +41,51 @@ const EVENT_TYPES = [
     '#64748B',
   ],
 ] as const
+
+const RECURRENCE_OPTIONS = [
+  ['none', 'Não recorrente', 0],
+  ['every_week', 'Semanal', 7],
+  ['every_2_weeks', 'A cada 2 semanas', 14],
+  ['every_4_weeks', 'A cada 4 semanas', 28],
+] as const
+
+function recurrenceModeFromRule(
+  recurrenceRule?: string | null,
+  autoRecurrence?: boolean,
+) {
+  if (!autoRecurrence) {
+    return 'none'
+  }
+
+  const rule =
+    String(recurrenceRule || '')
+
+  if (
+    rule.includes('INTERVAL=1') ||
+    (
+      rule.includes('FREQ=WEEKLY') &&
+      !rule.includes('INTERVAL=')
+    )
+  ) {
+    return 'every_week'
+  }
+
+  if (rule.includes('INTERVAL=2')) {
+    return 'every_2_weeks'
+  }
+
+  return 'every_4_weeks'
+}
+
+function recurrenceDays(
+  mode: string,
+) {
+  return (
+    RECURRENCE_OPTIONS.find(
+      ([id]) => id === mode,
+    )?.[2] || 0
+  )
+}
 
 const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -276,9 +322,10 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     )
 
     setRecurrenceMode(
-      event.auto_recurrence
-        ? 'every_4_weeks'
-        : 'none',
+      recurrenceModeFromRule(
+        event.recurrence_rule,
+        event.auto_recurrence,
+      ),
     )
 
     setAutoRecurrence(
@@ -473,18 +520,19 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   value={automaticTitle}
                 />
 
-                <div className="agenda-a19-title-preview">
-                  <span>
-                    Título automático
-                  </span>
 
-                  <strong>
-                    {automaticTitle}
-                  </strong>
-                </div>
+                <div className="agenda-a19-top-grid">
+                  <div className="agenda-a19-title-preview">
+                    <span>
+                      Título automático
+                    </span>
 
-                <div className="frow">
-                  <div className="fg">
+                    <strong>
+                      {automaticTitle}
+                    </strong>
+                  </div>
+
+                  <div className="fg agenda-a19-top-type">
                     <label className="fl">
                       Tipo *
                     </label>
@@ -516,48 +564,9 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                       )}
                     </select>
                   </div>
-
-                  <div className="fg">
-                    <label className="fl">
-                      Responsável
-                    </label>
-
-                    <select
-                      className="fi"
-                      name="responsible_id"
-                      defaultValue={
-                        editing
-                          ?.responsible_id ||
-                        ''
-                      }
-                    >
-                      <option value="">
-                        Definir depois
-                      </option>
-
-                      {safeProfiles.map(
-                        (
-                          profile: any,
-                        ) => (
-                          <option
-                            key={
-                              profile.id
-                            }
-                            value={
-                              profile.id
-                            }
-                          >
-                            {
-                              profile.full_name
-                            }
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
                 </div>
 
-                <div className="frow">
+                <div className="frow agenda-a19-second-row">
                   <div className="fg">
                     <label className="fl">
                       Cliente
@@ -621,40 +630,79 @@ export default function AgendaView({ events, clients, profiles, demands, period,
 
                   <div className="fg">
                     <label className="fl">
-                      Demanda vinculada
+                      Responsável
                     </label>
 
                     <select
                       className="fi"
-                      name="work_item_id"
+                      name="responsible_id"
                       defaultValue={
                         editing
-                          ?.work_item_id ||
+                          ?.responsible_id ||
                         ''
                       }
                     >
                       <option value="">
-                        Não vincular
+                        Definir depois
                       </option>
 
-                      {safeDemands.map(
+                      {safeProfiles.map(
                         (
-                          demand: any,
+                          profile: any,
                         ) => (
                           <option
                             key={
-                              demand.id
+                              profile.id
                             }
                             value={
-                              demand.id
+                              profile.id
                             }
                           >
-                            {demand.title}
+                            {
+                              profile.full_name
+                            }
                           </option>
                         ),
                       )}
                     </select>
                   </div>
+                </div>
+
+                <div className="fg agenda-a19-demand-row">
+                  <label className="fl">
+                    Demanda vinculada
+                  </label>
+
+                  <select
+                    className="fi"
+                    name="work_item_id"
+                    defaultValue={
+                      editing
+                        ?.work_item_id ||
+                      ''
+                    }
+                  >
+                    <option value="">
+                      Não vincular
+                    </option>
+
+                    {safeDemands.map(
+                      (
+                        demand: any,
+                      ) => (
+                        <option
+                          key={
+                            demand.id
+                          }
+                          value={
+                            demand.id
+                          }
+                        >
+                          {demand.title}
+                        </option>
+                      ),
+                    )}
+                  </select>
                 </div>
 
                 <label className="agenda-a19-check">
@@ -765,25 +813,26 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                         )
 
                         setAutoRecurrence(
-                          next ===
-                            'every_4_weeks',
+                          next !== 'none',
                         )
                       }}
                     >
-                      <option value="none">
-                        Não recorrente
-                      </option>
-
-                      <option value="every_4_weeks">
-                        A cada 4 semanas
-                      </option>
+                      {RECURRENCE_OPTIONS.map(
+                        ([id, label]) => (
+                          <option
+                            key={id}
+                            value={id}
+                          >
+                            {label}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
                 </div>
 
                 {!editing &&
-                  recurrenceMode ===
-                    'every_4_weeks' && (
+                  recurrenceMode !== 'none' && (
                     <div className="agenda-a19-recurrence-box">
                       <label className="agenda-a19-check agenda-a19-check-strong">
                         <input
@@ -808,7 +857,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                       </label>
 
                       <p>
-                        Será criada uma ocorrência a cada 28 dias.
+                        Será criada uma ocorrência a cada{' '}
+                        {recurrenceDays(
+                          recurrenceMode,
+                        )}{' '}
+                        dias.
                       </p>
 
                       {selectedContractEnd ? (
