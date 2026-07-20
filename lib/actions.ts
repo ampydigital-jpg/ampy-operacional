@@ -1530,7 +1530,7 @@ export async function updateCalendarEventAction(
           calendarEventColor(
             type,
             Boolean(
-              row.confirmed,
+              existing.confirmed,
             ),
           ),
 
