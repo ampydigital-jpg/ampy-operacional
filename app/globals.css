@@ -9436,3 +9436,166 @@ tr:hover td,
     height: 52px;
   }
 }
+
+/* =========================================================
+   AMPY-V17-A22.1 — IDENTIDADE GLOBAL DA EQUIPE
+   ========================================================= */
+
+.team-member-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #d9e1eb;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #f8fafc, #e7edf5);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  color: #263247;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.team-member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.team-member-avatar.size-xs { width: 24px; height: 24px; font-size: 8px; }
+.team-member-avatar.size-sm { width: 32px; height: 32px; font-size: 9px; }
+.team-member-avatar.size-md { width: 40px; height: 40px; font-size: 11px; }
+.team-member-avatar.size-lg { width: 54px; height: 54px; font-size: 14px; }
+.team-member-avatar.size-xl { width: 76px; height: 76px; font-size: 18px; }
+
+.team-member-identity {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  vertical-align: middle;
+}
+
+.team-member-identity-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.team-member-identity-copy b,
+.team-member-identity-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-member-identity-copy b {
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.team-member-identity-copy small {
+  color: #718096;
+  font-size: 10px;
+}
+
+.team-member-inactive-tag {
+  padding: 3px 7px;
+  border: 1px solid #dce2ea;
+  border-radius: 999px;
+  background: #f3f5f8;
+  color: #687386;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.team-person-global {
+  max-width: 230px;
+}
+
+.team-member-email {
+  display: block;
+  max-width: 230px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #7a8699;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-identity-editor {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.75fr) minmax(260px, 1.25fr);
+  gap: 18px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #dfe6ef;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fbfcfe, #f5f8fb);
+}
+
+.account-grid-identity {
+  grid-template-columns: minmax(280px, 0.82fr) minmax(320px, 1fr) minmax(340px, 1.08fr);
+}
+
+.account-identity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 22px;
+  border: 1px solid #dfe5ec;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.account-identity-card h2 {
+  margin: 5px 0 4px;
+  color: #182133;
+  font-size: 18px;
+}
+
+.account-identity-card p {
+  margin: 0;
+  color: #68758a;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.account-identity-card form {
+  display: grid;
+  gap: 15px;
+}
+
+.demand-responsible-identity {
+  max-width: 180px;
+}
+
+.team-identity-empty {
+  color: #8993a3;
+  font-size: 10px;
+}
+
+@media (max-width: 1320px) {
+  .account-grid-identity {
+    grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.1fr);
+  }
+
+  .account-password-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .team-identity-editor,
+  .account-grid-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .account-password-card {
+    grid-column: auto;
+  }
+}

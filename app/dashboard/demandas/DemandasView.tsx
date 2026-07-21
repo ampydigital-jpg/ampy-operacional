@@ -1,6 +1,10 @@
 
 'use client'
 
+// AMPY-V17-A22.1 — IDENTIDADE GLOBAL DA EQUIPE
+
+// AMPY-V17-A22.1C — DEMANDAS SEMÂNTICAS
+
 import Link from 'next/link'
 import {
   useMemo,
@@ -8,6 +12,7 @@ import {
   type FormEvent,
 } from 'react'
 
+import TeamMemberIdentity from '@/components/ui/TeamMemberIdentity'
 import {
   createDemandFromDemandasAction,
   deleteWorkItemAction,
@@ -829,7 +834,7 @@ export default function DemandasView({
                 key={profile.id}
                 value={profile.id}
               >
-                {profile.full_name}
+                {profile.display_name || profile.full_name}
               </option>
             ),
           )}
@@ -1089,9 +1094,7 @@ export default function DemandasView({
                       </td>
 
                       <td>
-                        {item.responsible
-                          ?.full_name ||
-                          'Sem responsável'}
+                        <TeamMemberIdentity member={item.responsible} />
                       </td>
 
                       <td>
@@ -1529,9 +1532,7 @@ export default function DemandasView({
                               profile.id
                             }
                           >
-                            {
-                              profile.full_name
-                            }
+                            {profile.display_name || profile.full_name}
                           </option>
                         ),
                       )}

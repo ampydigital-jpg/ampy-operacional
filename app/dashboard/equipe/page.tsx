@@ -14,7 +14,7 @@ export default async function EquipePage() {
     adminSupabase
       .from('team_members')
       .select(
-        'id,profile_id,full_name,email,job_title,access_type,operational_area,avatar_initials,avatar_color,avatar_bg,is_active,receives_internal_alerts,must_change_password,last_password_change_at,last_access_change_at,display_order',
+        'id,profile_id,full_name,display_name,avatar_url,email,job_title,access_type,operational_area,avatar_initials,avatar_color,avatar_bg,is_active,receives_internal_alerts,must_change_password,last_password_change_at,last_access_change_at,display_order',
       )
       .order('display_order', {
         ascending: true,

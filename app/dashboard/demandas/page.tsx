@@ -70,10 +70,7 @@ export default async function DemandasPage() {
 
     supabase
       .from('profiles')
-      .select(
-        'id,full_name,role,is_active',
-      )
-      .eq('is_active', true)
+      .select('id,full_name,display_name,avatar_url,role,is_active')
       .order('full_name'),
 
     supabase
@@ -109,6 +106,13 @@ export default async function DemandasPage() {
 
   const profiles =
     profilesResult.data || []
+
+  const activeProfiles =
+    profiles.filter(
+      (profile: any) =>
+        profile?.is_active !== false,
+    )
+
 
   const services =
     servicesResult.data || []
@@ -236,7 +240,7 @@ export default async function DemandasPage() {
     <DemandasView
       demands={demands}
       clients={clients}
-      profiles={profiles}
+      profiles={activeProfiles}
       clientServices={
         clientServices
       }

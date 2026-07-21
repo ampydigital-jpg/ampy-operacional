@@ -2,10 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { changeOwnPasswordAction } from '@/lib/team-access-actions'
+import TeamMemberIdentity from '@/components/ui/TeamMemberIdentity'
+import {
+  changeOwnPasswordAction,
+  updateOwnIdentityAction,
+} from '@/lib/team-access-actions'
 
 type AccountData = {
   full_name: string
+  display_name: string | null
+  avatar_url: string | null
   email: string
   job_title: string | null
   access_type: string
@@ -57,30 +63,59 @@ export default function MinhaContaView({
     account.must_change_password ||
     searchParams.get('troca') === 'obrigatoria'
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [identityLoading, setIdentityLoading] = useState(false)
+  const [identityError, setIdentityError] = useState('')
+  const [identitySuccess, setIdentitySuccess] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submitIdentity(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault()
 
-    setLoading(true)
-    setError('')
-    setSuccess('')
+    setIdentityLoading(true)
+    setIdentityError('')
+    setIdentitySuccess('')
+
+    const result = await updateOwnIdentityAction(
+      new FormData(event.currentTarget),
+    )
+
+    if (result?.error) {
+      setIdentityError(result.error)
+      setIdentityLoading(false)
+      return
+    }
+
+    setIdentitySuccess('Perfil atualizado com sucesso.')
+    setIdentityLoading(false)
+    router.refresh()
+  }
+
+  async function submitPassword(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+
+    setPasswordLoading(true)
+    setPasswordError('')
+    setPasswordSuccess('')
 
     const result = await changeOwnPasswordAction(
       new FormData(event.currentTarget),
     )
 
     if (result?.error) {
-      setError(result.error)
-      setLoading(false)
+      setPasswordError(result.error)
+      setPasswordLoading(false)
       return
     }
 
     event.currentTarget.reset()
-    setSuccess('Senha alterada com sucesso.')
-    setLoading(false)
+    setPasswordSuccess('Senha alterada com sucesso.')
+    setPasswordLoading(false)
     router.refresh()
   }
 
@@ -88,10 +123,10 @@ export default function MinhaContaView({
     <div className="account-page">
       <header className="account-header">
         <div>
-          <span className="eyebrow">CONTA E SEGURANÇA</span>
+          <span className="eyebrow">CONTA, IDENTIDADE E SEGURANÇA</span>
           <h1>Minha Conta</h1>
           <p>
-            Consulte seu perfil e altere sua senha de acesso à plataforma.
+            Personalize seu nome e sua foto, além de controlar sua senha.
           </p>
         </div>
       </header>
@@ -106,25 +141,28 @@ export default function MinhaContaView({
         </div>
       ) : null}
 
-      <div className="account-grid">
+      <div className="account-grid account-grid-identity">
         <section className="account-profile-card">
-          <div className="account-avatar">
-            {account.full_name
-              .split(/\s+/)
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((part) => part[0])
-              .join('')
-              .toUpperCase()}
-          </div>
-
-          <div>
-            <span className="eyebrow">PERFIL</span>
-            <h2>{account.full_name}</h2>
-            <p>{account.email}</p>
-          </div>
+          <TeamMemberIdentity
+            member={{
+              ...account,
+              is_active: true,
+            }}
+            size="xl"
+            showMeta
+          />
 
           <dl>
+            <div>
+              <dt>Nome completo</dt>
+              <dd>{account.full_name}</dd>
+            </div>
+
+            <div>
+              <dt>E-mail</dt>
+              <dd>{account.email}</dd>
+            </div>
+
             <div>
               <dt>Função</dt>
               <dd>{account.job_title || 'Não definida'}</dd>
@@ -151,6 +189,67 @@ export default function MinhaContaView({
           </dl>
         </section>
 
+        <section className="account-identity-card">
+          <div>
+            <span className="eyebrow">IDENTIDADE GLOBAL</span>
+            <h2>Nome e foto</h2>
+            <p>
+              Estes dados serão usados em Demandas, Quadro, Projetos,
+              Agenda, Avisos, Comunicação e Dashboards.
+            </p>
+          </div>
+
+          <form onSubmit={submitIdentity}>
+            <div className="fg">
+              <label className="fl">Nome de exibição *</label>
+              <input
+                className="fi"
+                name="display_name"
+                defaultValue={
+                  account.display_name || account.full_name
+                }
+                minLength={2}
+                maxLength={80}
+                required
+              />
+              <small className="field-help">
+                O nome completo permanece preservado no cadastro.
+              </small>
+            </div>
+
+            <div className="fg">
+              <label className="fl">Foto do perfil</label>
+              <input
+                className="fi"
+                name="avatar_file"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              />
+              <small className="field-help">
+                JPG, JPEG, PNG ou WEBP. Máximo de 5 MB.
+              </small>
+            </div>
+
+            {identityError ? (
+              <div className="notice notice-err">
+                <i className="ti ti-alert-circle" />
+                <span>{identityError}</span>
+              </div>
+            ) : null}
+
+            {identitySuccess ? (
+              <div className="notice notice-ok">
+                <i className="ti ti-circle-check" />
+                <span>{identitySuccess}</span>
+              </div>
+            ) : null}
+
+            <button className="bpri" disabled={identityLoading}>
+              {identityLoading ? 'Salvando...' : 'Salvar identidade'}
+            </button>
+          </form>
+        </section>
+
         <section className="account-password-card">
           <div>
             <span className="eyebrow">SEGURANÇA</span>
@@ -160,7 +259,7 @@ export default function MinhaContaView({
             </p>
           </div>
 
-          <form onSubmit={submit}>
+          <form onSubmit={submitPassword}>
             <div className="fg">
               <label className="fl">Senha atual *</label>
               <input
@@ -201,22 +300,22 @@ export default function MinhaContaView({
               número e caractere especial.
             </small>
 
-            {error ? (
+            {passwordError ? (
               <div className="notice notice-err">
                 <i className="ti ti-alert-circle" />
-                <span>{error}</span>
+                <span>{passwordError}</span>
               </div>
             ) : null}
 
-            {success ? (
+            {passwordSuccess ? (
               <div className="notice notice-ok">
                 <i className="ti ti-circle-check" />
-                <span>{success}</span>
+                <span>{passwordSuccess}</span>
               </div>
             ) : null}
 
-            <button className="bpri" disabled={loading}>
-              {loading ? 'Alterando...' : 'Alterar senha'}
+            <button className="bpri" disabled={passwordLoading}>
+              {passwordLoading ? 'Alterando...' : 'Alterar senha'}
             </button>
           </form>
         </section>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import TeamMemberIdentity from '@/components/ui/TeamMemberIdentity'
 import {
   createTeamMemberAction,
   resetTeamMemberPasswordAction,
@@ -28,6 +29,8 @@ type TeamMember = {
   id: string
   profile_id: string | null
   full_name: string
+  display_name: string | null
+  avatar_url: string | null
   email: string
   job_title: string
   access_type: string
@@ -128,6 +131,7 @@ export default function EquipeView({
       const matchesSearch =
         !term ||
         [
+          member.display_name,
           member.full_name,
           member.email,
           member.job_title,
@@ -320,23 +324,15 @@ export default function EquipeView({
             {filtered.map((member) => (
               <tr key={member.id}>
                 <td>
-                  <div className="team-person">
-                    <span
-                      className="team-avatar"
-                      style={{
-                        color: member.avatar_color || '#FFFFFF',
-                        background: member.avatar_bg || '#3A3D43',
-                      }}
-                    >
-                      {member.avatar_initials ||
-                        member.full_name.slice(0, 2).toUpperCase()}
-                    </span>
-
-                    <div>
-                      <b>{member.full_name}</b>
-                      <small>{member.email}</small>
-                    </div>
-                  </div>
+                  <TeamMemberIdentity
+                    member={member}
+                    size="md"
+                    showMeta
+                    className="team-person-global"
+                  />
+                  <small className="team-member-email">
+                    {member.email}
+                  </small>
                 </td>
 
                 <td>
@@ -507,7 +503,7 @@ export default function EquipeView({
             <input type="hidden" name="member_id" value={selected.id} />
 
             <div className="team-password-target">
-              <b>{selected.full_name}</b>
+              <b>{selected.display_name || selected.full_name}</b>
               <span>{selected.email}</span>
             </div>
 
@@ -571,9 +567,37 @@ function MemberFields({
 }) {
   return (
     <div className="team-access-form">
+      <div className="team-identity-editor">
+        <TeamMemberIdentity
+          member={
+            member || {
+              full_name: 'Novo integrante',
+              display_name: 'Novo integrante',
+              avatar_url: null,
+              is_active: true,
+            }
+          }
+          size="xl"
+          showMeta
+        />
+
+        <div className="fg">
+          <label className="fl">Foto do integrante</label>
+          <input
+            className="fi"
+            name="avatar_file"
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          />
+          <small className="field-help">
+            JPG, JPEG, PNG ou WEBP. Máximo de 5 MB.
+          </small>
+        </div>
+      </div>
+
       <div className="frow">
         <div className="fg">
-          <label className="fl">Nome *</label>
+          <label className="fl">Nome completo *</label>
           <input
             className="fi"
             name="full_name"
@@ -583,16 +607,28 @@ function MemberFields({
         </div>
 
         <div className="fg">
-          <label className="fl">E-mail *</label>
+          <label className="fl">Nome de exibição</label>
           <input
             className="fi"
-            name="email"
-            type="email"
-            required={!member}
-            disabled={Boolean(member)}
-            defaultValue={member?.email || ''}
+            name="display_name"
+            defaultValue={
+              member?.display_name || member?.full_name || ''
+            }
+            placeholder="Nome que aparecerá no sistema"
           />
         </div>
+      </div>
+
+      <div className="fg">
+        <label className="fl">E-mail *</label>
+        <input
+          className="fi"
+          name="email"
+          type="email"
+          required={!member}
+          disabled={Boolean(member)}
+          defaultValue={member?.email || ''}
+        />
       </div>
 
       <div className="frow">

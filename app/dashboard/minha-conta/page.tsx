@@ -25,7 +25,7 @@ export default async function MinhaContaPage() {
   ] = await Promise.all([
     adminSupabase
       .from('profiles')
-      .select('full_name,email,job_title')
+      .select('full_name,display_name,avatar_url,email,job_title')
       .eq('id', user.id)
       .single(),
 
@@ -49,6 +49,8 @@ export default async function MinhaContaPage() {
     <MinhaContaView
       account={{
         full_name: profile.full_name,
+        display_name: profile.display_name || profile.full_name,
+        avatar_url: profile.avatar_url || null,
         email: profile.email,
         job_title: profile.job_title,
         access_type: member?.access_type || 'operacional',
