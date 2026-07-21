@@ -1,5 +1,7 @@
 'use client'
 
+// AMPY-V17-A22 — EQUIPE, ACESSOS E SENHAS
+
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -27,13 +29,43 @@ const groups = [
     { href: '/dashboard/relatorios', label: 'Relatórios', icon: 'ti-chart-bar' },
   ]},
   { label: 'Sistema', items: [
-    { href: '/dashboard/configuracoes', label: 'Configurações', icon: 'ti-settings' },
+    { href: '/dashboard/minha-conta', label: 'Minha Conta', icon: 'ti-user-cog' },
+      { href: '/dashboard/configuracoes', label: 'Configurações', icon: 'ti-settings' },
   ]},
 ]
 
 export default function Sidebar({ profile }: { profile: any }) {
   const pathname = usePathname()
   const router = useRouter()
+
+  const accessType =
+    profile?.access_type ||
+    'operacional'
+
+  const restrictedRoutes =
+    new Set([
+      '/dashboard/equipe',
+      '/dashboard/configuracoes',
+    ])
+
+  const visibleGroups =
+    groups
+      .map((group) => ({
+        ...group,
+        items:
+          group.items.filter(
+            (item) =>
+              accessType === 'total' ||
+              !restrictedRoutes.has(
+                item.href,
+              ),
+          ),
+      }))
+      .filter(
+        (group) =>
+          group.items.length > 0,
+      )
+
 
   async function logout() {
     const supabase = createClient()
@@ -51,7 +83,7 @@ export default function Sidebar({ profile }: { profile: any }) {
       </div>
 
       <nav className="sb-nav" aria-label="Navegação principal">
-        {groups.map((group) => (
+        {visibleGroups.map((group) => (
           <div className="nav-grp" key={group.label}>
             <div className="nav-lbl">{group.label}</div>
             {group.items.map((item) => {

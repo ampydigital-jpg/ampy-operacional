@@ -1,4 +1,6 @@
 'use client'
+
+// AMPY-V17-A22 — EQUIPE, ACESSOS E SENHAS
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -20,7 +22,35 @@ export default function LoginPage() {
       return
     }
     // Redireciona via window para garantir que os cookies sejam enviados
-    window.location.href = '/dashboard'
+
+const {
+      data: {
+        user,
+      },
+    } =
+      await supabase.auth.getUser()
+
+    let mustChangePassword = false
+
+    if (user) {
+      const {
+        data: member,
+      } =
+        await supabase
+          .from('team_members')
+          .select('must_change_password')
+          .eq('profile_id', user.id)
+          .maybeSingle()
+
+      mustChangePassword =
+        member?.must_change_password ||
+        false
+    }
+
+    window.location.href =
+      mustChangePassword
+        ? '/dashboard/minha-conta?troca=obrigatoria'
+        : '/dashboard'
   }
 
   return (
