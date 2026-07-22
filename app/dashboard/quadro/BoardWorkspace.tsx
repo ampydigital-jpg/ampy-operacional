@@ -1,6 +1,8 @@
 
 'use client'
 
+// AMPY-V17-A23.1 — TAGS E CORES DAS DEMANDAS
+
 import {
   useMemo,
   useState,
@@ -11,7 +13,6 @@ import {
 import {
   createBoardAction,
   createBoardColumnAction,
-  createBoardPeriodDemandAction,
   deleteBoardAction,
   deleteBoardColumnAction,
   deleteWorkItemAction,
@@ -19,8 +20,8 @@ import {
   reorderBoardColumnsAction,
   updateBoardAction,
   updateBoardColumnAction,
-  updateBoardPeriodDemandAction,
 } from '@/lib/actions'
+import { saveBoardPeriodDemandWithTagAction } from '@/lib/work-item-card-tag-actions'
 
 const BOARD_COLORS = [
   '#2563EB',
@@ -42,6 +43,15 @@ const COLUMN_COLORS = [
   '#CA8A04',
   '#EA580C',
   '#DC2626',
+] as const
+
+const CARD_TAG_COLORS = [
+  { key: 'slate', label: 'Cinza', hex: '#64748B' },
+  { key: 'blue', label: 'Azul', hex: '#2563EB' },
+  { key: 'purple', label: 'Roxo', hex: '#7C3AED' },
+  { key: 'yellow', label: 'Amarelo', hex: '#CA8A04' },
+  { key: 'red', label: 'Vermelho', hex: '#DC2626' },
+  { key: 'green', label: 'Verde', hex: '#16A34A' },
 ] as const
 
 const PRIORITY_LABEL: Record<string, string> = {
@@ -125,21 +135,33 @@ function deadlineState(
 }
 
 function cardTone(item: any) {
-  const finalState = deadlineState(
-    item.final_deadline,
-  )
+  const finalState =
+    deadlineState(
+      item.final_deadline,
+    )
+
+  const status =
+    String(
+      item.status ||
+      'not_started',
+    )
 
   if (
-    ['done', 'delivered', 'approved']
-      .includes(String(item.status || ''))
+    [
+      'done',
+      'delivered',
+      'approved',
+    ].includes(status)
   ) {
     return 'success'
   }
 
   if (
     finalState === 'overdue' ||
-    ['blocked', 'cancelled']
-      .includes(String(item.status || ''))
+    [
+      'blocked',
+      'cancelled',
+    ].includes(status)
   ) {
     return 'danger'
   }
@@ -147,13 +169,25 @@ function cardTone(item: any) {
   if (
     finalState === 'today' ||
     finalState === 'soon' ||
-    ['waiting', 'awaiting_approval']
-      .includes(String(item.status || ''))
+    [
+      'waiting',
+      'awaiting_approval',
+      'in_review',
+    ].includes(status)
   ) {
     return 'warning'
   }
 
-  return 'default'
+  if (
+    [
+      'in_progress',
+      'scheduled',
+    ].includes(status)
+  ) {
+    return 'info'
+  }
+
+  return 'neutral'
 }
 
 export default function BoardWorkspace({
@@ -383,15 +417,13 @@ export default function BoardWorkspace({
     )
 
     const result =
-      demandModal === 'edit' &&
-      editing
-        ? await updateBoardPeriodDemandAction(
-            editing.id,
-            formData,
-          )
-        : await createBoardPeriodDemandAction(
-            formData,
-          )
+      await saveBoardPeriodDemandWithTagAction(
+        demandModal === 'edit' && editing
+          ? 'edit'
+          : 'create',
+        editing?.id || null,
+        formData,
+      )
 
     if ('error' in result) {
       setError(
@@ -1368,10 +1400,23 @@ export default function BoardWorkspace({
                             <div className="board-a15-card-responsible">
                               <i className="ti ti-user" />
                               <span>
-                                {item
-                                  .responsible
-                                  ?.full_name ||
-                                  'Sem responsável'}
+                                {item.responsible?.display_name ||
+                  item.responsible?.full_name ||
+                  'Sem responsável'}
+                {item.card_tag ? (
+                  <span
+                    className={
+                      'board-a23-card-tag tag-' +
+                      String(
+                        item.card_tag_color ||
+                        'slate',
+                      )
+                    }
+                    title={item.card_tag}
+                  >
+                    {item.card_tag}
+                  </span>
+                ) : null}
                               </span>
                             </div>
                           </article>
@@ -1448,6 +1493,8 @@ export default function BoardWorkspace({
                   value={activeBoardId}
                 />
 
+
+              <div className="board-a23-title-tag-row">
                 <div className="board-a15-title-preview">
                   <span>
                     Título automático
@@ -1461,6 +1508,72 @@ export default function BoardWorkspace({
                     )}
                   </strong>
                 </div>
+
+                <div className="board-a23-tag-panel">
+                  <div className="fg board-a23-tag-field">
+                    <label
+                      className="fl"
+                      htmlFor="card_tag"
+                    >
+                      Tag do card
+                    </label>
+
+                    <input
+                      className="fi"
+                      id="card_tag"
+                      name="card_tag"
+                      maxLength={16}
+                      defaultValue={
+                        editing?.card_tag ||
+                        ''
+                      }
+                      placeholder="Ex.: SEM PLAN"
+                    />
+
+                    <small className="board-a23-tag-help">
+                      Opcional · máximo de 16 caracteres
+                    </small>
+                  </div>
+
+                  <div className="fg board-a23-tag-color-field">
+                    <label className="fl">
+                      Cor da tag
+                    </label>
+
+                    <div className="board-a23-tag-palette">
+                      {CARD_TAG_COLORS.map(
+                        (color) => (
+                          <label
+                            className="board-a23-tag-color-option"
+                            key={color.key}
+                            title={color.label}
+                          >
+                            <input
+                              type="radio"
+                              name="card_tag_color"
+                              value={color.key}
+                              defaultChecked={
+                                String(
+                                  editing?.card_tag_color ||
+                                  'slate',
+                                ) ===
+                                color.key
+                              }
+                            />
+
+                            <span
+                              style={{
+                                backgroundColor:
+                                  color.hex,
+                              }}
+                            />
+                          </label>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
                 <div className="fg">
                   <label className="fl">

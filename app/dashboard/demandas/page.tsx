@@ -48,7 +48,7 @@ export default async function DemandasPage() {
   ] = await Promise.all([
     supabase
       .from('work_items')
-      .select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at')
+      .select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at,card_tag,card_tag_color')
       .not(
         'status',
         'in',

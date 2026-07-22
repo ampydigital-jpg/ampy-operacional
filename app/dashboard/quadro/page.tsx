@@ -84,7 +84,7 @@ export default async function QuadroPage({
     supabase
       .from('profiles')
       .select(
-        'id,full_name,avatar_initials,role,is_active',
+        'id,full_name,avatar_initials,role,is_active,display_name,avatar_url',
       )
       .eq('is_active', true)
       .order('full_name'),
@@ -133,7 +133,7 @@ export default async function QuadroPage({
       supabase
         .from('work_items')
         .select(
-          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at',
+          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color',
         )
         .eq('board_id', activeBoardId)
         .not('status', 'in', '(archived,cancelled)')
