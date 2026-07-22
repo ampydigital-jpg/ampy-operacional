@@ -45,6 +45,8 @@ export default async function DemandasPage() {
     servicesResult,
     boardsResult,
     columnsResult,
+    projectStepsResult,
+    projectStatusesResult,
   ] = await Promise.all([
     supabase
       .from('work_items')
@@ -99,6 +101,32 @@ export default async function DemandasPage() {
         'position',
         { ascending: true },
       ),
+
+    supabase
+      .from('project_steps')
+      .select(
+        'id,work_item_id,status_id,position',
+      )
+      .order(
+        'position',
+        { ascending: true },
+      ),
+
+    supabase
+      .from(
+        'project_step_statuses',
+      )
+      .select(
+        'id,work_item_id,name,color,behavior,position,is_archived',
+      )
+      .eq(
+        'is_archived',
+        false,
+      )
+      .order(
+        'position',
+        { ascending: true },
+      ),
   ])
 
   const clients =
@@ -123,6 +151,13 @@ export default async function DemandasPage() {
   const columns =
     columnsResult.data || []
 
+  const projectSteps =
+    projectStepsResult.data || []
+
+  const projectStatuses =
+    projectStatusesResult.data ||
+    []
+
   const clientServicesRaw =
     clientServicesResult.data || []
 
@@ -141,6 +176,33 @@ export default async function DemandasPage() {
   const columnsById =
     mapById(columns)
 
+  const projectStatusesById =
+    mapById(projectStatuses)
+
+  const projectStepsByWorkItem =
+    projectSteps.reduce(
+      (
+        accumulator:
+          Map<string, any[]>,
+        step: any,
+      ) => {
+        const current =
+          accumulator.get(
+            step.work_item_id,
+          ) || []
+
+        current.push(step)
+
+        accumulator.set(
+          step.work_item_id,
+          current,
+        )
+
+        return accumulator
+      },
+      new Map<string, any[]>(),
+    )
+
   const clientServices =
     clientServicesRaw.map(
       (item: any) => ({
@@ -157,7 +219,7 @@ export default async function DemandasPage() {
   const clientServicesById =
     mapById(clientServices)
 
-  const demands =
+  const baseDemands =
     (
       demandsResult.data || []
     ).map((item: any) => ({
@@ -199,6 +261,62 @@ export default async function DemandasPage() {
           : null,
     }))
 
+  const demands =
+    baseDemands.map(
+      (item: any) => {
+        const itemSteps =
+          [
+            ...(
+              projectStepsByWorkItem.get(
+                item.id,
+              ) || []
+            ),
+          ].sort(
+            (a: any, b: any) =>
+              Number(
+                a.position || 0,
+              ) -
+              Number(
+                b.position || 0,
+              ),
+          )
+
+        const activeStep =
+          itemSteps.find(
+            (step: any) => {
+              const definition =
+                step.status_id
+                  ? projectStatusesById.get(
+                      step.status_id,
+                    ) || null
+                  : null
+
+              return (
+                definition?.behavior !==
+                'done'
+              )
+            },
+          ) ||
+          itemSteps[
+            itemSteps.length - 1
+          ] ||
+          null
+
+        const projectStatus =
+          activeStep?.status_id
+            ? projectStatusesById.get(
+                activeStep.status_id,
+              ) || null
+            : null
+
+        return {
+          ...item,
+          project_status:
+            projectStatus,
+        }
+      },
+    )
+
   const loadErrors = [
     demandsResult.error
       ? 'Demandas: ' +
@@ -233,6 +351,16 @@ export default async function DemandasPage() {
     columnsResult.error
       ? 'Colunas: ' +
         columnsResult.error.message
+      : null,
+
+    projectStepsResult.error
+      ? 'Etapas dos projetos: ' +
+        projectStepsResult.error.message
+      : null,
+
+    projectStatusesResult.error
+      ? 'Status dos projetos: ' +
+        projectStatusesResult.error.message
       : null,
   ].filter(Boolean) as string[]
 

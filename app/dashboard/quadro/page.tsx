@@ -54,7 +54,7 @@ async function hasTotalAccess() {
 export default async function QuadroPage({
   searchParams,
 }: {
-  searchParams: { board?: string }
+  searchParams: { board?: string; item?: string }
 }) {
   noStore()
 
@@ -192,6 +192,9 @@ export default async function QuadroPage({
     <BoardWorkspace
       boards={boards}
       activeBoardId={activeBoardId}
+      initialItemId={String(
+        searchParams.item || '',
+      )}
       columns={columnsResult.data || []}
       demands={demands}
       clients={clients}

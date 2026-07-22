@@ -31,7 +31,14 @@ function mapById(
   )
 }
 
-export default async function ProjetosPage() {
+export default async function ProjetosPage({
+  searchParams,
+}: {
+  searchParams: {
+    project?: string
+    item?: string
+  }
+}) {
   noStore()
 
   const supabase = createClient()
@@ -267,6 +274,11 @@ export default async function ProjetosPage() {
   return (
     <ProjectsWorkspace
       demands={demands}
+      initialProjectId={String(
+        searchParams.project ||
+          searchParams.item ||
+          '',
+      )}
       clients={clients}
       profiles={profiles}
       clientServices={

@@ -4,7 +4,9 @@
 // AMPY-V17-A23.1 — TAGS E CORES DAS DEMANDAS
 
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type DragEvent,
   type FormEvent,
@@ -193,6 +195,7 @@ function cardTone(item: any) {
 export default function BoardWorkspace({
   boards = [],
   activeBoardId = '',
+  initialItemId = '',
   columns = [],
   demands = [],
   clients = [],
@@ -290,6 +293,21 @@ export default function BoardWorkspace({
   const [error, setError] =
     useState('')
 
+  const [
+    columnSorts,
+    setColumnSorts,
+  ] = useState<
+    Record<
+      string,
+      | 'manual'
+      | 'deadline_asc'
+      | 'deadline_desc'
+    >
+  >({})
+
+  const deepLinkHandled =
+    useRef('')
+
   const activeBoard =
     boards.find(
       (board: any) =>
@@ -301,6 +319,71 @@ export default function BoardWorkspace({
       (client: any) =>
         client.id === formClient,
     ) || null
+
+  useEffect(() => {
+    if (
+      !initialItemId ||
+      deepLinkHandled.current ===
+        initialItemId
+    ) {
+      return
+    }
+
+    const linkedItem =
+      items.find(
+        (item: any) =>
+          item.id === initialItemId,
+      )
+
+    deepLinkHandled.current =
+      initialItemId
+
+    if (!linkedItem) {
+      return
+    }
+
+    setEditing(linkedItem)
+
+    setSelectedColumnId(
+      linkedItem.board_column_id ||
+        '',
+    )
+
+    setFormClient(
+      linkedItem.client_id || '',
+    )
+
+    setFormStart(
+      dateValue(
+        linkedItem.internal_deadline,
+      ),
+    )
+
+    setFormEnd(
+      dateValue(
+        linkedItem.final_deadline,
+      ),
+    )
+
+    setError('')
+    setDemandModal('edit')
+
+    window.setTimeout(() => {
+      document
+        .getElementById(
+          'work-item-' +
+            initialItemId,
+        )
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'center',
+        })
+    }, 0)
+  }, [
+    initialItemId,
+    items,
+  ])
 
   const filtered = useMemo(() => {
     const term =
@@ -349,10 +432,51 @@ export default function BoardWorkspace({
   function cardsInColumn(
     columnId: string,
   ) {
-    return filtered.filter(
-      (item: any) =>
-        item.board_column_id ===
-        columnId,
+    const list =
+      filtered.filter(
+        (item: any) =>
+          item.board_column_id ===
+          columnId,
+      )
+
+    const mode =
+      columnSorts[columnId] ||
+      'manual'
+
+    if (mode === 'manual') {
+      return list
+    }
+
+    return [...list].sort(
+      (a: any, b: any) => {
+        const dateA =
+          String(
+            a.final_deadline ||
+              '',
+          )
+
+        const dateB =
+          String(
+            b.final_deadline ||
+              '',
+          )
+
+        if (!dateA && !dateB) {
+          return 0
+        }
+
+        if (!dateA) return 1
+        if (!dateB) return -1
+
+        return mode ===
+          'deadline_desc'
+          ? dateB.localeCompare(
+              dateA,
+            )
+          : dateA.localeCompare(
+              dateB,
+            )
+      },
     )
   }
 
@@ -1223,6 +1347,46 @@ export default function BoardWorkspace({
                       </div>
                     </div>
 
+                    <select
+                      className="board-a23-column-sort"
+                      value={
+                        columnSorts[
+                          column.id
+                        ] || 'manual'
+                      }
+                      title="Ordenar cards desta coluna"
+                      aria-label={
+                        'Ordenar cards da coluna ' +
+                        column.name
+                      }
+                      onClick={(event) =>
+                        event.stopPropagation()
+                      }
+                      onChange={(event) =>
+                        setColumnSorts(
+                          (current) => ({
+                            ...current,
+                            [column.id]:
+                              event.target
+                                .value as
+                                | 'manual'
+                                | 'deadline_asc'
+                                | 'deadline_desc',
+                          }),
+                        )
+                      }
+                    >
+                      <option value="manual">
+                        Ordem atual
+                      </option>
+                      <option value="deadline_asc">
+                        Final ↑
+                      </option>
+                      <option value="deadline_desc">
+                        Final ↓
+                      </option>
+                    </select>
+
                     <button
                       className="board-a14-column-icon"
                       type="button"
@@ -1312,6 +1476,13 @@ export default function BoardWorkspace({
                           <article
                             key={item.id}
                             className="board-a14-card board-a15-card"
+                            id={
+                              'work-item-' +
+                              item.id
+                            }
+                            data-work-item-id={
+                              item.id
+                            }
                             data-tone={cardTone(
                               item,
                             )}

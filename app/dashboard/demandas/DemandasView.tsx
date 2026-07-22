@@ -218,6 +218,190 @@ function automaticTitle(
   )
 }
 
+function encodeRouteValue(
+  value: unknown,
+) {
+  return encodeURIComponent(
+    String(value || ''),
+  )
+}
+
+function isProjectDemand(
+  item: any,
+) {
+  return [
+    'projeto',
+    'ambos',
+  ].includes(
+    String(
+      item?.destino || '',
+    ),
+  )
+}
+
+function isExtraDemand(
+  item: any,
+) {
+  return (
+    String(
+      item?.destino || '',
+    ) === 'avulsa'
+  )
+}
+
+function demandOriginHref(
+  item: any,
+) {
+  if (item?.board_id) {
+    return (
+      '/dashboard/quadro?board=' +
+      encodeRouteValue(
+        item.board_id,
+      ) +
+      '&item=' +
+      encodeRouteValue(item.id)
+    )
+  }
+
+  if (
+    isProjectDemand(item)
+  ) {
+    return (
+      '/dashboard/projetos?project=' +
+      encodeRouteValue(item.id) +
+      '&item=' +
+      encodeRouteValue(item.id)
+    )
+  }
+
+  return (
+    '/dashboard/demandas/' +
+    encodeRouteValue(item?.id)
+  )
+}
+
+function behaviorStatusClass(
+  behavior?: string | null,
+) {
+  if (behavior === 'done') {
+    return 'bok'
+  }
+
+  if (behavior === 'blocked') {
+    return 'berr'
+  }
+
+  if (behavior === 'pending') {
+    return 'bwarn'
+  }
+
+  if (behavior === 'active') {
+    return 'bblue'
+  }
+
+  return 'bmut'
+}
+
+function operationalStatusClass(
+  value?: string | null,
+) {
+  const status =
+    String(value || '')
+
+  if (
+    [
+      'done',
+      'delivered',
+      'approved',
+    ].includes(status)
+  ) {
+    return 'bok'
+  }
+
+  if (
+    [
+      'blocked',
+      'cancelled',
+    ].includes(status)
+  ) {
+    return 'berr'
+  }
+
+  if (
+    [
+      'pending',
+      'not_started',
+      'waiting',
+      'awaiting_approval',
+    ].includes(status)
+  ) {
+    return 'bwarn'
+  }
+
+  if (
+    [
+      'active',
+      'in_progress',
+      'scheduled',
+      'in_review',
+    ].includes(status)
+  ) {
+    return 'bblue'
+  }
+
+  return 'bmut'
+}
+
+function demandContextStatus(
+  item: any,
+) {
+  if (item?.board_id) {
+    return {
+      label:
+        item.board_column?.name ||
+        'Sem coluna',
+      className:
+        operationalStatusClass(
+          item.board_column
+            ?.operational_status,
+        ),
+      color:
+        item.board_column?.color ||
+        null,
+    }
+  }
+
+  if (
+    isProjectDemand(item)
+  ) {
+    return {
+      label:
+        item.project_status?.name ||
+        'Planejado',
+      className:
+        behaviorStatusClass(
+          item.project_status
+            ?.behavior,
+        ),
+      color:
+        item.project_status?.color ||
+        null,
+    }
+  }
+
+  const config =
+    STATUS[item?.status] ||
+    STATUS.not_started
+
+  return {
+    label: config.label,
+    className:
+      config.className,
+    color: null,
+  }
+}
+
+// AMPY-V17-A23.1.2.1B-EXTRA-CANONICO
 export default function DemandasView({
   demands = [],
   clients = [],
@@ -294,10 +478,12 @@ export default function DemandasView({
   const [sort, setSort] =
     useState('deadline_asc')
 
-  const [formKind, setFormKind] =
-    useState<
-      'quadro' | 'avulsa'
-    >('quadro')
+  const [
+    formKind,
+    setFormKind,
+  ] = useState<
+    'quadro' | 'avulsa'
+  >('avulsa')
 
   const [formClient, setFormClient] =
     useState('')
@@ -586,7 +772,9 @@ export default function DemandasView({
   ])
 
   function openDemandModal() {
-    setFormKind('quadro')
+    setFormKind(
+    'avulsa',
+  )
     setFormClient('')
     setFormBoard('')
     setFormColumn('')
@@ -726,7 +914,7 @@ export default function DemandasView({
             onClick={openDemandModal}
           >
             <i className="ti ti-plus" />
-            Nova Demanda
+            Novo Extra
           </button>
         </div>
       </div>
@@ -997,14 +1185,29 @@ export default function DemandasView({
                     STATUS[item.status] ||
                     STATUS.not_started
 
+                  const contextStatus =
+                    demandContextStatus(
+                      item,
+                    )
+
+                  const extraDemand =
+                    isExtraDemand(item)
+
                   return (
-                    <tr key={item.id}>
+                    <tr
+                      key={item.id}
+                      id={
+                        'demanda-' +
+                        item.id
+                      }
+                    >
                       <td>
                         <Link
                           className="demandas-a16-title"
                           href={
-                            '/dashboard/demandas/' +
-                            item.id
+                            demandOriginHref(
+                              item,
+                            )
                           }
                         >
                           {item.title}
@@ -1040,35 +1243,70 @@ export default function DemandasView({
                       </td>
 
                       <td>
-                        {item.destino ===
-                          'projeto' ||
-                        item.destino ===
-                          'ambos' ? (
-                          <Link
-                            className="demandas-a16-context-link"
-                            href="/dashboard/projetos"
-                          >
-                            Abrir Projetos
-                          </Link>
-                        ) : item.destino ===
-                            'avulsa' ? (
-                          <span>Extra</span>
-                        ) : (
-                          <div>
-                            <strong>
-                              {item.board
-                                ?.name ||
-                                'Sem Quadro'}
-                            </strong>
+                        <div className="demandas-a23-origin-links">
+                          {item.board_id && (
+                            <div>
+                              <Link
+                                className="demandas-a16-context-link"
+                                href={
+                                  '/dashboard/quadro?board=' +
+                                  encodeRouteValue(
+                                    item.board_id,
+                                  ) +
+                                  '&item=' +
+                                  encodeRouteValue(
+                                    item.id,
+                                  )
+                                }
+                              >
+                                {item.board
+                                  ?.name ||
+                                  'Abrir Quadro'}
+                              </Link>
 
-                            <small>
-                              {item
-                                .board_column
-                                ?.name ||
-                                'Sem coluna'}
-                            </small>
-                          </div>
-                        )}
+                              <small>
+                                {item
+                                  .board_column
+                                  ?.name ||
+                                  'Sem coluna'}
+                              </small>
+                            </div>
+                          )}
+
+                          {isProjectDemand(
+                            item,
+                          ) && (
+                            <Link
+                              className="demandas-a16-context-link"
+                              href={
+                                '/dashboard/projetos?project=' +
+                                encodeRouteValue(
+                                  item.id,
+                                ) +
+                                '&item=' +
+                                encodeRouteValue(
+                                  item.id,
+                                )
+                              }
+                            >
+                              Abrir Projeto
+                            </Link>
+                          )}
+
+                          {extraDemand && (
+                            <span>Extra</span>
+                          )}
+
+                          {!item.board_id &&
+                            !isProjectDemand(
+                              item,
+                            ) &&
+                            !extraDemand && (
+                              <span>
+                                Sem origem
+                              </span>
+                            )}
+                        </div>
                       </td>
 
                       <td>
@@ -1115,38 +1353,70 @@ export default function DemandasView({
                       </td>
 
                       <td>
-                        <select
-                          className={
-                            'demandas-a16-status ' +
-                            statusCfg.className
-                          }
-                          value={item.status}
-                          onChange={(event) =>
-                            quickStatus(
-                              item.id,
-                              event.target
-                                .value,
-                            )
-                          }
-                        >
-                          {Object.entries(
-                            STATUS,
-                          ).map(
-                            ([
-                              key,
-                              config,
-                            ]) => (
-                              <option
-                                key={key}
-                                value={key}
-                              >
-                                {
-                                  config.label
-                                }
-                              </option>
-                            ),
-                          )}
-                        </select>
+                        {extraDemand ? (
+                          <select
+                            className={
+                              'demandas-a16-status ' +
+                              statusCfg.className
+                            }
+                            value={
+                              item.status
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              quickStatus(
+                                item.id,
+                                event.target
+                                  .value,
+                              )
+                            }
+                          >
+                            {Object.entries(
+                              STATUS,
+                            ).map(
+                              ([
+                                key,
+                                config,
+                              ]) => (
+                                <option
+                                  key={key}
+                                  value={key}
+                                >
+                                  {
+                                    config.label
+                                  }
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        ) : (
+                          <span
+                            className={
+                              'demandas-a23-context-status ' +
+                              contextStatus.className
+                            }
+                            style={
+                              contextStatus.color
+                                ? {
+                                    color:
+                                      contextStatus.color,
+                                    borderColor:
+                                      contextStatus.color,
+                                  }
+                                : undefined
+                            }
+                            title={
+                              item.board_id
+                                ? 'Status derivado da coluna do Quadro'
+                                : 'Status derivado da etapa atual do Projeto'
+                            }
+                          >
+                            {
+                              contextStatus.label
+                            }
+                          </span>
+                        )}
                       </td>
 
                       <td>
@@ -1186,7 +1456,7 @@ export default function DemandasView({
             <div className="modal-head">
               <div>
                 <div className="modal-title">
-                  Nova Demanda
+                  Novo Extra
                 </div>
 
                 <div className="modal-sub">
@@ -1216,24 +1486,7 @@ export default function DemandasView({
                   </label>
 
                   <div className="demandas-a16-kind">
-                    <button
-                      type="button"
-                      className={
-                        formKind ===
-                        'quadro'
-                          ? 'active'
-                          : ''
-                      }
-                      onClick={() => {
-                        setFormKind(
-                          'quadro',
-                        )
-                        setError('')
-                      }}
-                    >
-                      <i className="ti ti-layout-kanban" />
-                      Quadro
-                    </button>
+
 
                     <button
                       type="button"

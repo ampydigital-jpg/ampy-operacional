@@ -5,7 +5,9 @@
 // AMPY-V17-A18 — STATUS PERSONALIZADOS POR PROJETO
 
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from 'react'
@@ -170,6 +172,7 @@ function derivedProjectState(
 
 export default function ProjectsWorkspace({
   demands = [],
+  initialProjectId = '',
   clients = [],
   profiles = [],
   clientServices = [],
@@ -288,8 +291,61 @@ export default function ProjectsWorkspace({
     expandedProjectId,
     setExpandedProjectId,
   ] = useState<string | null>(
-    null,
+    initialProjectId &&
+      safeDemands.some(
+        (item: any) =>
+          item.id ===
+          initialProjectId,
+      )
+      ? initialProjectId
+      : null,
   )
+
+  const projectDeepLinkHandled =
+    useRef('')
+
+  useEffect(() => {
+    if (
+      !initialProjectId ||
+      projectDeepLinkHandled.current ===
+        initialProjectId
+    ) {
+      return
+    }
+
+    projectDeepLinkHandled.current =
+      initialProjectId
+
+    const exists =
+      safeDemands.some(
+        (item: any) =>
+          item.id ===
+          initialProjectId,
+      )
+
+    if (!exists) {
+      return
+    }
+
+    setExpandedProjectId(
+      initialProjectId,
+    )
+
+    window.setTimeout(() => {
+      document
+        .getElementById(
+          'project-' +
+            initialProjectId,
+        )
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+    }, 0)
+  }, [
+    initialProjectId,
+    safeDemands,
+  ])
 
   const activeServices =
     formClient
@@ -905,6 +961,13 @@ export default function ProjectsWorkspace({
 
               return (
                 <article
+                  id={
+                    'project-' +
+                    item.id
+                  }
+                  data-project-id={
+                    item.id
+                  }
                   className={`projects-v18-card ${
                     expandedProjectId === item.id
                       ? 'is-expanded'
