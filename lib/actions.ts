@@ -955,65 +955,30 @@ function calendarEventColor(
 }
 
 async function findCalendarConflict(
-  supabase:
+  _supabase:
     ReturnType<
       typeof createClient
     >,
 
-  responsibleId:
+  _responsibleId:
     | string
     | null,
 
-  startsAt: string,
-  endsAt: string,
+  _startsAt: string,
+  _endsAt: string,
 
-  ignoreIds:
+  _ignoreIds:
     string[] = [],
-) {
-  if (!responsibleId) {
-    return null
-  }
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from('calendar_events')
-    .select(
-      'id,title,starts_at,ends_at',
-    )
-    .eq(
-      'responsible_id',
-      responsibleId,
-    )
-    .lt(
-      'starts_at',
-      endsAt,
-    )
-    .gt(
-      'ends_at',
-      startsAt,
-    )
-    .limit(100)
-
-  if (error) {
-    return null
-  }
-
-  const ignored =
-    new Set(ignoreIds)
-
-  return (
-    (
-      data || []
-    ).find(
-      (item: any) =>
-        !ignored.has(
-          item.id,
-        ),
-    ) || null
-  )
+): Promise<{
+  id: string
+  title: string
+  starts_at: string
+  ends_at: string
+} | null> {
+  // AMPY-V17-A24-AGENDA-DINAMICA: simultaneous agendas are allowed.
+  return null
 }
+
 
 function recurrenceOccurrences(
   formData: FormData,
@@ -2021,6 +1986,7 @@ export async function toggleCalendarEventConfirmationAction(
 export async function moveCalendarEventAction(
   id: string,
   nextDate: string,
+  nextTime?: string,
 ) {
   const {
     supabase,
@@ -2090,6 +2056,23 @@ export async function moveCalendarEventAction(
     day,
   )
 
+  if (
+    nextTime &&
+    /^\d{2}:\d{2}$/.test(nextTime)
+  ) {
+    const [hour, minute] =
+      nextTime
+        .split(':')
+        .map(Number)
+
+    start.setHours(
+      hour,
+      minute,
+      0,
+      0,
+    )
+  }
+
   const nextEnd =
     new Date(
       start.getTime() +
@@ -2142,6 +2125,96 @@ export async function moveCalendarEventAction(
       'calendar_event_moved',
       event.title,
       nextDate,
+    )
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+  }
+}
+
+export async function resizeCalendarEventAction(
+  id: string,
+  nextEndAt: string,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessao invalida ou usuario inativo.',
+    }
+  }
+
+  const {
+    data: event,
+    error: loadError,
+  } = await supabase
+    .from('calendar_events')
+    .select(
+      'starts_at,ends_at,responsible_id,created_by,work_item_id,title',
+    )
+    .eq('id', id)
+    .single()
+
+  if (loadError || !event) {
+    return {
+      error:
+        loadError?.message ||
+        'Agenda nao encontrada.',
+    }
+  }
+
+  if (
+    !isManager(profile.role) &&
+    event.responsible_id !== user.id &&
+    event.created_by !== user.id
+  ) {
+    return forbidden(
+      'Voce nao possui permissao para redimensionar esta agenda.',
+    )
+  }
+
+  const start = new Date(event.starts_at)
+  const nextEnd = new Date(nextEndAt)
+
+  if (
+    Number.isNaN(nextEnd.getTime()) ||
+    nextEnd.getTime() <= start.getTime()
+  ) {
+    return {
+      error:
+        'O termino precisa ser posterior ao inicio.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('calendar_events')
+    .update({
+      ends_at:
+        nextEnd.toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  if (event.work_item_id) {
+    await addHistory(
+      event.work_item_id,
+      user.id,
+      'calendar_event_resized',
+      event.ends_at,
+      nextEnd.toISOString(),
     )
   }
 

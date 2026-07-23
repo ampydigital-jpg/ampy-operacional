@@ -1,5 +1,7 @@
 'use client'
 
+// AMPY-V17-A24-AGENDA-DINAMICA
+
 // AMPY-V17-A19.1 — AGENDA RECORRENTE
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
 // AMPY-V17-A19.4 — RECORRÊNCIA AUTOMÁTICA
@@ -12,6 +14,7 @@ import {
   createCalendarEventAction,
   deleteCalendarEventAction,
   moveCalendarEventAction,
+  resizeCalendarEventAction,
   toggleCalendarEventConfirmationAction,
   updateCalendarEventAction,
 } from '@/lib/actions'
@@ -167,14 +170,171 @@ function addHour(time: string) {
   const next = Math.min(h + 1, 23)
   return `${String(next).padStart(2,'0')}:${String(m || 0).padStart(2,'0')}`
 }
-function eventStyle(event: any) {
-  if (event.all_day) return {}
-  const start = Math.max(minutesFromDate(event.starts_at), startHour * 60)
-  const end = Math.min(minutesFromDate(event.ends_at), endHour * 60)
-  const top = ((start - startHour * 60) / 60) * hourHeight
-  const height = Math.max(34, ((Math.max(end, start + 30) - start) / 60) * hourHeight - 4)
-  return { top: `${top}px`, height: `${height}px` }
+type TimedEventLayout = {
+  leftPercent: number
+  widthPercent: number
 }
+
+function eventMinutes(value: string) {
+  const date = new Date(value)
+  return date.getHours() * 60 + date.getMinutes()
+}
+
+function layoutTimedEvents(events: any[]) {
+  const sorted = [...events].sort((first: any, second: any) => {
+    const startDiff = eventMinutes(first.starts_at) - eventMinutes(second.starts_at)
+    if (startDiff !== 0) return startDiff
+    return eventMinutes(first.ends_at) - eventMinutes(second.ends_at)
+  })
+
+  const layouts = new Map<string, TimedEventLayout>()
+  let cluster: any[] = []
+  let clusterEnd = -1
+
+  const flush = () => {
+    if (!cluster.length) return
+
+    const columnEnds: number[] = []
+    const placements: Array<{ id: string; column: number }> = []
+
+    for (const event of cluster) {
+      const start = eventMinutes(event.starts_at)
+      const end = Math.max(start + 15, eventMinutes(event.ends_at))
+      let column = columnEnds.findIndex((value) => value <= start)
+
+      if (column < 0) {
+        column = columnEnds.length
+        columnEnds.push(end)
+      } else {
+        columnEnds[column] = end
+      }
+
+      placements.push({ id: event.id, column })
+    }
+
+    const totalColumns = Math.max(1, columnEnds.length)
+
+    for (const placement of placements) {
+      layouts.set(placement.id, {
+        leftPercent: (placement.column * 100) / totalColumns,
+        widthPercent: 100 / totalColumns,
+      })
+    }
+  }
+
+  for (const event of sorted) {
+    const start = eventMinutes(event.starts_at)
+    const end = Math.max(start + 15, eventMinutes(event.ends_at))
+
+    if (cluster.length && start >= clusterEnd) {
+      flush()
+      cluster = []
+      clusterEnd = -1
+    }
+
+    cluster.push(event)
+    clusterEnd = Math.max(clusterEnd, end)
+  }
+
+  flush()
+  return layouts
+}
+
+function eventStyle(
+  event: any,
+  layout?: TimedEventLayout,
+) {
+  if (event.all_day) return {}
+
+  const start = Math.max(
+    eventMinutes(event.starts_at),
+    startHour * 60,
+  )
+
+  const end = Math.min(
+    eventMinutes(event.ends_at),
+    endHour * 60,
+  )
+
+  const top =
+    ((start - startHour * 60) / 60) * hourHeight
+
+  const height = Math.max(
+    34,
+    ((Math.max(end, start + 30) - start) / 60) * hourHeight - 4,
+  )
+
+  const leftPercent = layout?.leftPercent || 0
+  const widthPercent = layout?.widthPercent || 100
+
+  return {
+    top: top + 'px',
+    height: height + 'px',
+    left: 'calc(' + leftPercent + '% + 4px)',
+    right: 'auto',
+    width: 'calc(' + widthPercent + '% - 8px)',
+  }
+}
+
+function timelineDropTime(
+  event: React.DragEvent<HTMLDivElement>,
+) {
+  const rectangle =
+    event.currentTarget.getBoundingClientRect()
+
+  const maximum =
+    (endHour - startHour) * hourHeight
+
+  const offset = Math.max(
+    0,
+    Math.min(
+      maximum,
+      event.clientY - rectangle.top,
+    ),
+  )
+
+  const rawMinutes =
+    startHour * 60 +
+    (offset / hourHeight) * 60
+
+  const snapped = Math.max(
+    startHour * 60,
+    Math.min(
+      endHour * 60 - 15,
+      Math.round(rawMinutes / 15) * 15,
+    ),
+  )
+
+  const hour = Math.floor(snapped / 60)
+  const minute = snapped % 60
+
+  return (
+    String(hour).padStart(2, '0') +
+    ':' +
+    String(minute).padStart(2, '0')
+  )
+}
+
+function handleTimelineDragOver(
+  event: React.DragEvent<HTMLDivElement>,
+) {
+  event.preventDefault()
+
+  const wrapper =
+    event.currentTarget.closest('.timeline-wrap') as HTMLElement | null
+
+  if (!wrapper) return
+
+  const rectangle = wrapper.getBoundingClientRect()
+  const edge = 70
+
+  if (event.clientY < rectangle.top + edge) {
+    wrapper.scrollBy({ top: -24, behavior: 'auto' })
+  } else if (event.clientY > rectangle.bottom - edge) {
+    wrapper.scrollBy({ top: 24, behavior: 'auto' })
+  }
+}
+
 
 export default function AgendaView({ events, clients, profiles, demands, period, start, end, loadErrors = [] }: any) {
   const safeEvents = Array.isArray(events) ? events.filter(Boolean) : []
@@ -511,15 +671,105 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     window.location.reload()
   }
 
-  async function move(eventId: string, date: string) {
-    const result = await moveCalendarEventAction(eventId, date)
-    if ('error' in result) alert(result.error); else window.location.reload()
+  async function move(
+    eventId: string,
+    date: string,
+    time?: string,
+  ) {
+    const result =
+      await moveCalendarEventAction(
+        eventId,
+        date,
+        time,
+      )
+
+    if ('error' in result) {
+      alert(result.error)
+      return
+    }
+
+    window.location.reload()
   }
 
+  async function resizeEvent(
+    eventId: string,
+    nextEndAt: string,
+  ) {
+    const result =
+      await resizeCalendarEventAction(
+        eventId,
+        nextEndAt,
+      )
+
+    if ('error' in result) {
+      alert(result.error)
+    }
+
+    window.location.reload()
+  }
+
+  function beginResize(
+    pointerEvent: React.PointerEvent<HTMLSpanElement>,
+    event: any,
+  ) {
+    pointerEvent.preventDefault()
+    pointerEvent.stopPropagation()
+
+    const eventElement =
+      pointerEvent.currentTarget.closest('.timeline-event') as HTMLElement | null
+
+    if (!eventElement) return
+
+    const pointerStart = pointerEvent.clientY
+    const startDate = new Date(event.starts_at)
+    const endDate = new Date(event.ends_at)
+    const originalMinutes = Math.max(
+      15,
+      Math.round((endDate.getTime() - startDate.getTime()) / 60000),
+    )
+    const originalHeight = eventElement.getBoundingClientRect().height
+
+    const handleMove = (nativeEvent: PointerEvent) => {
+      const deltaPixels = nativeEvent.clientY - pointerStart
+      const deltaMinutes = Math.round(
+        ((deltaPixels / hourHeight) * 60) / 15,
+      ) * 15
+      const nextMinutes = Math.max(15, originalMinutes + deltaMinutes)
+      const nextHeight = Math.max(
+        34,
+        (nextMinutes / 60) * hourHeight - 4,
+      )
+
+      eventElement.style.height = nextHeight + 'px'
+      eventElement.classList.add('is-resizing')
+    }
+
+    const handleUp = (nativeEvent: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+
+      const deltaPixels = nativeEvent.clientY - pointerStart
+      const deltaMinutes = Math.round(
+        ((deltaPixels / hourHeight) * 60) / 15,
+      ) * 15
+      const nextMinutes = Math.max(15, originalMinutes + deltaMinutes)
+      const nextEnd = new Date(
+        startDate.getTime() + nextMinutes * 60000,
+      )
+
+      eventElement.style.height = originalHeight + 'px'
+      eventElement.classList.remove('is-resizing')
+      void resizeEvent(event.id, nextEnd.toISOString())
+    }
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+  }
 
   function renderEventButton(
     event: any,
     compact = false,
+    layout?: TimedEventLayout,
   ) {
     const [
       ,
@@ -544,14 +794,15 @@ export default function AgendaView({ events, clients, profiles, demands, period,
         }
         key={event.id}
         draggable
-        onDragStart={(e) =>
-          e.dataTransfer.setData(
+        onDragStart={(dragEvent) => {
+          dragEvent.dataTransfer.effectAllowed = 'move'
+          dragEvent.dataTransfer.setData(
             'event-id',
             event.id,
           )
-        }
-        onClick={(e) => {
-          e.stopPropagation()
+        }}
+        onClick={(clickEvent) => {
+          clickEvent.stopPropagation()
           openEdit(event)
         }}
         style={{
@@ -560,7 +811,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
 
           ...(compact
             ? {}
-            : eventStyle(event)),
+            : eventStyle(event, layout)),
         }}
         title={
           event.title +
@@ -618,9 +869,24 @@ export default function AgendaView({ events, clients, profiles, demands, period,
               label}
           </small>
         )}
+
+        {!compact && (
+          <span
+            className="timeline-resize-handle"
+            role="separator"
+            aria-label="Redimensionar agenda"
+            onPointerDown={(pointerEvent) =>
+              beginResize(
+                pointerEvent,
+                event,
+              )
+            }
+          />
+        )}
       </button>
     )
   }
+
 
   return <div className="page-wrap ops-page">
     <div className="topbar">
@@ -681,14 +947,36 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
                   const timedEvents = dayEvents.filter((event: any) => !event.all_day)
                   const allDayEvents = dayEvents.filter((event: any) => event.all_day)
+                  const timedLayout = layoutTimedEvents(timedEvents)
                   const dayRefs = refsVisible.filter((ref) => ref.date === key)
-                  return <div className="timeline-day" key={key} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData('event-id'); if (id) move(id, key) }}>
+                  return <div
+                    className="timeline-day"
+                    key={key}
+                    onDragOver={handleTimelineDragOver}
+                    onDrop={(dropEvent) => {
+                      dropEvent.preventDefault()
+                      const id = dropEvent.dataTransfer.getData('event-id')
+                      if (id) {
+                        move(
+                          id,
+                          key,
+                          timelineDropTime(dropEvent),
+                        )
+                      }
+                    }}
+                  >
                     <div className="timeline-all-day">
                       {dayRefs.map((ref) => <span key={ref.id} className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</span>)}
                       {allDayEvents.map((event: any) => renderEventButton(event, true))}
                     </div>
                     {hours.map((hour) => <button type="button" className="timeline-slot" key={`${key}-${hour}`} style={{ height: `${hourHeight}px` }} onClick={() => openCreate(key, `${String(hour).padStart(2,'0')}:00`)} aria-label={`Criar agenda em ${key} às ${hour}h`} />)}
-                    {timedEvents.map((event: any) => renderEventButton(event))}
+                    {timedEvents.map((event: any) =>
+                      renderEventButton(
+                        event,
+                        false,
+                        timedLayout.get(event.id),
+                      ),
+                    )}
                   </div>
                 })}
               </div>
