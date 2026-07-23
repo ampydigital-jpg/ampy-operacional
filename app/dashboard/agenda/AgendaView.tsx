@@ -2,6 +2,7 @@
 
 // AMPY-V17-A24-AGENDA-DINAMICA
 // AMPY-V17-A24.1-INTERACAO-VISUAL
+// AMPY-V17-A24.2-PRECISAO-ARRASTE
 
 // AMPY-V17-A19.1 — AGENDA RECORRENTE
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
@@ -774,6 +775,41 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     const originalTransform =
       eventElement.style.transform
 
+    const eventRectangle =
+      eventElement.getBoundingClientRect()
+
+    const grabOffsetY =
+      Math.max(
+        0,
+        Math.min(
+          eventRectangle.height,
+          pointerStartY -
+            eventRectangle.top,
+        ),
+      )
+
+    const eventStart =
+      new Date(
+        event.starts_at,
+      )
+
+    const eventEnd =
+      new Date(
+        event.ends_at,
+      )
+
+    const durationMinutes =
+      Math.max(
+        15,
+        Math.round(
+          (
+            eventEnd.getTime() -
+            eventStart.getTime()
+          ) /
+          60000,
+        ),
+      )
+
     let started = false
     let lastClientX = pointerStartX
     let lastClientY = pointerStartY
@@ -1002,27 +1038,22 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       const rectangle =
         dayElement.getBoundingClientRect()
 
-      const maximum =
-        (
-          endHour -
-          startHour
-        ) *
-        hourHeight
-
-      const offset =
+      const maximumStartMinutes =
         Math.max(
-          0,
-          Math.min(
-            maximum,
-            clientY -
-              rectangle.top,
-          ),
+          startHour * 60,
+          endHour * 60 -
+            durationMinutes,
         )
+
+      const cardTopOffset =
+        clientY -
+        rectangle.top -
+        grabOffsetY
 
       const rawMinutes =
         startHour * 60 +
         (
-          offset /
+          cardTopOffset /
           hourHeight
         ) *
         60
@@ -1031,7 +1062,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
         Math.max(
           startHour * 60,
           Math.min(
-            endHour * 60 - 15,
+            maximumStartMinutes,
             Math.round(
               rawMinutes / 15,
             ) * 15,
