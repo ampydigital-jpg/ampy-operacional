@@ -1983,6 +1983,7 @@ export async function toggleCalendarEventConfirmationAction(
   }
 }
 
+// AMPY-V17-A24.3-FUSO-MOVIMENTO
 export async function moveCalendarEventAction(
   id: string,
   nextDate: string,
@@ -2028,49 +2029,93 @@ export async function moveCalendarEventAction(
     )
   }
 
-  const start =
+  const currentStart =
     new Date(
       event.starts_at,
     )
 
-  const end =
+  const currentEnd =
     new Date(
       event.ends_at,
     )
 
   const duration =
-    end.getTime() -
-    start.getTime()
-
-  const [
-    year,
-    month,
-    day,
-  ] = nextDate
-    .split('-')
-    .map(Number)
-
-  start.setFullYear(
-    year,
-    month - 1,
-    day,
-  )
+    currentEnd.getTime() -
+    currentStart.getTime()
 
   if (
-    nextTime &&
-    /^\d{2}:\d{2}$/.test(nextTime)
-  ) {
-    const [hour, minute] =
-      nextTime
-        .split(':')
-        .map(Number)
-
-    start.setHours(
-      hour,
-      minute,
-      0,
-      0,
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      nextDate,
     )
+  ) {
+    return {
+      error:
+        'Data de destino inválida.',
+    }
+  }
+
+  const currentTimeParts =
+    new Intl.DateTimeFormat(
+      'en-GB',
+      {
+        timeZone:
+          'America/Sao_Paulo',
+
+        hour:
+          '2-digit',
+
+        minute:
+          '2-digit',
+
+        hour12:
+          false,
+      },
+    ).formatToParts(
+      currentStart,
+    )
+
+  const readTimePart = (
+    type:
+      | 'hour'
+      | 'minute',
+  ) =>
+    currentTimeParts.find(
+      (part) =>
+        part.type === type,
+    )?.value || '00'
+
+  const preservedTime =
+    readTimePart('hour') +
+    ':' +
+    readTimePart('minute')
+
+  const targetTime =
+    nextTime &&
+    /^\d{2}:\d{2}$/.test(
+      nextTime,
+    )
+      ? nextTime
+      : preservedTime
+
+  const start =
+    new Date(
+      ampyLocalDateTimeToIso(
+        nextDate,
+        targetTime,
+        false,
+        false,
+      ),
+    )
+
+  if (
+    Number.isNaN(
+      start.getTime(),
+    )
+  ) {
+    return {
+      error:
+        'Data ou horário de destino inválido.',
+    }
   }
 
   const nextEnd =
