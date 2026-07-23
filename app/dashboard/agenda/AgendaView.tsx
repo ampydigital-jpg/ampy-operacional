@@ -1,6 +1,7 @@
 'use client'
 
 // AMPY-V17-A24-AGENDA-DINAMICA
+// AMPY-V17-A24.1-INTERACAO-VISUAL
 
 // AMPY-V17-A19.1 — AGENDA RECORRENTE
 // AMPY-V17-A19.3 — TIPOS, RECORRÊNCIA E TOPO DA AGENDA
@@ -9,7 +10,7 @@
 // AMPY-V17-A19.6 — REFINO VISUAL DO MODAL DA AGENDA
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   createCalendarEventAction,
   deleteCalendarEventAction,
@@ -27,36 +28,47 @@ const EVENT_TYPES = [
     'reu_a',
     'REU A',
     'Reunião de alinhamento',
-    '#22C55E',
+    '#BBF7D0',
+    '#14532D',
   ],
   [
     'reu_c',
     'REU C',
     'Reunião comercial',
-    '#15803D',
+    '#16A34A',
+    '#FFFFFF',
   ],
   [
     'cap_e',
     'CAP E',
     'Captação externa',
-    '#1E3A8A',
+    '#1D4ED8',
+    '#FFFFFF',
   ],
   [
     'cap_s',
     'CAP S',
     'Captação em estúdio',
-    '#60A5FA',
+    '#BFDBFE',
+    '#1E3A8A',
   ],
   [
     'out_a',
     'OUT A',
     'Outro alinhamento',
-    '#64748B',
+    '#CBD5E1',
+    '#334155',
   ],
 ] as const
 
 const UNCONFIRMED_COLOR =
-  '#DC2626'
+  '#FECACA'
+
+const UNCONFIRMED_TEXT_COLOR =
+  '#991B1B'
+
+const DRAG_START_THRESHOLD =
+  6
 
 const RECURRENCE_OPTIONS = [
   ['none', 'Não recorrente', 0],
@@ -135,6 +147,7 @@ function eventType(
       'LEGADO',
       'Agenda existente',
       '#64748B',
+      '#FFFFFF',
     ]
   )
 }
@@ -354,6 +367,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const [showOpportunities, setShowOpportunities] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const suppressEventClickRef = useRef(false)
 
   const [
     selectedType,
@@ -708,6 +722,382 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     window.location.reload()
   }
 
+  function beginMove(
+    pointerEvent: React.PointerEvent<HTMLButtonElement>,
+    event: any,
+  ) {
+    if (pointerEvent.button !== 0) {
+      return
+    }
+
+    if (
+      pointerEvent.pointerType === 'mouse' &&
+      pointerEvent.buttons !== 1
+    ) {
+      return
+    }
+
+    const target =
+      pointerEvent.target as HTMLElement
+
+    if (
+      target.closest(
+        '.timeline-resize-handle',
+      )
+    ) {
+      return
+    }
+
+    const eventElement =
+      pointerEvent.currentTarget
+
+    const wrapper =
+      eventElement.closest(
+        '.timeline-wrap',
+      ) as HTMLElement | null
+
+    const pointerId =
+      pointerEvent.pointerId
+
+    const pointerStartX =
+      pointerEvent.clientX
+
+    const pointerStartY =
+      pointerEvent.clientY
+
+    const scrollStartLeft =
+      wrapper?.scrollLeft || 0
+
+    const scrollStartTop =
+      wrapper?.scrollTop || 0
+
+    const originalTransform =
+      eventElement.style.transform
+
+    let started = false
+    let lastClientX = pointerStartX
+    let lastClientY = pointerStartY
+
+    suppressEventClickRef.current = false
+
+    const removeListeners = () => {
+      window.removeEventListener(
+        'pointermove',
+        handleMove,
+      )
+
+      window.removeEventListener(
+        'pointerup',
+        handleUp,
+      )
+
+      window.removeEventListener(
+        'pointercancel',
+        handleCancel,
+      )
+    }
+
+    const resetClickGuard = () => {
+      window.setTimeout(
+        () => {
+          suppressEventClickRef.current =
+            false
+        },
+        120,
+      )
+    }
+
+    const handleMove = (
+      nativeEvent: PointerEvent,
+    ) => {
+      if (
+        nativeEvent.pointerId !==
+        pointerId
+      ) {
+        return
+      }
+
+      lastClientX =
+        nativeEvent.clientX
+
+      lastClientY =
+        nativeEvent.clientY
+
+      const deltaX =
+        nativeEvent.clientX -
+        pointerStartX
+
+      const deltaY =
+        nativeEvent.clientY -
+        pointerStartY
+
+      if (!started) {
+        if (
+          Math.hypot(
+            deltaX,
+            deltaY,
+          ) <
+          DRAG_START_THRESHOLD
+        ) {
+          return
+        }
+
+        started = true
+        suppressEventClickRef.current = true
+
+        eventElement.classList.add(
+          'is-dragging',
+        )
+
+        document.body.classList.add(
+          'agenda-is-dragging',
+        )
+      }
+
+      nativeEvent.preventDefault()
+
+      if (wrapper) {
+        const rectangle =
+          wrapper.getBoundingClientRect()
+
+        const edge = 72
+
+        let scrollTop = 0
+        let scrollLeft = 0
+
+        if (
+          nativeEvent.clientY <
+          rectangle.top + edge
+        ) {
+          scrollTop = -28
+        } else if (
+          nativeEvent.clientY >
+          rectangle.bottom - edge
+        ) {
+          scrollTop = 28
+        }
+
+        if (
+          nativeEvent.clientX <
+          rectangle.left + edge
+        ) {
+          scrollLeft = -28
+        } else if (
+          nativeEvent.clientX >
+          rectangle.right - edge
+        ) {
+          scrollLeft = 28
+        }
+
+        if (
+          scrollTop ||
+          scrollLeft
+        ) {
+          wrapper.scrollBy({
+            top: scrollTop,
+            left: scrollLeft,
+            behavior: 'auto',
+          })
+        }
+      }
+
+      const scrollDeltaX =
+        wrapper
+          ? wrapper.scrollLeft -
+            scrollStartLeft
+          : 0
+
+      const scrollDeltaY =
+        wrapper
+          ? wrapper.scrollTop -
+            scrollStartTop
+          : 0
+
+      eventElement.style.transform =
+        'translate3d(' +
+        (
+          deltaX +
+          scrollDeltaX
+        ) +
+        'px, ' +
+        (
+          deltaY +
+          scrollDeltaY
+        ) +
+        'px, 0)'
+    }
+
+    const finish = (
+      nativeEvent: PointerEvent,
+      cancelled: boolean,
+    ) => {
+      if (
+        nativeEvent.pointerId !==
+        pointerId
+      ) {
+        return
+      }
+
+      removeListeners()
+
+      if (!started) {
+        return
+      }
+
+      const clientX =
+        Number.isFinite(
+          nativeEvent.clientX,
+        )
+          ? nativeEvent.clientX
+          : lastClientX
+
+      const clientY =
+        Number.isFinite(
+          nativeEvent.clientY,
+        )
+          ? nativeEvent.clientY
+          : lastClientY
+
+      const previousPointerEvents =
+        eventElement.style.pointerEvents
+
+      eventElement.style.pointerEvents =
+        'none'
+
+      const dropTarget =
+        document.elementFromPoint(
+          clientX,
+          clientY,
+        ) as HTMLElement | null
+
+      eventElement.style.pointerEvents =
+        previousPointerEvents
+
+      const dayElement =
+        dropTarget?.closest(
+          '.timeline-day',
+        ) as HTMLElement | null
+
+      eventElement.style.transform =
+        originalTransform
+
+      eventElement.classList.remove(
+        'is-dragging',
+      )
+
+      document.body.classList.remove(
+        'agenda-is-dragging',
+      )
+
+      resetClickGuard()
+
+      if (
+        cancelled ||
+        !dayElement ||
+        !dayElement.dataset.date
+      ) {
+        return
+      }
+
+      const rectangle =
+        dayElement.getBoundingClientRect()
+
+      const maximum =
+        (
+          endHour -
+          startHour
+        ) *
+        hourHeight
+
+      const offset =
+        Math.max(
+          0,
+          Math.min(
+            maximum,
+            clientY -
+              rectangle.top,
+          ),
+        )
+
+      const rawMinutes =
+        startHour * 60 +
+        (
+          offset /
+          hourHeight
+        ) *
+        60
+
+      const snapped =
+        Math.max(
+          startHour * 60,
+          Math.min(
+            endHour * 60 - 15,
+            Math.round(
+              rawMinutes / 15,
+            ) * 15,
+          ),
+        )
+
+      const hour =
+        Math.floor(
+          snapped / 60,
+        )
+
+      const minute =
+        snapped % 60
+
+      const nextTime =
+        String(hour).padStart(
+          2,
+          '0',
+        ) +
+        ':' +
+        String(minute).padStart(
+          2,
+          '0',
+        )
+
+      void move(
+        event.id,
+        dayElement.dataset.date,
+        nextTime,
+      )
+    }
+
+    const handleUp = (
+      nativeEvent: PointerEvent,
+    ) => {
+      finish(
+        nativeEvent,
+        false,
+      )
+    }
+
+    const handleCancel = (
+      nativeEvent: PointerEvent,
+    ) => {
+      finish(
+        nativeEvent,
+        true,
+      )
+    }
+
+    window.addEventListener(
+      'pointermove',
+      handleMove,
+    )
+
+    window.addEventListener(
+      'pointerup',
+      handleUp,
+    )
+
+    window.addEventListener(
+      'pointercancel',
+      handleCancel,
+    )
+  }
+
   function beginResize(
     pointerEvent: React.PointerEvent<HTMLSpanElement>,
     event: any,
@@ -776,43 +1166,110 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       ,
       label,
       typeColor,
+      typeTextColor,
     ] = eventType(
       event.type,
     )
 
-    const color =
+    const backgroundColor =
       event.confirmed
         ? typeColor
         : UNCONFIRMED_COLOR
 
+    const foregroundColor =
+      event.confirmed
+        ? typeTextColor
+        : UNCONFIRMED_TEXT_COLOR
+
+    const accentColor =
+      event.confirmed
+        ? typeColor
+        : '#EF4444'
+
+    const className =
+      (
+        compact
+          ? 'calendar-event'
+          : 'timeline-event'
+      ) +
+      (
+        event.confirmed
+          ? ' is-confirmed'
+          : ' is-pending'
+      )
+
     return (
       <button
-        className={
-          compact
-            ? 'calendar-event'
-            : 'timeline-event'
-        }
+        type="button"
+        className={className}
         key={event.id}
-        draggable
+        draggable={compact}
         onDragStart={(dragEvent) => {
-          dragEvent.dataTransfer.effectAllowed = 'move'
+          if (!compact) {
+            dragEvent.preventDefault()
+            return
+          }
+
+          suppressEventClickRef.current =
+            true
+
+          dragEvent.dataTransfer.effectAllowed =
+            'move'
+
           dragEvent.dataTransfer.setData(
             'event-id',
             event.id,
           )
         }}
+        onDragEnd={() => {
+          window.setTimeout(
+            () => {
+              suppressEventClickRef.current =
+                false
+            },
+            120,
+          )
+        }}
+        onPointerDown={
+          compact
+            ? undefined
+            : (pointerEvent) =>
+                beginMove(
+                  pointerEvent,
+                  event,
+                )
+        }
         onClick={(clickEvent) => {
           clickEvent.stopPropagation()
+
+          if (
+            suppressEventClickRef.current
+          ) {
+            clickEvent.preventDefault()
+            return
+          }
+
           openEdit(event)
         }}
-        style={{
-          borderLeftColor:
-            color,
+        style={
+          {
+            '--agenda-event-background':
+              backgroundColor,
 
-          ...(compact
-            ? {}
-            : eventStyle(event, layout)),
-        }}
+            '--agenda-event-color':
+              foregroundColor,
+
+            '--agenda-event-accent':
+              accentColor,
+
+            ...(compact
+              ? {}
+              : eventStyle(
+                  event,
+                  layout,
+                )),
+          } as React.CSSProperties
+        }
         title={
           event.title +
           ' · ' +
@@ -825,7 +1282,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
           )
         }
       >
-        <span>
+        <span className="agenda-event-time">
           {event.all_day
             ? 'Dia inteiro'
             : localTime(
@@ -833,36 +1290,12 @@ export default function AgendaView({ events, clients, profiles, demands, period,
               )}
         </span>
 
-        <b>
+        <span className="agenda-event-title">
           {event.title}
-        </b>
-
-        <span
-          className={
-            'agenda-confirmation-status ' +
-            (
-              event.confirmed
-                ? 'is-confirmed'
-                : 'is-pending'
-            )
-          }
-        >
-          <i
-            style={{
-              backgroundColor:
-                color,
-            }}
-          />
-
-          {!compact && (
-            event.confirmed
-              ? 'Confirmada'
-              : 'Aguardando confirmação'
-          )}
         </span>
 
         {!compact && (
-          <small>
+          <small className="agenda-event-meta">
             {event.client?.name ||
               event.custom_name ||
               event.work_item?.title ||
@@ -886,7 +1319,6 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       </button>
     )
   }
-
 
   return <div className="page-wrap ops-page">
     <div className="topbar">
@@ -951,6 +1383,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   const dayRefs = refsVisible.filter((ref) => ref.date === key)
                   return <div
                     className="timeline-day"
+                    data-date={key}
                     key={key}
                     onDragOver={handleTimelineDragOver}
                     onDrop={(dropEvent) => {
