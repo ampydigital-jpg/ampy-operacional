@@ -1,6 +1,8 @@
 
 'use client'
 
+// AMPY-V17-A23.1.4-LAYOUT-CANONICO
+
 // AMPY-V17-A23.1 — TAGS E CORES DAS DEMANDAS
 
 import {
@@ -1693,6 +1695,7 @@ export default function BoardWorkspace({
                       className="fi"
                       id="card_tag"
                       name="card_tag"
+                      autoComplete="off"
                       maxLength={16}
                       defaultValue={
                         editing?.card_tag ||
