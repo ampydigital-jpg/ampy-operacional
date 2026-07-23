@@ -9871,9 +9871,9 @@ tr:hover td,
 }
 
 .board-a14-page .board-a14-column {
-  flex: 0 0 340px !important;
-  width: 340px !important;
-  min-width: 340px !important;
+  flex: 0 0 292px !important;
+  width: 292px !important;
+  min-width: 292px !important;
   height: max-content !important;
   min-height: 100% !important;
   max-height: none !important;
@@ -9883,11 +9883,13 @@ tr:hover td,
 
 .board-a14-page .board-a14-column-head {
   position: sticky !important;
-  z-index: 8 !important;
+  z-index: 30 !important;
   top: 0 !important;
-  grid-template-columns: 26px minmax(0, 1fr) 104px 32px 32px !important;
-  gap: 5px !important;
-  background: var(--v16-surface, var(--c1)) !important;
+  isolation: isolate !important;
+  grid-template-columns: 18px minmax(0, 1fr) 58px 30px 30px !important;
+  gap: 4px !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 0 var(--v16-border, var(--b1)) !important;
 }
 
 .board-a14-page .board-a14-column-scroll {
@@ -9920,28 +9922,30 @@ tr:hover td,
 
 @media (max-width: 980px) {
   .board-a14-page .board-a14-column {
-    flex-basis: 320px !important;
-    width: 320px !important;
-    min-width: 320px !important;
+    flex-basis: 280px !important;
+    width: 280px !important;
+    min-width: 280px !important;
   }
 
   .board-a14-page .board-a14-column-head {
-    grid-template-columns: 26px minmax(0, 1fr) 96px 32px 32px !important;
+    grid-template-columns: 18px minmax(0, 1fr) 56px 30px 30px !important;
   }
 }
 
 .board-a23-column-sort {
-  width: 104px !important;
-  min-width: 104px !important;
-  height: 32px !important;
-  padding: 0 25px 0 9px !important;
+  width: 58px !important;
+  min-width: 58px !important;
+  height: 30px !important;
+  padding: 0 18px 0 5px !important;
   border: 1px solid var(--v16-border, var(--b1)) !important;
   border-radius: 8px !important;
-  background: var(--v16-surface, #fff) !important;
+  background: #ffffff !important;
   color: var(--v16-text-soft, var(--t2)) !important;
   font-family: inherit !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  text-align-last: center !important;
   cursor: pointer !important;
 }
 
@@ -10101,4 +10105,24 @@ tr:hover td,
     grid-template-columns:
       1fr !important;
   }
+}
+
+/* AMPY-V17-A23-1-5B-REFINO-SEGURO */
+.board-a14-page .board-a14-column-scroll {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.board-a14-page .board-a14-column-head > * {
+  min-width: 0 !important;
+}
+
+.demandas-a16-table th:nth-last-child(2),
+.demandas-a16-table td:nth-last-child(2) {
+  text-align: center !important;
+}
+
+.demandas-a16-table td:nth-last-child(2) > * {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }

@@ -1,6 +1,8 @@
 
 'use client'
 
+// AMPY-V17-A23-1-5B-REFINO-SEGURO
+
 // AMPY-V17-A23.1.4-LAYOUT-CANONICO
 
 // AMPY-V17-A23.1 — TAGS E CORES DAS DEMANDAS
@@ -1379,13 +1381,13 @@ export default function BoardWorkspace({
                       }
                     >
                       <option value="manual">
-                        Ordem atual
+                        &#8212;
                       </option>
                       <option value="deadline_asc">
-                        Final ↑
+                        &#8593;
                       </option>
                       <option value="deadline_desc">
-                        Final ↓
+                        &#8595;
                       </option>
                     </select>
 
