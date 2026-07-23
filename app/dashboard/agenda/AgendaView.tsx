@@ -1268,7 +1268,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   event,
                   layout,
                 )),
-          } as React.CSSProperties
+          } as React.CSSProperties & {
+            '--agenda-event-background': string
+            '--agenda-event-color': string
+            '--agenda-event-accent': string
+          }
         }
         title={
           event.title +
