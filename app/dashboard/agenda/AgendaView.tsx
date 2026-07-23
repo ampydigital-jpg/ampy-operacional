@@ -120,7 +120,7 @@ const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const startHour = 7
 const endHour = 22
-const hourHeight = 58
+const hourHeight = 44
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate()+n); return x }
 const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1, 12)
@@ -273,10 +273,22 @@ function eventStyle(
   const top =
     ((start - startHour * 60) / 60) * hourHeight
 
-  const height = Math.max(
-    34,
-    ((Math.max(end, start + 30) - start) / 60) * hourHeight - 4,
-  )
+  const durationMinutes =
+    Math.max(
+      15,
+      end - start,
+    )
+
+  const height =
+    Math.max(
+      16,
+      (
+        durationMinutes /
+        60
+      ) *
+        hourHeight -
+        2,
+    )
 
   const leftPercent = layout?.leftPercent || 0
   const widthPercent = layout?.widthPercent || 100
@@ -349,6 +361,54 @@ function handleTimelineDragOver(
   }
 }
 
+
+function timelineDensityClass(
+  event: any,
+) {
+  if (
+    event.all_day
+  ) {
+    return undefined
+  }
+
+  const start =
+    new Date(
+      event.starts_at,
+    ).getTime()
+
+  const end =
+    new Date(
+      event.ends_at,
+    ).getTime()
+
+  const durationMinutes =
+    Math.max(
+      15,
+      Math.round(
+        (
+          end -
+          start
+        ) /
+        60000,
+      ),
+    )
+
+  if (
+    durationMinutes <= 15
+  ) {
+    return 'is-micro'
+  }
+
+  if (
+    durationMinutes <= 30
+  ) {
+    return 'is-short'
+  }
+
+  return 'is-regular'
+}
+
+// AMPY-V17-A24.4B-DENSIDADE-SEGURA
 
 export default function AgendaView({ events, clients, profiles, demands, period, start, end, loadErrors = [] }: any) {
   const safeEvents = Array.isArray(events) ? events.filter(Boolean) : []
@@ -1233,6 +1293,13 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       <button
         type="button"
         className={className}
+        data-density={
+          compact
+            ? undefined
+            : timelineDensityClass(
+                event,
+              )
+        }
         key={event.id}
         draggable={compact}
         onDragStart={(dragEvent) => {
