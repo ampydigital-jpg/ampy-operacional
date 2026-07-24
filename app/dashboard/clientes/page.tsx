@@ -61,7 +61,7 @@ export default async function ClientesPage() {
     supabase
       .from('client_services')
       .select(
-        'id,client_id,service_catalog_id,responsible_id,status,monthly_quantity,quantity_unit,delivered_quantity,notes,created_at',
+        'id,client_id,service_catalog_id,responsible_id,status,monthly_quantity,quantity_unit,delivered_quantity,cycle_duration_days,requires_alignment_meeting,requires_capture,default_capture_type,notes,created_at',
       )
       .order('created_at'),
 

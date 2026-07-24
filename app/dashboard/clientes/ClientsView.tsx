@@ -21,6 +21,8 @@ import {
   updateClientAction,
 } from '@/lib/actions'
 
+import ClientServiceCycleSettings from './ClientServiceCycleSettings'
+
 const SEGMENTS = [
   'Moda',
   'Varejo',
@@ -1961,6 +1963,12 @@ export default function ClientsView({
                                   .full_name
                               : ''}
                           </small>
+
+                          <ClientServiceCycleSettings
+                            service={
+                              service
+                            }
+                          />
                         </div>
                       ),
                     )
@@ -3024,6 +3032,81 @@ function ServiceModal({
                   ),
                 )}
               </select>
+            </div>
+
+
+            <input
+              type="hidden"
+              name="cycle_settings_present"
+              value="1"
+            />
+
+            <div className="client-service-link-cycle">
+              <div className="fg">
+                <label className="fl">
+                  Duração do ciclo *
+                </label>
+
+                <div className="client-service-duration-input">
+                  <input
+                    className="fi"
+                    type="number"
+                    name="cycle_duration_days"
+                    min="1"
+                    max="365"
+                    required
+                    defaultValue="30"
+                  />
+
+                  <span>dias</span>
+                </div>
+              </div>
+
+              <div className="client-service-cycle-options">
+                <label className="checkbox-line">
+                  <input
+                    type="checkbox"
+                    name="requires_alignment_meeting"
+                    defaultChecked
+                  />
+
+                  Exigir reunião de alinhamento
+                </label>
+
+                <label className="checkbox-line">
+                  <input
+                    type="checkbox"
+                    name="requires_capture"
+                    defaultChecked
+                  />
+
+                  Exigir captação
+                </label>
+              </div>
+
+              <div className="fg">
+                <label className="fl">
+                  Tipo padrão de captação
+                </label>
+
+                <select
+                  className="fi"
+                  name="default_capture_type"
+                  defaultValue=""
+                >
+                  <option value="">
+                    Definir no agendamento
+                  </option>
+
+                  <option value="cap_e">
+                    Captação externa
+                  </option>
+
+                  <option value="cap_s">
+                    Captação em estúdio
+                  </option>
+                </select>
+              </div>
             </div>
 
             {error && (

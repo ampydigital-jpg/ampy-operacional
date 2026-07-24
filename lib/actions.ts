@@ -520,44 +520,211 @@ export async function archiveClientAction(id: string, mode: 'archived' | 'inacti
   return { success: true }
 }
 
+
 export async function createClientServiceAction(formData: FormData) {
   const { supabase, profile } = await getCurrentProfile()
-  if (!profile || !isManager(profile.role)) return forbidden()
+
+  if (!profile || !isManager(profile.role)) {
+    return forbidden()
+  }
+
   const clientId = value(formData, 'client_id')
   const serviceCatalogId = value(formData, 'service_catalog_id')
-  if (!clientId || !serviceCatalogId) return { error: 'Cliente e serviço são obrigatórios.' }
+
+  if (!clientId || !serviceCatalogId) {
+    return {
+      error: 'Cliente e serviço são obrigatórios.',
+    }
+  }
+
   const monthly = value(formData, 'monthly_quantity')
-  const { error } = await supabase.from('client_services').insert({
-    client_id: clientId,
-    service_catalog_id: serviceCatalogId,
-    responsible_id: nullable(formData, 'responsible_id'),
-    status: value(formData, 'status') || 'active',
-    started_at: nullable(formData, 'started_at'),
-    monthly_quantity: monthly ? Number(monthly) : null,
-    quantity_unit: nullable(formData, 'quantity_unit'),
-    notes: nullable(formData, 'notes'),
-  })
-  if (error) return { error: error.message }
+
+  const cycleSettingsPresent =
+    value(formData, 'cycle_settings_present') === '1'
+
+  let cycleDurationDays: number | null = null
+  let requiresAlignmentMeeting = true
+  let requiresCapture = true
+  let defaultCaptureType: string | null = null
+
+  if (cycleSettingsPresent) {
+    const duration = Number(
+      value(formData, 'cycle_duration_days'),
+    )
+
+    if (
+      !Number.isInteger(duration) ||
+      duration < 1 ||
+      duration > 365
+    ) {
+      return {
+        error: 'Informe uma duração entre 1 e 365 dias.',
+      }
+    }
+
+    cycleDurationDays = duration
+
+    requiresAlignmentMeeting =
+      formData.get('requires_alignment_meeting') === 'on'
+
+    requiresCapture =
+      formData.get('requires_capture') === 'on'
+
+    const requestedCaptureType =
+      value(formData, 'default_capture_type')
+
+    defaultCaptureType =
+      requiresCapture &&
+      ['cap_e', 'cap_s'].includes(requestedCaptureType)
+        ? requestedCaptureType
+        : null
+  }
+
+  const { error } = await supabase
+    .from('client_services')
+    .insert({
+      client_id: clientId,
+      service_catalog_id: serviceCatalogId,
+      responsible_id: nullable(formData, 'responsible_id'),
+      status: value(formData, 'status') || 'active',
+      started_at: nullable(formData, 'started_at'),
+      monthly_quantity: monthly ? Number(monthly) : null,
+      quantity_unit: nullable(formData, 'quantity_unit'),
+      cycle_duration_days: cycleDurationDays,
+      requires_alignment_meeting: requiresAlignmentMeeting,
+      requires_capture: requiresCapture,
+      default_capture_type: defaultCaptureType,
+      notes: nullable(formData, 'notes'),
+    })
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
   revalidateOperationalPaths()
-  return { success: true }
+
+  return {
+    success: true,
+  }
 }
+
 
 export async function updateClientServiceAction(formData: FormData) {
   const { supabase, profile } = await getCurrentProfile()
-  if (!profile || !isManager(profile.role)) return forbidden()
+
+  if (!profile || !isManager(profile.role)) {
+    return forbidden()
+  }
+
   const id = value(formData, 'id')
-  const monthly = value(formData, 'monthly_quantity')
-  if (!id) return { error: 'Serviço inválido.' }
-  const { error } = await supabase.from('client_services').update({
-    responsible_id: nullable(formData, 'responsible_id'),
-    status: value(formData, 'status') || 'active',
-    monthly_quantity: monthly ? Number(monthly) : null,
-    quantity_unit: nullable(formData, 'quantity_unit'),
-    notes: nullable(formData, 'notes'),
-  }).eq('id', id)
-  if (error) return { error: error.message }
+
+  if (!id) {
+    return {
+      error: 'Serviço inválido.',
+    }
+  }
+
+  const update: Record<string, unknown> = {}
+
+  if (formData.has('responsible_id')) {
+    update.responsible_id =
+      nullable(formData, 'responsible_id')
+  }
+
+  if (formData.has('status')) {
+    update.status =
+      value(formData, 'status') || 'active'
+  }
+
+  if (formData.has('monthly_quantity')) {
+    const monthly =
+      value(formData, 'monthly_quantity')
+
+    update.monthly_quantity =
+      monthly
+        ? Number(monthly)
+        : null
+  }
+
+  if (formData.has('quantity_unit')) {
+    update.quantity_unit =
+      nullable(formData, 'quantity_unit')
+  }
+
+  if (formData.has('notes')) {
+    update.notes =
+      nullable(formData, 'notes')
+  }
+
+  const cycleSettingsPresent =
+    value(formData, 'cycle_settings_present') === '1'
+
+  if (cycleSettingsPresent) {
+    const duration = Number(
+      value(formData, 'cycle_duration_days'),
+    )
+
+    if (
+      !Number.isInteger(duration) ||
+      duration < 1 ||
+      duration > 365
+    ) {
+      return {
+        error: 'Informe uma duração entre 1 e 365 dias.',
+      }
+    }
+
+    const requiresAlignmentMeeting =
+      formData.get('requires_alignment_meeting') === 'on'
+
+    const requiresCapture =
+      formData.get('requires_capture') === 'on'
+
+    const requestedCaptureType =
+      value(formData, 'default_capture_type')
+
+    update.cycle_duration_days =
+      duration
+
+    update.requires_alignment_meeting =
+      requiresAlignmentMeeting
+
+    update.requires_capture =
+      requiresCapture
+
+    update.default_capture_type =
+      requiresCapture &&
+      ['cap_e', 'cap_s'].includes(requestedCaptureType)
+        ? requestedCaptureType
+        : null
+  }
+
+  if (
+    Object.keys(update).length === 0
+  ) {
+    return {
+      error: 'Nenhuma alteração informada.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('client_services')
+    .update(update)
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
   revalidateOperationalPaths()
-  return { success: true }
+
+  return {
+    success: true,
+  }
 }
 
 export async function createWorkItemAction(formData: FormData) {
