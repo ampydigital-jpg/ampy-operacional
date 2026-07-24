@@ -10680,15 +10680,31 @@ small,
 .client-service-link-cycle {
   display: grid;
   grid-template-columns:
-    minmax(130px, 0.65fr)
-    minmax(210px, 1fr)
-    minmax(180px, 1fr);
-  gap: 12px;
+    minmax(140px, 0.7fr)
+    minmax(240px, 1.3fr);
+  gap: 12px 16px;
+  min-width: 0;
   margin-top: 4px;
   padding: 14px;
+  overflow: hidden;
   border: 1px solid var(--b1);
   border-radius: var(--rc);
   background: var(--s2);
+}
+
+.client-service-link-cycle > * {
+  min-width: 0;
+}
+
+.client-service-link-cycle > .fg:last-child {
+  grid-column: 1 / -1;
+}
+
+.client-service-link-cycle .fi,
+.client-service-link-cycle select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 900px) {

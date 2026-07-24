@@ -213,7 +213,7 @@ export default function ClientServiceCycleSettings({
 
           <div className="fg">
             <label className="fl">
-              Tipo padrão de captação
+              Local padrão da captação
             </label>
 
             <select
@@ -226,15 +226,15 @@ export default function ClientServiceCycleSettings({
               }
             >
               <option value="">
-                Definir no agendamento
+                Escolher ao agendar
               </option>
 
               <option value="cap_e">
-                Captação externa
+                Externa
               </option>
 
               <option value="cap_s">
-                Captação em estúdio
+                Em estúdio
               </option>
             </select>
           </div>

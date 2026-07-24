@@ -3086,7 +3086,7 @@ function ServiceModal({
 
               <div className="fg">
                 <label className="fl">
-                  Tipo padrão de captação
+                  Local padrão da captação
                 </label>
 
                 <select
@@ -3095,15 +3095,15 @@ function ServiceModal({
                   defaultValue=""
                 >
                   <option value="">
-                    Definir no agendamento
+                    Escolher ao agendar
                   </option>
 
                   <option value="cap_e">
-                    Captação externa
+                    Externa
                   </option>
 
                   <option value="cap_s">
-                    Captação em estúdio
+                    Em estúdio
                   </option>
                 </select>
               </div>
