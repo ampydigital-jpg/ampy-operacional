@@ -126,7 +126,7 @@ export default async function QuadroPage({
       supabase
         .from('board_columns')
         .select(
-          'id,board_id,name,color,operational_status,position,created_at,updated_at',
+          'id,board_id,name,color,operational_status,automation_role,position,created_at,updated_at',
         )
         .eq('board_id', activeBoardId)
         .order('position'),

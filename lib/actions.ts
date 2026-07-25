@@ -3745,6 +3745,546 @@ export async function updateProjectStepAction(
 }
 
 // =========================================================
+// AMPY-V17-A25.3A3B — PREPARAÇÃO E GERAÇÃO DE CICLOS
+// =========================================================
+
+type NextCycleGenerationRowInput = {
+  sourceId: string
+  clientServiceId: string
+  startDate: string
+  endDate: string
+}
+
+function nextCycleConfirmationText(count: number) {
+  return count === 1
+    ? 'GERAR 1 CICLO'
+    : 'GERAR ' + String(count) + ' CICLOS'
+}
+
+function validNextCycleDate(input: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(input)
+}
+
+export async function prepareNextWorkItemCyclesAction(
+  sourceIds: string[],
+) {
+  const { supabase, user, profile } =
+    await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem gerar ciclos.',
+    )
+  }
+
+  const ids = Array.from(
+    new Set(
+      (Array.isArray(sourceIds) ? sourceIds : [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 50)
+
+  if (ids.length === 0) {
+    return {
+      error:
+        'Selecione ao menos um card concluído.',
+    }
+  }
+
+  const { data: items, error: itemsError } =
+    await supabase
+      .from('work_items')
+      .select(
+        'id,title,status,client_id,client_service_id,final_deadline,board_id,board_column_id',
+      )
+      .in('id', ids)
+
+  if (itemsError) {
+    return { error: itemsError.message }
+  }
+
+  const safeItems = Array.isArray(items)
+    ? items
+    : []
+
+  const columnIds = Array.from(
+    new Set(
+      safeItems
+        .map((item: any) =>
+          String(item.board_column_id || ''),
+        )
+        .filter(Boolean),
+    ),
+  )
+
+  const clientIds = Array.from(
+    new Set(
+      safeItems
+        .map((item: any) =>
+          String(item.client_id || ''),
+        )
+        .filter(Boolean),
+    ),
+  )
+
+  const [
+    columnsResult,
+    clientsResult,
+    servicesResult,
+    successorsResult,
+  ] = await Promise.all([
+    columnIds.length
+      ? supabase
+          .from('board_columns')
+          .select('id,board_id,automation_role')
+          .in('id', columnIds)
+      : Promise.resolve({
+          data: [],
+          error: null,
+        }),
+
+    clientIds.length
+      ? supabase
+          .from('clients')
+          .select('id,name,status')
+          .in('id', clientIds)
+      : Promise.resolve({
+          data: [],
+          error: null,
+        }),
+
+    clientIds.length
+      ? supabase
+          .from('client_services')
+          .select(
+            'id,client_id,service_catalog_id,status,cycle_duration_days,requires_alignment_meeting,requires_capture,default_capture_type',
+          )
+          .in('client_id', clientIds)
+          .eq('status', 'active')
+      : Promise.resolve({
+          data: [],
+          error: null,
+        }),
+
+    supabase
+      .from('work_items')
+      .select('generated_from_cycle_id')
+      .in('generated_from_cycle_id', ids),
+  ])
+
+  const firstError =
+    columnsResult.error ||
+    clientsResult.error ||
+    servicesResult.error ||
+    successorsResult.error
+
+  if (firstError) {
+    return { error: firstError.message }
+  }
+
+  const services = Array.isArray(
+    servicesResult.data,
+  )
+    ? servicesResult.data
+    : []
+
+  const serviceCatalogIds = Array.from(
+    new Set(
+      services
+        .map((service: any) =>
+          String(
+            service.service_catalog_id || '',
+          ),
+        )
+        .filter(Boolean),
+    ),
+  )
+
+  const catalogResult =
+    serviceCatalogIds.length
+      ? await supabase
+          .from('service_catalog')
+          .select('id,name,is_active')
+          .in('id', serviceCatalogIds)
+      : {
+          data: [],
+          error: null,
+        }
+
+  if (catalogResult.error) {
+    return {
+      error: catalogResult.error.message,
+    }
+  }
+
+  const itemsById = new Map(
+    safeItems.map((item: any) => [
+      item.id,
+      item,
+    ]),
+  )
+
+  const columnsById = new Map(
+    (columnsResult.data || []).map(
+      (column: any) => [
+        column.id,
+        column,
+      ],
+    ),
+  )
+
+  const clientsById = new Map(
+    (clientsResult.data || []).map(
+      (client: any) => [
+        client.id,
+        client,
+      ],
+    ),
+  )
+
+  const catalogById = new Map(
+    (catalogResult.data || []).map(
+      (service: any) => [
+        service.id,
+        service,
+      ],
+    ),
+  )
+
+  const generatedSources = new Set(
+    (successorsResult.data || [])
+      .map(
+        (item: any) =>
+          item.generated_from_cycle_id,
+      )
+      .filter(Boolean),
+  )
+
+  const rows = ids.map((id) => {
+    const item: any = itemsById.get(id)
+
+    if (!item) {
+      return {
+        sourceId: id,
+        title:
+          'Card não encontrado',
+        eligible: false,
+        reason:
+          'O card não está mais disponível.',
+        services: [],
+      }
+    }
+
+    const column: any =
+      columnsById.get(
+        item.board_column_id,
+      )
+
+    const client: any =
+      clientsById.get(item.client_id)
+
+    const availableServices = services
+      .filter(
+        (service: any) =>
+          service.client_id ===
+            item.client_id &&
+          Number.isInteger(
+            Number(
+              service.cycle_duration_days,
+            ),
+          ) &&
+          Number(
+            service.cycle_duration_days,
+          ) >= 1,
+      )
+      .map((service: any) => {
+        const catalog: any =
+          catalogById.get(
+            service.service_catalog_id,
+          )
+
+        return {
+          id: service.id,
+          name:
+            catalog?.name ||
+            'Serviço',
+          cycleDurationDays:
+            Number(
+              service.cycle_duration_days,
+            ),
+          requiresAlignmentMeeting:
+            service.requires_alignment_meeting !==
+            false,
+          requiresCapture:
+            service.requires_capture !==
+            false,
+          defaultCaptureType:
+            service.default_capture_type ||
+            null,
+        }
+      })
+      .sort((a: any, b: any) =>
+        String(a.name).localeCompare(
+          String(b.name),
+          'pt-BR',
+        ),
+      )
+
+    let reason = ''
+
+    if (
+      column?.automation_role !==
+      'completed'
+    ) {
+      reason =
+        'O card não está na coluna Concluído.'
+    } else if (
+      !['done', 'delivered'].includes(
+        String(item.status),
+      )
+    ) {
+      reason =
+        'O status do card ainda não está concluído.'
+    } else if (
+      !item.client_id ||
+      !client
+    ) {
+      reason =
+        'O card não possui cliente válido.'
+    } else if (
+      client.status !== 'active'
+    ) {
+      reason =
+        'O cliente não está ativo.'
+    } else if (
+      generatedSources.has(item.id)
+    ) {
+      reason =
+        'Este card já gerou um próximo ciclo.'
+    } else if (
+      availableServices.length === 0
+    ) {
+      reason =
+        'Nenhum serviço ativo possui duração de ciclo configurada.'
+    }
+
+    return {
+      sourceId: item.id,
+      title: item.title,
+      clientId: item.client_id,
+      clientName:
+        client?.name ||
+        'Cliente',
+      currentClientServiceId:
+        item.client_service_id ||
+        null,
+      finalDeadline:
+        item.final_deadline ||
+        null,
+      eligible: !reason,
+      reason: reason || null,
+      services: availableServices,
+    }
+  })
+
+  return {
+    success: true,
+    rows,
+  }
+}
+
+export async function generateNextWorkItemCyclesAction(
+  input: {
+    items: NextCycleGenerationRowInput[]
+    programmingVerified: boolean
+    confirmation: string
+  },
+) {
+  const { supabase, user, profile } =
+    await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem gerar ciclos.',
+    )
+  }
+
+  const rows = Array.isArray(input?.items)
+    ? input.items
+        .map((row) => ({
+          sourceId:
+            String(
+              row?.sourceId || '',
+            ).trim(),
+          clientServiceId:
+            String(
+              row?.clientServiceId || '',
+            ).trim(),
+          startDate:
+            String(
+              row?.startDate || '',
+            ).trim(),
+          endDate:
+            String(
+              row?.endDate || '',
+            ).trim(),
+        }))
+        .filter((row) => row.sourceId)
+        .slice(0, 50)
+    : []
+
+  if (rows.length === 0) {
+    return {
+      error:
+        'Nenhum ciclo válido foi informado.',
+    }
+  }
+
+  const uniqueIds = new Set(
+    rows.map((row) => row.sourceId),
+  )
+
+  if (uniqueIds.size !== rows.length) {
+    return {
+      error:
+        'A seleção contém cards duplicados.',
+    }
+  }
+
+  if (
+    input?.programmingVerified !== true
+  ) {
+    return {
+      error:
+        'Confirme que a programação dos ciclos foi concluída.',
+    }
+  }
+
+  const expected =
+    nextCycleConfirmationText(
+      rows.length,
+    )
+
+  if (
+    String(input?.confirmation || '').trim() !==
+    expected
+  ) {
+    return {
+      error:
+        'Digite exatamente ' +
+        expected +
+        ' para continuar.',
+    }
+  }
+
+  const results: Array<{
+    sourceId: string
+    success: boolean
+    newId?: string
+    title?: string
+    error?: string
+  }> = []
+
+  for (const row of rows) {
+    if (
+      !row.clientServiceId ||
+      !validNextCycleDate(
+        row.startDate,
+      ) ||
+      !validNextCycleDate(
+        row.endDate,
+      ) ||
+      row.endDate <= row.startDate
+    ) {
+      results.push({
+        sourceId: row.sourceId,
+        success: false,
+        error:
+          'Serviço ou período inválido.',
+      })
+      continue
+    }
+
+    const { data, error } =
+      await supabase.rpc(
+        'generate_next_work_item_cycle',
+        {
+          p_source_id: row.sourceId,
+          p_client_service_id:
+            row.clientServiceId,
+          p_start_date: row.startDate,
+          p_end_date: row.endDate,
+          p_programming_verified: true,
+          p_confirmation:
+            'GERAR CICLO',
+        },
+      )
+
+    if (error) {
+      results.push({
+        sourceId: row.sourceId,
+        success: false,
+        error: error.message,
+      })
+      continue
+    }
+
+    const payload =
+      data &&
+      typeof data === 'object'
+        ? (data as Record<
+            string,
+            any
+          >)
+        : {}
+
+    results.push({
+      sourceId: row.sourceId,
+      success: true,
+      newId:
+        String(payload.new_id || '') ||
+        undefined,
+      title:
+        String(payload.title || '') ||
+        undefined,
+    })
+  }
+
+  const successCount = results.filter(
+    (result) => result.success,
+  ).length
+
+  const failureCount =
+    results.length - successCount
+
+  if (successCount > 0) {
+    revalidateOperationalPaths()
+  }
+
+  return {
+    success: true,
+    successCount,
+    failureCount,
+    results,
+  }
+}
+
+// =========================================================
 // AMPY-V17-A14 — QUADRO COM COLUNAS EDITÁVEIS
 // =========================================================
 

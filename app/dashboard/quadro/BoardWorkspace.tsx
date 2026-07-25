@@ -28,6 +28,7 @@ import {
   updateBoardColumnAction,
 } from '@/lib/actions'
 import { saveBoardPeriodDemandWithTagAction } from '@/lib/work-item-card-tag-actions'
+import NextCycleGeneratorModal from './NextCycleGeneratorModal'
 
 const BOARD_COLORS = [
   '#2563EB',
@@ -298,6 +299,16 @@ export default function BoardWorkspace({
     useState('')
 
   const [
+    selectedCycleIds,
+    setSelectedCycleIds,
+  ] = useState<string[]>([])
+
+  const [
+    cycleModalOpen,
+    setCycleModalOpen,
+  ] = useState(false)
+
+  const [
     columnSorts,
     setColumnSorts,
   ] = useState<
@@ -317,6 +328,26 @@ export default function BoardWorkspace({
       (board: any) =>
         board.id === activeBoardId,
     ) || null
+
+  const selectedCycleItems =
+    useMemo(
+      () =>
+        items.filter(
+          (item: any) =>
+            selectedCycleIds.includes(
+              item.id,
+            ),
+        ),
+      [
+        items,
+        selectedCycleIds,
+      ],
+    )
+
+  useEffect(() => {
+    setSelectedCycleIds([])
+    setCycleModalOpen(false)
+  }, [activeBoardId])
 
   const selectedClient =
     clients.find(
@@ -481,6 +512,28 @@ export default function BoardWorkspace({
               dateB,
             )
       },
+    )
+  }
+
+  function toggleCycleSelection(
+    itemId: string,
+    checked: boolean,
+  ) {
+    setSelectedCycleIds(
+      (current) =>
+        checked
+          ? current.includes(
+              itemId,
+            )
+            ? current
+            : [
+                ...current,
+                itemId,
+              ]
+          : current.filter(
+              (id) =>
+                id !== itemId,
+            ),
     )
   }
 
@@ -1234,14 +1287,41 @@ export default function BoardWorkspace({
           </div>
 
           {canManage && (
-            <button
-              className="bsec"
-              type="button"
-              onClick={createColumn}
-            >
-              <i className="ti ti-column-insert-right" />
-              Nova coluna
-            </button>
+            <div className="board-cycle-heading-actions">
+              <button
+                className="bpri board-cycle-open-button"
+                type="button"
+                disabled={
+                  selectedCycleItems.length ===
+                  0
+                }
+                onClick={() =>
+                  setCycleModalOpen(
+                    true,
+                  )
+                }
+              >
+                <i className="ti ti-refresh" />
+                Gerar próximo ciclo
+                {selectedCycleItems.length >
+                0
+                  ? ' (' +
+                    String(
+                      selectedCycleItems.length,
+                    ) +
+                    ')'
+                  : ''}
+              </button>
+
+              <button
+                className="bsec"
+                type="button"
+                onClick={createColumn}
+              >
+                <i className="ti ti-column-insert-right" />
+                Nova coluna
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -1476,6 +1556,23 @@ export default function BoardWorkspace({
                             item.final_deadline,
                           )
 
+                        const isCompletedCycleCard =
+                          canManage &&
+                          column.automation_role ===
+                            'completed' &&
+                          [
+                            'done',
+                            'delivered',
+                          ].includes(
+                            String(
+                              item.status ||
+                              '',
+                            ),
+                          ) &&
+                          Boolean(
+                            item.client_id,
+                          )
+
                         return (
                           <article
                             key={item.id}
@@ -1511,6 +1608,44 @@ export default function BoardWorkspace({
                             }
                           >
                             <div className="board-a15-card-status">
+                              {isCompletedCycleCard && (
+                                <label
+                                  className="board-cycle-card-select"
+                                  title="Selecionar para gerar o próximo ciclo"
+                                  onClick={(
+                                    event,
+                                  ) =>
+                                    event.stopPropagation()
+                                  }
+                                  onMouseDown={(
+                                    event,
+                                  ) =>
+                                    event.stopPropagation()
+                                  }
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCycleIds.includes(
+                                      item.id,
+                                    )}
+                                    onChange={(
+                                      event,
+                                    ) =>
+                                      toggleCycleSelection(
+                                        item.id,
+                                        event
+                                          .target
+                                          .checked,
+                                      )
+                                    }
+                                  />
+
+                                  <span>
+                                    Ciclo
+                                  </span>
+                                </label>
+                              )}
+
                               <span
                                 className={
                                   'board-a15-priority ' +
@@ -2048,6 +2183,14 @@ export default function BoardWorkspace({
           </div>
         </div>
       )}
+
+      <NextCycleGeneratorModal
+        open={cycleModalOpen}
+        items={selectedCycleItems}
+        onClose={() =>
+          setCycleModalOpen(false)
+        }
+      />
 
       {personalizeColumn && (
         <div
