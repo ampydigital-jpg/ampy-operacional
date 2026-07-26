@@ -138,7 +138,7 @@ export default async function QuadroPage({
       supabase
         .from('work_items')
         .select(
-          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color',
+          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,cycle_number,generated_from_cycle_id,generated_at,cycle_duration_days_snapshot',
         )
         .eq('board_id', activeBoardId)
         .not('status', 'in', '(archived,cancelled)')
@@ -205,6 +205,26 @@ export default async function QuadroPage({
     )
   }
 
+  const demandRowsById =
+    mapById(demandRows)
+
+  const nextCycleBySourceId =
+    new Map<string, any>()
+
+  for (
+    const demand
+    of demandRows
+  ) {
+    if (
+      demand.generated_from_cycle_id
+    ) {
+      nextCycleBySourceId.set(
+        demand.generated_from_cycle_id,
+        demand,
+      )
+    }
+  }
+
   const demands = demandRows.map(
     (item: any) => ({
       ...item,
@@ -216,6 +236,18 @@ export default async function QuadroPage({
         : null,
       schedule_requirements:
         requirementsByItem.get(item.id) || [],
+
+      previous_cycle:
+        item.generated_from_cycle_id
+          ? demandRowsById.get(
+              item.generated_from_cycle_id,
+            ) || null
+          : null,
+
+      next_cycle:
+        nextCycleBySourceId.get(
+          item.id,
+        ) || null,
     }),
   )
 

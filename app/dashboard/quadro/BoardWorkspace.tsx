@@ -94,6 +94,151 @@ function formatDateShort(
   )
 }
 
+function formatAgendaTagDate(
+  value?: string | null,
+) {
+  if (!value) {
+    return 'Agendada'
+  }
+
+  const date =
+    new Date(value)
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return 'Agendada'
+  }
+
+  const parts =
+    new Intl.DateTimeFormat(
+      'pt-BR',
+      {
+        timeZone:
+          'America/Sao_Paulo',
+        day:
+          '2-digit',
+        month:
+          '2-digit',
+        hour:
+          '2-digit',
+        minute:
+          '2-digit',
+        hour12:
+          false,
+      },
+    ).formatToParts(date)
+
+  const readPart =
+    (
+      type:
+        | 'day'
+        | 'month'
+        | 'hour'
+        | 'minute',
+    ) =>
+      parts.find(
+        (part) =>
+          part.type === type,
+      )?.value || ''
+
+  const day =
+    readPart('day')
+
+  const month =
+    readPart('month')
+
+  const hour =
+    readPart('hour')
+
+  const minute =
+    readPart('minute')
+
+  if (
+    !day ||
+    !month ||
+    !hour
+  ) {
+    return 'Agendada'
+  }
+
+  return (
+    day +
+    '/' +
+    month +
+    ' · ' +
+    hour +
+    'h' +
+    (
+      minute &&
+      minute !== '00'
+        ? minute
+        : ''
+    )
+  )
+}
+
+function agendaTagText(
+  requirement: any,
+) {
+  const status =
+    String(
+      requirement?.status ||
+      'pending',
+    )
+
+  if (
+    status === 'completed'
+  ) {
+    return 'Realizada'
+  }
+
+  if (
+    status === 'confirmed' ||
+    status === 'scheduled'
+  ) {
+    return formatAgendaTagDate(
+      requirement
+        ?.calendar_event
+        ?.starts_at ||
+      requirement
+        ?.scheduled_at ||
+      null,
+    )
+  }
+
+  if (
+    status === 'cancelled'
+  ) {
+    return 'Cancelada'
+  }
+
+  return 'Pendente'
+}
+
+function formatCyclePeriod(
+  start?: string | null,
+  end?: string | null,
+) {
+  if (!start && !end) {
+    return 'Período não definido'
+  }
+
+  if (start && end) {
+    return (
+      formatDateShort(start) +
+      ' – ' +
+      formatDateShort(end)
+    )
+  }
+
+  return formatDateShort(
+    start || end,
+  )
+}
+
 function formatPeriodTitle(
   clientName: string,
   start: string,
@@ -1738,9 +1883,88 @@ export default function BoardWorkspace({
                               )}
                             </div>
 
+                            {item.cycle_number && (
+                              <div className="board-cycle-identity">
+                                <span className="board-cycle-number">
+                                  <i className="ti ti-refresh" />
+
+                                  CICLO{' '}
+                                  {item.cycle_number}
+                                </span>
+
+                                <span className="board-cycle-period">
+                                  <i className="ti ti-calendar-stats" />
+
+                                  {formatCyclePeriod(
+                                    item.internal_deadline,
+                                    item.final_deadline,
+                                  )}
+                                </span>
+
+                                {item.next_cycle?.id && (
+                                  <span className="board-cycle-next-ready">
+                                    <i className="ti ti-circle-check" />
+
+                                    Próximo gerado
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
                             <h3>
                               {item.title}
                             </h3>
+
+                            {item.cycle_number && (
+                              <div
+                                className="board-cycle-chain"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
+                                onMouseDown={(event) =>
+                                  event.stopPropagation()
+                                }
+                              >
+                                {item.previous_cycle?.id && (
+                                  <a
+                                    href={
+                                      '/dashboard/quadro?board=' +
+                                      activeBoardId +
+                                      '&item=' +
+                                      item.previous_cycle.id
+                                    }
+                                  >
+                                    <i className="ti ti-arrow-back-up" />
+
+                                    Ciclo anterior
+                                  </a>
+                                )}
+
+                                {item.next_cycle?.id && (
+                                  <a
+                                    href={
+                                      '/dashboard/quadro?board=' +
+                                      activeBoardId +
+                                      '&item=' +
+                                      item.next_cycle.id
+                                    }
+                                  >
+                                    Próximo ciclo
+
+                                    <i className="ti ti-arrow-forward-up" />
+                                  </a>
+                                )}
+
+                                {!item.previous_cycle?.id &&
+                                  !item.next_cycle?.id && (
+                                    <span>
+                                      <i className="ti ti-point-filled" />
+
+                                      Primeiro ciclo da sequência
+                                    </span>
+                                  )}
+                              </div>
+                            )}
 
                             {scheduleRequirements.length >
                               0 && (
@@ -1777,32 +2001,9 @@ export default function BoardWorkspace({
                                     </strong>
 
                                     <span>
-                                      {alignmentRequirement.status ===
-                                      'completed'
-                                        ? 'Realizada'
-                                        : alignmentRequirement.status ===
-                                            'confirmed'
-                                          ? 'Confirmada'
-                                          : alignmentRequirement.status ===
-                                              'scheduled'
-                                            ? String(
-                                                alignmentRequirement
-                                                  .calendar_event
-                                                  ?.starts_at ||
-                                                  alignmentRequirement
-                                                    .scheduled_at ||
-                                                  '',
-                                              )
-                                                .slice(
-                                                  0,
-                                                  16,
-                                                )
-                                                .replace(
-                                                  'T',
-                                                  ' · ',
-                                                ) ||
-                                              'Agendada'
-                                            : 'Pendente'}
+                                      {agendaTagText(
+                                        alignmentRequirement,
+                                      )}
                                     </span>
                                   </button>
                                 )}
@@ -1827,32 +2028,9 @@ export default function BoardWorkspace({
                                     </strong>
 
                                     <span>
-                                      {captureRequirement.status ===
-                                      'completed'
-                                        ? 'Realizada'
-                                        : captureRequirement.status ===
-                                            'confirmed'
-                                          ? 'Confirmada'
-                                          : captureRequirement.status ===
-                                              'scheduled'
-                                            ? String(
-                                                captureRequirement
-                                                  .calendar_event
-                                                  ?.starts_at ||
-                                                  captureRequirement
-                                                    .scheduled_at ||
-                                                  '',
-                                              )
-                                                .slice(
-                                                  0,
-                                                  16,
-                                                )
-                                                .replace(
-                                                  'T',
-                                                  ' · ',
-                                                ) ||
-                                              'Agendada'
-                                            : 'Pendente'}
+                                      {agendaTagText(
+                                        captureRequirement,
+                                      )}
                                     </span>
                                   </button>
                                 )}

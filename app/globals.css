@@ -11286,3 +11286,128 @@ small,
     grid-template-columns: 1fr;
   }
 }
+
+
+/* AMPY-V17-A25.3A5B — IDENTIDADE VISUAL DOS CICLOS */
+
+.board-cycle-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 2px 0 8px;
+}
+
+.board-cycle-number,
+.board-cycle-period,
+.board-cycle-next-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 4px 7px;
+  border: 1px solid #DCE5EF;
+  border-radius: 8px;
+  background: #F8FAFC;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.board-cycle-number {
+  border-color:
+    rgba(37, 99, 235, 0.22);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(239, 246, 255, 0.96),
+      rgba(255, 255, 255, 0.98)
+    );
+  color: #1D4ED8;
+}
+
+.board-cycle-period {
+  color: #64748B;
+}
+
+.board-cycle-next-ready {
+  border-color:
+    rgba(22, 163, 74, 0.24);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(240, 253, 244, 0.96),
+      rgba(255, 255, 255, 0.98)
+    );
+  color: #15803D;
+}
+
+.board-cycle-identity i {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.board-cycle-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: -2px 0 8px;
+}
+
+.board-cycle-chain a,
+.board-cycle-chain span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #64748B;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.board-cycle-chain a {
+  padding: 4px 6px;
+  border-radius: 7px;
+  background:
+    rgba(241, 245, 249, 0.82);
+  transition:
+    color 140ms ease,
+    background 140ms ease;
+}
+
+.board-cycle-chain a:hover {
+  background: #E2E8F0;
+  color: #1D4ED8;
+}
+
+.board-cycle-chain i {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.board-cycle-agenda-tag[data-status="confirmed"] {
+  border-color:
+    rgba(22, 163, 74, 0.34);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(220, 252, 231, 0.98),
+      rgba(240, 253, 244, 0.98)
+    );
+  color: #15803D;
+  box-shadow:
+    0 7px 16px
+    rgba(22, 163, 74, 0.08);
+}
+
+.board-cycle-agenda-tag[data-status="confirmed"] strong,
+.board-cycle-agenda-tag[data-status="confirmed"] span {
+  color: #15803D;
+}
