@@ -3041,25 +3041,19 @@ function ServiceModal({
               value="1"
             />
 
+            <input
+              type="hidden"
+              name="cycle_duration_days"
+              value="30"
+            />
+
             <div className="client-service-link-cycle">
-              <div className="fg">
-                <label className="fl">
-                  Duração do ciclo *
-                </label>
+              <div className="client-service-pauta-note">
+                <i className="ti ti-info-circle" />
 
-                <div className="client-service-duration-input">
-                  <input
-                    className="fi"
-                    type="number"
-                    name="cycle_duration_days"
-                    min="1"
-                    max="365"
-                    required
-                    defaultValue="30"
-                  />
-
-                  <span>dias</span>
-                </div>
+                <span>
+                  Defina quais pendências de Agenda este serviço exigirá ao abrir uma nova Pauta.
+                </span>
               </div>
 
               <div className="client-service-cycle-options">

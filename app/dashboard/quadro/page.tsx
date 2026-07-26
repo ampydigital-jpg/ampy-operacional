@@ -54,7 +54,11 @@ async function hasTotalAccess() {
 export default async function QuadroPage({
   searchParams,
 }: {
-  searchParams: { board?: string; item?: string }
+  searchParams: {
+    board?: string
+    pauta?: string
+    item?: string
+  }
 }) {
   noStore()
 
@@ -77,7 +81,7 @@ export default async function QuadroPage({
     supabase
       .from('clients')
       .select(
-        'id,name,avatar_initials,avatar_color,avatar_bg,status',
+        'id,name,avatar_initials,avatar_color,avatar_bg,status,responsible_id,drive_folder_url',
       )
       .eq('status', 'active')
       .order('name'),
@@ -111,6 +115,11 @@ export default async function QuadroPage({
     ? String(searchParams.board)
     : String(boards[0]?.id || '')
 
+  let pautasResult: any = {
+    data: [],
+    error: null,
+  }
+
   let columnsResult: any = {
     data: [],
     error: null,
@@ -127,24 +136,88 @@ export default async function QuadroPage({
   }
 
   if (activeBoardId) {
-    ;[columnsResult, demandsResult] = await Promise.all([
-      supabase
-        .from('board_columns')
-        .select(
-          'id,board_id,name,color,operational_status,automation_role,position,created_at,updated_at',
-        )
-        .eq('board_id', activeBoardId)
-        .order('position'),
-      supabase
-        .from('work_items')
-        .select(
-          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,cycle_number,generated_from_cycle_id,generated_at,cycle_duration_days_snapshot',
-        )
-        .eq('board_id', activeBoardId)
-        .not('status', 'in', '(archived,cancelled)')
-        .order('created_at', { ascending: false })
-        .limit(2000),
-    ])
+    pautasResult = await supabase
+      .from('pautas')
+      .select(
+        'id,board_id,name,reference_month,magic_number_date,scheduled_until_date,lifecycle_status,opened_at,closed_at,archived_at,created_at,updated_at',
+      )
+      .eq('board_id', activeBoardId)
+      .order('reference_month', {
+        ascending: false,
+      })
+  }
+
+  const pautas = pautasResult.data || []
+
+  const requestedPauta = String(
+    searchParams.pauta || '',
+  )
+
+  const defaultPauta =
+    pautas.find(
+      (pauta: any) =>
+        pauta.lifecycle_status === 'open',
+    ) ||
+    pautas.find(
+      (pauta: any) =>
+        pauta.lifecycle_status === 'draft',
+    ) ||
+    pautas[0] ||
+    null
+
+  const activePautaKey =
+    requestedPauta === 'all' ||
+    requestedPauta === 'legacy'
+      ? requestedPauta
+      : pautas.some(
+            (pauta: any) =>
+              pauta.id === requestedPauta,
+          )
+        ? requestedPauta
+        : String(
+            defaultPauta?.id || 'legacy',
+          )
+
+  const activePauta =
+    pautas.find(
+      (pauta: any) =>
+        pauta.id === activePautaKey,
+    ) || null
+
+  if (activeBoardId) {
+    columnsResult = await supabase
+      .from('board_columns')
+      .select(
+        'id,board_id,name,color,operational_status,automation_role,position,created_at,updated_at',
+      )
+      .eq('board_id', activeBoardId)
+      .order('position')
+
+    let demandQuery = supabase
+      .from('work_items')
+      .select(
+        'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,pauta_id,is_pauta_card,pauta_card_id,completed_at,programming_covered_until',
+      )
+      .eq('board_id', activeBoardId)
+      .not('status', 'in', '(archived,cancelled)')
+
+    if (activePautaKey === 'legacy') {
+      demandQuery = demandQuery.is(
+        'pauta_id',
+        null,
+      )
+    } else if (activePautaKey !== 'all') {
+      demandQuery = demandQuery.eq(
+        'pauta_id',
+        activePautaKey,
+      )
+    }
+
+    demandsResult = await demandQuery
+      .order('created_at', {
+        ascending: false,
+      })
+      .limit(2000)
   }
 
   const demandRows =
@@ -173,6 +246,7 @@ export default async function QuadroPage({
   const clientsById = mapById(clients)
   const profilesById = mapById(profiles)
   const servicesById = mapById(services)
+  const pautasById = mapById(pautas)
 
   const requirementsByItem =
     new Map<string, any[]>()
@@ -205,26 +279,6 @@ export default async function QuadroPage({
     )
   }
 
-  const demandRowsById =
-    mapById(demandRows)
-
-  const nextCycleBySourceId =
-    new Map<string, any>()
-
-  for (
-    const demand
-    of demandRows
-  ) {
-    if (
-      demand.generated_from_cycle_id
-    ) {
-      nextCycleBySourceId.set(
-        demand.generated_from_cycle_id,
-        demand,
-      )
-    }
-  }
-
   const demands = demandRows.map(
     (item: any) => ({
       ...item,
@@ -234,20 +288,11 @@ export default async function QuadroPage({
       responsible: item.responsible_id
         ? profilesById.get(item.responsible_id) || null
         : null,
+      pauta: item.pauta_id
+        ? pautasById.get(item.pauta_id) || null
+        : null,
       schedule_requirements:
         requirementsByItem.get(item.id) || [],
-
-      previous_cycle:
-        item.generated_from_cycle_id
-          ? demandRowsById.get(
-              item.generated_from_cycle_id,
-            ) || null
-          : null,
-
-      next_cycle:
-        nextCycleBySourceId.get(
-          item.id,
-        ) || null,
     }),
   )
 
@@ -264,6 +309,9 @@ export default async function QuadroPage({
     boardsResult.error
       ? `Quadros: ${boardsResult.error.message}`
       : null,
+    pautasResult.error
+      ? `Pautas: ${pautasResult.error.message}`
+      : null,
     columnsResult.error
       ? `Colunas: ${columnsResult.error.message}`
       : null,
@@ -271,7 +319,7 @@ export default async function QuadroPage({
       ? `Demandas: ${demandsResult.error.message}`
       : null,
     scheduleRequirementsResult.error
-      ? `Agenda do ciclo: ${scheduleRequirementsResult.error.message}`
+      ? `Agenda operacional: ${scheduleRequirementsResult.error.message}`
       : null,
     clientsResult.error
       ? `Clientes: ${clientsResult.error.message}`
@@ -288,6 +336,9 @@ export default async function QuadroPage({
     <BoardWorkspace
       boards={boards}
       activeBoardId={activeBoardId}
+      pautas={pautas}
+      activePautaKey={activePautaKey}
+      activePauta={activePauta}
       initialItemId={String(
         searchParams.item || '',
       )}

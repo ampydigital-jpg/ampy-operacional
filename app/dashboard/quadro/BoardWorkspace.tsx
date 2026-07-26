@@ -28,8 +28,8 @@ import {
   updateBoardColumnAction,
 } from '@/lib/actions'
 import { saveBoardPeriodDemandWithTagAction } from '@/lib/work-item-card-tag-actions'
-import NextCycleGeneratorModal from './NextCycleGeneratorModal'
 import CycleAgendaPanel from './CycleAgendaPanel'
+import OpenPautaModal from './OpenPautaModal'
 
 const BOARD_COLORS = [
   '#2563EB',
@@ -218,24 +218,54 @@ function agendaTagText(
   return 'Pendente'
 }
 
-function formatCyclePeriod(
-  start?: string | null,
-  end?: string | null,
+function formatPautaReference(
+  value?: string | null,
 ) {
-  if (!start && !end) {
-    return 'Período não definido'
+  if (!value) {
+    return 'Sem referência'
   }
 
-  if (start && end) {
-    return (
-      formatDateShort(start) +
-      ' – ' +
-      formatDateShort(end)
+  const date =
+    new Date(
+      String(value).slice(0, 10) +
+        'T12:00:00',
     )
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return 'Sem referência'
   }
 
-  return formatDateShort(
-    start || end,
+  return new Intl.DateTimeFormat(
+    'pt-BR',
+    {
+      month: 'short',
+      year: 'numeric',
+    },
+  )
+    .format(date)
+    .replace('.', '')
+    .toUpperCase()
+}
+
+function formatDateFull(
+  value?: string | null,
+) {
+  if (!value) return '--/--/----'
+
+  return new Date(
+    String(value).slice(0, 10) +
+      'T12:00:00',
+  ).toLocaleDateString(
+    'pt-BR',
+    {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    },
   )
 }
 
@@ -346,6 +376,9 @@ function cardTone(item: any) {
 export default function BoardWorkspace({
   boards = [],
   activeBoardId = '',
+  pautas = [],
+  activePautaKey = 'legacy',
+  activePauta = null,
   initialItemId = '',
   columns = [],
   demands = [],
@@ -445,13 +478,8 @@ export default function BoardWorkspace({
     useState('')
 
   const [
-    selectedCycleIds,
-    setSelectedCycleIds,
-  ] = useState<string[]>([])
-
-  const [
-    cycleModalOpen,
-    setCycleModalOpen,
+    pautaModalOpen,
+    setPautaModalOpen,
   ] = useState(false)
 
   const [
@@ -482,25 +510,18 @@ export default function BoardWorkspace({
         board.id === activeBoardId,
     ) || null
 
-  const selectedCycleItems =
-    useMemo(
-      () =>
-        items.filter(
-          (item: any) =>
-            selectedCycleIds.includes(
-              item.id,
-            ),
-        ),
-      [
-        items,
-        selectedCycleIds,
-      ],
-    )
+  const readOnlyPautaView =
+    activePautaKey === 'all'
+
+  const legacyPautaView =
+    activePautaKey === 'legacy'
 
   useEffect(() => {
-    setSelectedCycleIds([])
-    setCycleModalOpen(false)
-  }, [activeBoardId])
+    setPautaModalOpen(false)
+  }, [
+    activeBoardId,
+    activePautaKey,
+  ])
 
   const selectedClient =
     clients.find(
@@ -668,31 +689,16 @@ export default function BoardWorkspace({
     )
   }
 
-  function toggleCycleSelection(
-    itemId: string,
-    checked: boolean,
-  ) {
-    setSelectedCycleIds(
-      (current) =>
-        checked
-          ? current.includes(
-              itemId,
-            )
-            ? current
-            : [
-                ...current,
-                itemId,
-              ]
-          : current.filter(
-              (id) =>
-                id !== itemId,
-            ),
-    )
-  }
-
   function openCreateDemand(
     columnId: string,
   ) {
+    if (!legacyPautaView) {
+      setError(
+        'Crie demandas adicionais pela área Demandas e vincule-as à Pauta correspondente.',
+      )
+      return
+    }
+
     setEditing(null)
     setSelectedColumnId(columnId)
     setFormClient('')
@@ -804,7 +810,12 @@ export default function BoardWorkspace({
     cardId: string | null,
     columnId: string,
   ) {
-    if (!cardId) return
+    if (
+      !cardId ||
+      readOnlyPautaView
+    ) {
+      return
+    }
 
     const targetColumn =
       boardColumns.find(
@@ -1290,6 +1301,46 @@ export default function BoardWorkspace({
           </select>
         </div>
 
+        <div className="board-pauta-selector">
+          <span>Pauta ativa</span>
+
+          <select
+            className="fi compact"
+            value={activePautaKey}
+            onChange={(event) => {
+              const next =
+                event.target.value
+
+              window.location.href =
+                '/dashboard/quadro?board=' +
+                activeBoardId +
+                '&pauta=' +
+                encodeURIComponent(
+                  next,
+                )
+            }}
+          >
+            {pautas.map(
+              (pauta: any) => (
+                <option
+                  key={pauta.id}
+                  value={pauta.id}
+                >
+                  {pauta.name}
+                </option>
+              ),
+            )}
+
+            <option value="legacy">
+              Sem Pauta / Legado
+            </option>
+
+            <option value="all">
+              Todas as Pautas
+            </option>
+          </select>
+        </div>
+
         <select
           className="fi compact"
           value={clientId}
@@ -1426,7 +1477,7 @@ export default function BoardWorkspace({
               '#2563EB',
           }}
         >
-          <div>
+          <div className="board-pauta-heading-copy">
             <strong>
               {activeBoard.name}
             </strong>
@@ -1437,33 +1488,77 @@ export default function BoardWorkspace({
               {filtered.length}
               {' '}demanda(s)
             </span>
+
+            {activePauta && (
+              <div className="board-pauta-summary">
+                <span className="board-pauta-summary-name">
+                  <i className="ti ti-calendar-stats" />
+
+                  {activePauta.name}
+                </span>
+
+                <span>
+                  Magic Number:{' '}
+                  <strong>
+                    {formatDateFull(
+                      activePauta.magic_number_date,
+                    )}
+                  </strong>
+                </span>
+
+                <span>
+                  Programado até:{' '}
+                  <strong>
+                    {formatDateFull(
+                      activePauta.scheduled_until_date,
+                    )}
+                  </strong>
+                </span>
+              </div>
+            )}
+
+            {legacyPautaView && (
+              <div className="board-pauta-summary legacy">
+                <span>
+                  <i className="ti ti-archive" />
+
+                  Sem Pauta / Legado
+                </span>
+
+                <small>
+                  Registros anteriores preservados fora da operação mensal.
+                </small>
+              </div>
+            )}
+
+            {readOnlyPautaView && (
+              <div className="board-pauta-summary readonly">
+                <span>
+                  <i className="ti ti-eye" />
+
+                  Consulta de todas as Pautas
+                </span>
+
+                <small>
+                  Selecione uma Pauta específica para mover ou editar cards.
+                </small>
+              </div>
+            )}
           </div>
 
           {canManage && (
-            <div className="board-cycle-heading-actions">
+            <div className="board-pauta-heading-actions">
               <button
-                className="bpri board-cycle-open-button"
+                className="bpri board-pauta-open-button"
                 type="button"
-                disabled={
-                  selectedCycleItems.length ===
-                  0
-                }
                 onClick={() =>
-                  setCycleModalOpen(
+                  setPautaModalOpen(
                     true,
                   )
                 }
               >
-                <i className="ti ti-refresh" />
-                Gerar próximo ciclo
-                {selectedCycleItems.length >
-                0
-                  ? ' (' +
-                    String(
-                      selectedCycleItems.length,
-                    ) +
-                    ')'
-                  : ''}
+                <i className="ti ti-calendar-plus" />
+                Abrir nova Pauta
               </button>
 
               <button
@@ -1624,18 +1719,20 @@ export default function BoardWorkspace({
                       </option>
                     </select>
 
-                    <button
-                      className="board-a14-column-icon"
-                      type="button"
-                      title="Nova demanda nesta coluna"
-                      onClick={() =>
-                        openCreateDemand(
-                          column.id,
-                        )
-                      }
-                    >
-                      <i className="ti ti-plus" />
-                    </button>
+                    {legacyPautaView && (
+                      <button
+                        className="board-a14-column-icon"
+                        type="button"
+                        title="Nova demanda nesta coluna"
+                        onClick={() =>
+                          openCreateDemand(
+                            column.id,
+                          )
+                        }
+                      >
+                        <i className="ti ti-plus" />
+                      </button>
+                    )}
 
                     {canManage && (
                       <details className="board-a14-column-menu board-a15-column-menu">
@@ -1709,23 +1806,6 @@ export default function BoardWorkspace({
                             item.final_deadline,
                           )
 
-                        const isCompletedCycleCard =
-                          canManage &&
-                          column.automation_role ===
-                            'completed' &&
-                          [
-                            'done',
-                            'delivered',
-                          ].includes(
-                            String(
-                              item.status ||
-                              '',
-                            ),
-                          ) &&
-                          Boolean(
-                            item.client_id,
-                          )
-
                         const scheduleRequirements =
                           Array.isArray(
                             item.schedule_requirements,
@@ -1767,10 +1847,24 @@ export default function BoardWorkspace({
                             data-tone={cardTone(
                               item,
                             )}
-                            draggable
+                            data-read-only={
+                              readOnlyPautaView
+                                ? 'true'
+                                : 'false'
+                            }
+                            draggable={
+                              !readOnlyPautaView
+                            }
                             onDragStart={(
                               event,
                             ) => {
+                              if (
+                                readOnlyPautaView
+                              ) {
+                                event.preventDefault()
+                                return
+                              }
+
                               event.stopPropagation()
                               setDragCardId(
                                 item.id,
@@ -1781,51 +1875,17 @@ export default function BoardWorkspace({
                                 null,
                               )
                             }
-                            onClick={() =>
-                              openEditDemand(
-                                item,
-                              )
-                            }
+                            onClick={() => {
+                              if (
+                                !readOnlyPautaView
+                              ) {
+                                openEditDemand(
+                                  item,
+                                )
+                              }
+                            }}
                           >
                             <div className="board-a15-card-status">
-                              {isCompletedCycleCard && (
-                                <label
-                                  className="board-cycle-card-select"
-                                  title="Selecionar para gerar o próximo ciclo"
-                                  onClick={(
-                                    event,
-                                  ) =>
-                                    event.stopPropagation()
-                                  }
-                                  onMouseDown={(
-                                    event,
-                                  ) =>
-                                    event.stopPropagation()
-                                  }
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedCycleIds.includes(
-                                      item.id,
-                                    )}
-                                    onChange={(
-                                      event,
-                                    ) =>
-                                      toggleCycleSelection(
-                                        item.id,
-                                        event
-                                          .target
-                                          .checked,
-                                      )
-                                    }
-                                  />
-
-                                  <span>
-                                    Ciclo
-                                  </span>
-                                </label>
-                              )}
-
                               <span
                                 className={
                                   'board-a15-priority ' +
@@ -1883,88 +1943,36 @@ export default function BoardWorkspace({
                               )}
                             </div>
 
-                            {item.cycle_number && (
-                              <div className="board-cycle-identity">
-                                <span className="board-cycle-number">
-                                  <i className="ti ti-refresh" />
+                            <div className="board-pauta-card-context">
+                              {item.pauta ? (
+                                <>
+                                  <span className="board-pauta-card-badge">
+                                    <i className="ti ti-calendar-stats" />
 
-                                  CICLO{' '}
-                                  {item.cycle_number}
-                                </span>
-
-                                <span className="board-cycle-period">
-                                  <i className="ti ti-calendar-stats" />
-
-                                  {formatCyclePeriod(
-                                    item.internal_deadline,
-                                    item.final_deadline,
-                                  )}
-                                </span>
-
-                                {item.next_cycle?.id && (
-                                  <span className="board-cycle-next-ready">
-                                    <i className="ti ti-circle-check" />
-
-                                    Próximo gerado
+                                    PAUTA ·{' '}
+                                    {formatPautaReference(
+                                      item.pauta.reference_month,
+                                    )}
                                   </span>
-                                )}
-                              </div>
-                            )}
+
+                                  {item.is_pauta_card && (
+                                    <span className="board-pauta-monthly-card">
+                                      Card mensal
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="board-pauta-card-legacy">
+                                  <i className="ti ti-archive" />
+
+                                  SEM PAUTA
+                                </span>
+                              )}
+                            </div>
 
                             <h3>
                               {item.title}
                             </h3>
-
-                            {item.cycle_number && (
-                              <div
-                                className="board-cycle-chain"
-                                onClick={(event) =>
-                                  event.stopPropagation()
-                                }
-                                onMouseDown={(event) =>
-                                  event.stopPropagation()
-                                }
-                              >
-                                {item.previous_cycle?.id && (
-                                  <a
-                                    href={
-                                      '/dashboard/quadro?board=' +
-                                      activeBoardId +
-                                      '&item=' +
-                                      item.previous_cycle.id
-                                    }
-                                  >
-                                    <i className="ti ti-arrow-back-up" />
-
-                                    Ciclo anterior
-                                  </a>
-                                )}
-
-                                {item.next_cycle?.id && (
-                                  <a
-                                    href={
-                                      '/dashboard/quadro?board=' +
-                                      activeBoardId +
-                                      '&item=' +
-                                      item.next_cycle.id
-                                    }
-                                  >
-                                    Próximo ciclo
-
-                                    <i className="ti ti-arrow-forward-up" />
-                                  </a>
-                                )}
-
-                                {!item.previous_cycle?.id &&
-                                  !item.next_cycle?.id && (
-                                    <span>
-                                      <i className="ti ti-point-filled" />
-
-                                      Primeiro ciclo da sequência
-                                    </span>
-                                  )}
-                              </div>
-                            )}
 
                             {scheduleRequirements.length >
                               0 && (
@@ -2519,16 +2527,20 @@ export default function BoardWorkspace({
         activeBoardId={
           activeBoardId
         }
+        activePautaKey={
+          activePautaKey
+        }
         onClose={() =>
           setCycleAgendaItem(null)
         }
       />
 
-      <NextCycleGeneratorModal
-        open={cycleModalOpen}
-        items={selectedCycleItems}
+      <OpenPautaModal
+        open={pautaModalOpen}
+        boardId={activeBoardId}
+        clients={clients}
         onClose={() =>
-          setCycleModalOpen(false)
+          setPautaModalOpen(false)
         }
       />
 

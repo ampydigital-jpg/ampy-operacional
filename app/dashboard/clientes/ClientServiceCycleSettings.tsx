@@ -58,12 +58,6 @@ export default function ClientServiceCycleSettings({
     service?.requires_capture !== false,
   )
 
-  const durationLabel =
-    service?.cycle_duration_days
-      ? String(
-          service.cycle_duration_days,
-        ) + ' dias'
-      : 'Duração pendente'
 
   async function submit(
     event: FormEvent<HTMLFormElement>,
@@ -86,7 +80,7 @@ export default function ClientServiceCycleSettings({
     ) {
       setError(
         result.error ||
-          'Erro ao salvar o ciclo.',
+          'Erro ao salvar as regras da Pauta.',
       )
 
       setLoading(false)
@@ -100,9 +94,9 @@ export default function ClientServiceCycleSettings({
     <div className="client-service-cycle">
       <div className="client-service-cycle-summary">
         <span>
-          <i className="ti ti-repeat" />
+          <i className="ti ti-calendar-stats" />
 
-          {durationLabel}
+          Regras da Pauta
         </span>
 
         <span>
@@ -134,7 +128,7 @@ export default function ClientServiceCycleSettings({
 
           {editing
             ? 'Fechar'
-            : 'Configurar ciclo'}
+            : 'Configurar Pauta'}
         </button>
       </div>
 
@@ -155,31 +149,21 @@ export default function ClientServiceCycleSettings({
             value="1"
           />
 
-          <div className="fg">
-            <label className="fl">
-              Duração do ciclo
-            </label>
+          <input
+            type="hidden"
+            name="cycle_duration_days"
+            value={
+              service?.cycle_duration_days ||
+              30
+            }
+          />
 
-            <div className="client-service-duration-input">
-              <input
-                className="fi"
-                type="number"
-                name="cycle_duration_days"
-                min="1"
-                max="365"
-                required
-                defaultValue={
-                  service?.cycle_duration_days ||
-                  30
-                }
-              />
+          <div className="client-service-pauta-note">
+            <i className="ti ti-info-circle" />
 
-              <span>dias</span>
-            </div>
-
-            <small className="client-service-help">
-              A data poderá ser ajustada antes de gerar o próximo ciclo.
-            </small>
+            <span>
+              Estas regras definem quais pendências de Agenda serão criadas para o cliente ao abrir uma nova Pauta.
+            </span>
           </div>
 
           <div className="client-service-cycle-options">
@@ -268,7 +252,7 @@ export default function ClientServiceCycleSettings({
             >
               {loading
                 ? 'Salvando...'
-                : 'Salvar ciclo'}
+                : 'Salvar regras'}
             </button>
           </div>
         </form>

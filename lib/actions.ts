@@ -3745,6 +3745,226 @@ export async function updateProjectStepAction(
 }
 
 // =========================================================
+// AMPY-V17-A26.2 — ABERTURA DE PAUTA MENSAL
+// =========================================================
+
+type OpenMonthlyPautaInput = {
+  boardId: string
+  name: string
+  referenceMonth: string
+  magicNumberDate: string
+  scheduledUntilDate: string
+  clientIds: string[]
+  confirmation: string
+}
+
+function validPautaDate(input: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(input)
+}
+
+export async function openMonthlyPautaAction(
+  input: OpenMonthlyPautaInput,
+) {
+  const {
+    supabase,
+    user,
+    profile,
+  } = await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem abrir Pautas.',
+    )
+  }
+
+  const boardId =
+    String(
+      input?.boardId || '',
+    ).trim()
+
+  const name =
+    String(
+      input?.name || '',
+    ).trim()
+
+  const referenceMonth =
+    String(
+      input?.referenceMonth || '',
+    ).trim()
+
+  const magicNumberDate =
+    String(
+      input?.magicNumberDate || '',
+    ).trim()
+
+  const scheduledUntilDate =
+    String(
+      input?.scheduledUntilDate || '',
+    ).trim()
+
+  const clientIds = Array.from(
+    new Set(
+      (
+        Array.isArray(
+          input?.clientIds,
+        )
+          ? input.clientIds
+          : []
+      )
+        .map((id) =>
+          String(id || '').trim(),
+        )
+        .filter(Boolean),
+    ),
+  ).slice(0, 300)
+
+  if (!boardId) {
+    return {
+      error:
+        'Selecione o Quadro da Pauta.',
+    }
+  }
+
+  if (
+    name.length < 3 ||
+    name.length > 120
+  ) {
+    return {
+      error:
+        'Informe um nome de Pauta entre 3 e 120 caracteres.',
+    }
+  }
+
+  if (
+    !validPautaDate(
+      referenceMonth,
+    ) ||
+    !referenceMonth.endsWith(
+      '-01',
+    )
+  ) {
+    return {
+      error:
+        'Informe um mês de referência válido.',
+    }
+  }
+
+  if (
+    !validPautaDate(
+      magicNumberDate,
+    ) ||
+    !validPautaDate(
+      scheduledUntilDate,
+    )
+  ) {
+    return {
+      error:
+        'Informe datas válidas para Magic Number e Programado até.',
+    }
+  }
+
+  if (
+    magicNumberDate >
+    scheduledUntilDate
+  ) {
+    return {
+      error:
+        'O Magic Number não pode ser posterior à data Programado até.',
+    }
+  }
+
+  if (clientIds.length === 0) {
+    return {
+      error:
+        'Selecione pelo menos um cliente ativo.',
+    }
+  }
+
+  if (
+    String(
+      input?.confirmation || '',
+    ).trim() !==
+    'ABRIR PAUTA'
+  ) {
+    return {
+      error:
+        'Digite exatamente ABRIR PAUTA para continuar.',
+    }
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase.rpc(
+    'open_monthly_pauta',
+    {
+      p_board_id:
+        boardId,
+      p_name:
+        name,
+      p_reference_month:
+        referenceMonth,
+      p_magic_number_date:
+        magicNumberDate,
+      p_scheduled_until_date:
+        scheduledUntilDate,
+      p_client_ids:
+        clientIds,
+      p_confirmation:
+        'ABRIR PAUTA',
+    },
+  )
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  const payload =
+    data &&
+    typeof data === 'object'
+      ? (
+          data as Record<
+            string,
+            any
+          >
+        )
+      : {}
+
+  const pautaId =
+    String(
+      payload.pauta_id || '',
+    )
+
+  if (!pautaId) {
+    return {
+      error:
+        'A Pauta foi processada sem retornar um identificador válido.',
+    }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    pautaId,
+    cardsCreated:
+      Number(
+        payload.cards_created ||
+        0,
+      ),
+  }
+}
+
+// =========================================================
 // AMPY-V17-A25.3A3B — PREPARAÇÃO E GERAÇÃO DE CICLOS
 // =========================================================
 

@@ -11411,3 +11411,323 @@ small,
 .board-cycle-agenda-tag[data-status="confirmed"] span {
   color: #15803D;
 }
+
+
+/* AMPY-V17-A26.2 — PAUTAS MENSAIS NO QUADRO */
+
+.board-pauta-selector {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.board-pauta-selector > span {
+  color: #64748B;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.board-pauta-heading-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.board-pauta-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 5px;
+}
+
+.board-pauta-summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.board-pauta-summary > span > strong {
+  color: #0F172A;
+  font-size: inherit;
+}
+
+.board-pauta-summary-name {
+  padding: 5px 8px;
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(245, 243, 255, 0.98),
+      rgba(255, 255, 255, 0.98)
+    );
+  color: #6D28D9 !important;
+  font-weight: 900 !important;
+}
+
+.board-pauta-summary small {
+  color: #64748B;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.board-pauta-summary.legacy > span {
+  color: #92400E;
+}
+
+.board-pauta-summary.readonly > span {
+  color: #1D4ED8;
+}
+
+.board-pauta-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.board-pauta-open-button {
+  min-width: 150px;
+}
+
+.board-pauta-card-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 2px 0 7px;
+}
+
+.board-pauta-card-badge,
+.board-pauta-monthly-card,
+.board-pauta-card-legacy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 3px 6px;
+  border-radius: 7px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.board-pauta-card-badge {
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(245, 243, 255, 0.98),
+      rgba(255, 255, 255, 0.98)
+    );
+  color: #6D28D9;
+}
+
+.board-pauta-monthly-card {
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  background: #EFF6FF;
+  color: #1D4ED8;
+}
+
+.board-pauta-card-legacy {
+  border: 1px solid rgba(202, 138, 4, 0.2);
+  background: #FEFCE8;
+  color: #A16207;
+}
+
+.board-a14-card[data-read-only="true"] {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.board-a14-card[data-read-only="true"]:hover {
+  transform: none;
+}
+
+.pauta-open-modal-ov {
+  z-index: 1400;
+}
+
+.pauta-open-modal {
+  width: min(880px, calc(100vw - 32px));
+  max-height: min(860px, calc(100vh - 32px));
+}
+
+.pauta-open-modal-body {
+  display: grid;
+  gap: 16px;
+  overflow: auto;
+}
+
+.pauta-open-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(170px, 0.8fr)
+    minmax(160px, 0.7fr)
+    minmax(160px, 0.7fr);
+  gap: 12px;
+}
+
+.pauta-open-clients {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #F8FAFC;
+}
+
+.pauta-open-clients-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pauta-open-clients-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.pauta-open-clients-head strong {
+  color: #0F172A;
+  font-size: 12px;
+}
+
+.pauta-open-clients-head span {
+  color: #64748B;
+  font-size: 10px;
+}
+
+.pauta-open-search {
+  width: 100%;
+  max-width: none;
+}
+
+.pauta-open-client-list {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.pauta-open-client {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #E2E8F0;
+  border-radius: 9px;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.pauta-open-client:has(input:checked) {
+  border-color: rgba(124, 58, 237, 0.34);
+  box-shadow:
+    0 6px 14px rgba(124, 58, 237, 0.07);
+}
+
+.pauta-open-client input {
+  flex: 0 0 auto;
+}
+
+.pauta-open-client-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.pauta-open-client strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #334155;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pauta-open-rule,
+.client-service-pauta-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 9px;
+  background: #EFF6FF;
+  color: #1E40AF;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.pauta-open-rule i,
+.client-service-pauta-note i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  font-size: 14px;
+}
+
+.client-service-link-cycle
+  > .client-service-pauta-note {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .pauta-open-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .pauta-open-client-list {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .board-pauta-selector {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .board-pauta-heading-actions {
+    justify-content: flex-start;
+  }
+
+  .pauta-open-grid,
+  .pauta-open-client-list {
+    grid-template-columns: 1fr;
+  }
+
+  .pauta-open-clients-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

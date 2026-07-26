@@ -155,11 +155,13 @@ function agendaHref({
   requirement,
   type,
   activeBoardId,
+  activePautaKey,
 }: {
   item: any
   requirement: any
   type: RequirementType
   activeBoardId: string
+  activePautaKey: string
 }) {
   const calendarEventId =
     String(
@@ -192,14 +194,27 @@ function agendaHref({
     )
   }
 
+  let returnPath =
+    '/dashboard/quadro?board=' +
+    encodeURIComponent(
+      activeBoardId,
+    )
+
+  if (activePautaKey) {
+    returnPath +=
+      '&pauta=' +
+      encodeURIComponent(
+        activePautaKey,
+      )
+  }
+
+  returnPath +=
+    '#work-item-' +
+    item.id
+
   params.set(
     'return',
-    '/dashboard/quadro?board=' +
-      encodeURIComponent(
-        activeBoardId,
-      ) +
-      '#work-item-' +
-      item.id,
+    returnPath,
   )
 
   if (calendarEventId) {
@@ -247,11 +262,13 @@ function RequirementBlock({
   requirement,
   type,
   activeBoardId,
+  activePautaKey,
 }: {
   item: any
   requirement: any
   type: RequirementType
   activeBoardId: string
+  activePautaKey: string
 }) {
   const definition =
     requirementLabel(type)
@@ -341,6 +358,7 @@ function RequirementBlock({
           requirement,
           type,
           activeBoardId,
+          activePautaKey,
         })}
       >
         <i
@@ -365,10 +383,12 @@ function RequirementBlock({
 export default function CycleAgendaPanel({
   item,
   activeBoardId,
+  activePautaKey,
   onClose,
 }: {
   item: any
   activeBoardId: string
+  activePautaKey: string
   onClose: () => void
 }) {
   if (!item) return null
@@ -408,7 +428,7 @@ export default function CycleAgendaPanel({
         <div className="modal-head">
           <div>
             <div className="modal-title">
-              Agenda do ciclo
+              Agenda operacional
             </div>
 
             <div className="modal-sub">
@@ -444,6 +464,9 @@ export default function CycleAgendaPanel({
                   activeBoardId={
                     activeBoardId
                   }
+                  activePautaKey={
+                    activePautaKey
+                  }
                 />
               )}
 
@@ -454,6 +477,9 @@ export default function CycleAgendaPanel({
                   type="capture"
                   activeBoardId={
                     activeBoardId
+                  }
+                  activePautaKey={
+                    activePautaKey
                   }
                 />
               )}
