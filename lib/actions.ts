@@ -3750,7 +3750,6 @@ export async function updateProjectStepAction(
 
 type OpenMonthlyPautaInput = {
   boardId: string
-  name: string
   referenceMonth: string
   magicNumberDate: string
   scheduledUntilDate: string
@@ -3760,6 +3759,38 @@ type OpenMonthlyPautaInput = {
 
 function validPautaDate(input: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(input)
+}
+
+function monthlyPautaName(
+  referenceMonth: string,
+) {
+  const date = new Date(
+    referenceMonth +
+      'T12:00:00',
+  )
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return ''
+  }
+
+  const label =
+    new Intl.DateTimeFormat(
+      'pt-BR',
+      {
+        month: 'long',
+        year: 'numeric',
+      },
+    ).format(date)
+
+  return (
+    'Pauta ' +
+    label.charAt(0).toUpperCase() +
+    label.slice(1)
+  )
 }
 
 export async function openMonthlyPautaAction(
@@ -3787,11 +3818,6 @@ export async function openMonthlyPautaAction(
   const boardId =
     String(
       input?.boardId || '',
-    ).trim()
-
-  const name =
-    String(
-      input?.name || '',
     ).trim()
 
   const referenceMonth =
@@ -3833,16 +3859,6 @@ export async function openMonthlyPautaAction(
   }
 
   if (
-    name.length < 3 ||
-    name.length > 120
-  ) {
-    return {
-      error:
-        'Informe um nome de Pauta entre 3 e 120 caracteres.',
-    }
-  }
-
-  if (
     !validPautaDate(
       referenceMonth,
     ) ||
@@ -3877,6 +3893,28 @@ export async function openMonthlyPautaAction(
     return {
       error:
         'O Magic Number não pode ser posterior à data Programado até.',
+    }
+  }
+
+  if (
+    scheduledUntilDate <
+    referenceMonth
+  ) {
+    return {
+      error:
+        'A data Programado até precisa alcançar o mês de referência da Pauta.',
+    }
+  }
+
+  const name =
+    monthlyPautaName(
+      referenceMonth,
+    )
+
+  if (!name) {
+    return {
+      error:
+        'Não foi possível gerar o nome da Pauta.',
     }
   }
 

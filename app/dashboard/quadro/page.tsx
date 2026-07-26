@@ -95,7 +95,7 @@ export default async function QuadroPage({
     supabase
       .from('client_services')
       .select(
-        'id,client_id,service_catalog_id,status',
+        'id,client_id,service_catalog_id,status,requires_alignment_meeting,requires_capture,default_capture_type',
       )
       .eq('status', 'active'),
     supabase

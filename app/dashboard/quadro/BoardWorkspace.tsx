@@ -2539,6 +2539,7 @@ export default function BoardWorkspace({
         open={pautaModalOpen}
         boardId={activeBoardId}
         clients={clients}
+        clientServices={clientServices}
         onClose={() =>
           setPautaModalOpen(false)
         }
