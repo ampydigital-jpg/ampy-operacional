@@ -11,7 +11,12 @@
 // AMPY-V17-A19.6 — REFINO VISUAL DO MODAL DA AGENDA
 
 import Link from 'next/link'
-import { useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   createCalendarEventAction,
   deleteCalendarEventAction,
@@ -410,7 +415,17 @@ function timelineDensityClass(
 
 // AMPY-V17-A24.4B-DENSIDADE-SEGURA
 
-export default function AgendaView({ events, clients, profiles, demands, period, start, end, loadErrors = [] }: any) {
+export default function AgendaView({
+  events,
+  clients,
+  profiles,
+  demands,
+  period,
+  start,
+  end,
+  loadErrors = [],
+  integrationPrefill = null,
+}: any) {
   const safeEvents = Array.isArray(events) ? events.filter(Boolean) : []
   const safeClients = Array.isArray(clients) ? clients.filter(Boolean) : []
   const safeProfiles = Array.isArray(profiles) ? profiles.filter(Boolean) : []
@@ -429,6 +444,8 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const suppressEventClickRef = useRef(false)
+  const initialAgendaOpenHandled =
+    useRef(false)
 
   const [
     selectedType,
@@ -438,6 +455,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   const [
     selectedClientId,
     setSelectedClientId,
+  ] = useState('')
+
+  const [
+    selectedWorkItemId,
+    setSelectedWorkItemId,
   ] = useState('')
 
   const [
@@ -546,6 +568,11 @@ export default function AgendaView({ events, clients, profiles, demands, period,
   function openCreate(
     date = start,
     startTime = '09:00',
+    options?: {
+      type?: string
+      clientId?: string
+      workItemId?: string
+    },
   ) {
     setEditing(null)
 
@@ -557,9 +584,29 @@ export default function AgendaView({ events, clients, profiles, demands, period,
         addHour(startTime),
     })
 
-    setSelectedType('reu_a')
-    setSelectedClientId('')
-    setContactMode('internal')
+    setSelectedType(
+      EVENT_TYPES.some(
+        ([id]) =>
+          id === options?.type,
+      )
+        ? String(options?.type)
+        : 'reu_a',
+    )
+
+    setSelectedClientId(
+      options?.clientId || '',
+    )
+
+    setSelectedWorkItemId(
+      options?.workItemId || '',
+    )
+
+    setContactMode(
+      options?.clientId
+        ? 'client'
+        : 'internal',
+    )
+
     setCustomName('')
     setRecurrenceMode('none')
     setAutoRecurrence(false)
@@ -626,6 +673,10 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       event.client_id || '',
     )
 
+    setSelectedWorkItemId(
+      event.work_item_id || '',
+    )
+
     setContactMode(
       event.client_id
         ? 'client'
@@ -670,12 +721,109 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     setShowModal(true)
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLoading(true); setError('')
-    const fd = new FormData(event.currentTarget)
-    const result = editing ? await updateCalendarEventAction(editing.id, fd) : await createCalendarEventAction(fd)
-    if ('error' in result) { setError(result.error || 'Erro ao salvar agenda'); setLoading(false); return }
-    setLoading(false); setShowModal(false); window.location.reload()
+  function finishAgendaFlow() {
+    setShowModal(false)
+
+    if (
+      integrationPrefill?.returnUrl
+    ) {
+      window.location.href =
+        integrationPrefill.returnUrl
+
+      return
+    }
+
+    window.location.reload()
+  }
+
+  useEffect(() => {
+    if (
+      initialAgendaOpenHandled.current
+    ) {
+      return
+    }
+
+    if (
+      integrationPrefill?.eventId
+    ) {
+      const linkedEvent =
+        safeEvents.find(
+          (event: any) =>
+            event.id ===
+            integrationPrefill.eventId,
+        )
+
+      if (linkedEvent) {
+        initialAgendaOpenHandled.current =
+          true
+
+        openEdit(linkedEvent)
+      }
+
+      return
+    }
+
+    if (
+      integrationPrefill?.create &&
+      integrationPrefill?.workItemId
+    ) {
+      initialAgendaOpenHandled.current =
+        true
+
+      openCreate(
+        integrationPrefill.date ||
+          start,
+        '09:00',
+        {
+          type:
+            integrationPrefill.type,
+          clientId:
+            integrationPrefill.clientId,
+          workItemId:
+            integrationPrefill.workItemId,
+        },
+      )
+    }
+  }, [
+    integrationPrefill,
+    safeEvents,
+    start,
+  ])
+
+  async function submit(
+    event:
+      React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+    setLoading(true)
+    setError('')
+
+    const fd =
+      new FormData(
+        event.currentTarget,
+      )
+
+    const result =
+      editing
+        ? await updateCalendarEventAction(
+            editing.id,
+            fd,
+          )
+        : await createCalendarEventAction(
+            fd,
+          )
+
+    if ('error' in result) {
+      setError(
+        result.error ||
+          'Erro ao salvar agenda',
+      )
+      setLoading(false)
+      return
+    }
+
+    setLoading(false)
+    finishAgendaFlow()
   }
   async function remove() {
     if (!editing) {
@@ -707,8 +855,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
       return
     }
 
-    setShowModal(false)
-    window.location.reload()
+    finishAgendaFlow()
   }
 
 
@@ -742,8 +889,7 @@ export default function AgendaView({ events, clients, profiles, demands, period,
     }
 
     setLoading(false)
-    setShowModal(false)
-    window.location.reload()
+    finishAgendaFlow()
   }
 
   async function move(
@@ -1902,10 +2048,13 @@ export default function AgendaView({ events, clients, profiles, demands, period,
                   <select
                     className="fi"
                     name="work_item_id"
-                    defaultValue={
-                      editing
-                        ?.work_item_id ||
-                      ''
+                    value={
+                      selectedWorkItemId
+                    }
+                    onChange={(event) =>
+                      setSelectedWorkItemId(
+                        event.target.value,
+                      )
                     }
                   >
                     <option value="">

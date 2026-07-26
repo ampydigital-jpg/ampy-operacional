@@ -121,6 +121,11 @@ export default async function QuadroPage({
     error: null,
   }
 
+  let scheduleRequirementsResult: any = {
+    data: [],
+    error: null,
+  }
+
   if (activeBoardId) {
     ;[columnsResult, demandsResult] = await Promise.all([
       supabase
@@ -142,11 +147,65 @@ export default async function QuadroPage({
     ])
   }
 
+  const demandRows =
+    demandsResult.data || []
+
+  const demandIds =
+    demandRows
+      .map((item: any) => item.id)
+      .filter(Boolean)
+
+  if (demandIds.length > 0) {
+    scheduleRequirementsResult =
+      await supabase
+        .from(
+          'work_item_schedule_requirements',
+        )
+        .select(
+          'id,work_item_id,requirement_type,status,calendar_event_id,calendar_type,scheduled_at,confirmed_at,completed_at,created_at,updated_at,calendar_event:calendar_events(id,type,starts_at,ends_at,confirmed,location,responsible_id)',
+        )
+        .in(
+          'work_item_id',
+          demandIds,
+        )
+  }
+
   const clientsById = mapById(clients)
   const profilesById = mapById(profiles)
   const servicesById = mapById(services)
 
-  const demands = (demandsResult.data || []).map(
+  const requirementsByItem =
+    new Map<string, any[]>()
+
+  for (
+    const requirement
+    of scheduleRequirementsResult.data || []
+  ) {
+    const calendarEvent =
+      Array.isArray(
+        requirement.calendar_event,
+      )
+        ? requirement.calendar_event[0] || null
+        : requirement.calendar_event || null
+
+    const current =
+      requirementsByItem.get(
+        requirement.work_item_id,
+      ) || []
+
+    current.push({
+      ...requirement,
+      calendar_event:
+        calendarEvent,
+    })
+
+    requirementsByItem.set(
+      requirement.work_item_id,
+      current,
+    )
+  }
+
+  const demands = demandRows.map(
     (item: any) => ({
       ...item,
       client: item.client_id
@@ -155,6 +214,8 @@ export default async function QuadroPage({
       responsible: item.responsible_id
         ? profilesById.get(item.responsible_id) || null
         : null,
+      schedule_requirements:
+        requirementsByItem.get(item.id) || [],
     }),
   )
 
@@ -176,6 +237,9 @@ export default async function QuadroPage({
       : null,
     demandsResult.error
       ? `Demandas: ${demandsResult.error.message}`
+      : null,
+    scheduleRequirementsResult.error
+      ? `Agenda do ciclo: ${scheduleRequirementsResult.error.message}`
       : null,
     clientsResult.error
       ? `Clientes: ${clientsResult.error.message}`

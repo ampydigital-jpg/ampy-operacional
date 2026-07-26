@@ -29,6 +29,7 @@ import {
 } from '@/lib/actions'
 import { saveBoardPeriodDemandWithTagAction } from '@/lib/work-item-card-tag-actions'
 import NextCycleGeneratorModal from './NextCycleGeneratorModal'
+import CycleAgendaPanel from './CycleAgendaPanel'
 
 const BOARD_COLORS = [
   '#2563EB',
@@ -307,6 +308,13 @@ export default function BoardWorkspace({
     cycleModalOpen,
     setCycleModalOpen,
   ] = useState(false)
+
+  const [
+    cycleAgendaItem,
+    setCycleAgendaItem,
+  ] = useState<any | null>(
+    null,
+  )
 
   const [
     columnSorts,
@@ -1573,6 +1581,33 @@ export default function BoardWorkspace({
                             item.client_id,
                           )
 
+                        const scheduleRequirements =
+                          Array.isArray(
+                            item.schedule_requirements,
+                          )
+                            ? item.schedule_requirements
+                            : []
+
+                        const alignmentRequirement =
+                          scheduleRequirements.find(
+                            (
+                              requirement: any,
+                            ) =>
+                              requirement
+                                .requirement_type ===
+                              'alignment_meeting',
+                          ) || null
+
+                        const captureRequirement =
+                          scheduleRequirements.find(
+                            (
+                              requirement: any,
+                            ) =>
+                              requirement
+                                .requirement_type ===
+                              'capture',
+                          ) || null
+
                         return (
                           <article
                             key={item.id}
@@ -1706,6 +1741,123 @@ export default function BoardWorkspace({
                             <h3>
                               {item.title}
                             </h3>
+
+                            {scheduleRequirements.length >
+                              0 && (
+                              <div
+                                className="board-cycle-agenda-tags"
+                                onClick={(
+                                  event,
+                                ) =>
+                                  event.stopPropagation()
+                                }
+                                onMouseDown={(
+                                  event,
+                                ) =>
+                                  event.stopPropagation()
+                                }
+                              >
+                                {alignmentRequirement && (
+                                  <button
+                                    type="button"
+                                    className="board-cycle-agenda-tag"
+                                    data-status={
+                                      alignmentRequirement.status ||
+                                      'pending'
+                                    }
+                                    title="Abrir agenda da reunião"
+                                    onClick={() =>
+                                      setCycleAgendaItem(
+                                        item,
+                                      )
+                                    }
+                                  >
+                                    <strong>
+                                      REU
+                                    </strong>
+
+                                    <span>
+                                      {alignmentRequirement.status ===
+                                      'completed'
+                                        ? 'Realizada'
+                                        : alignmentRequirement.status ===
+                                            'confirmed'
+                                          ? 'Confirmada'
+                                          : alignmentRequirement.status ===
+                                              'scheduled'
+                                            ? String(
+                                                alignmentRequirement
+                                                  .calendar_event
+                                                  ?.starts_at ||
+                                                  alignmentRequirement
+                                                    .scheduled_at ||
+                                                  '',
+                                              )
+                                                .slice(
+                                                  0,
+                                                  16,
+                                                )
+                                                .replace(
+                                                  'T',
+                                                  ' · ',
+                                                ) ||
+                                              'Agendada'
+                                            : 'Pendente'}
+                                    </span>
+                                  </button>
+                                )}
+
+                                {captureRequirement && (
+                                  <button
+                                    type="button"
+                                    className="board-cycle-agenda-tag"
+                                    data-status={
+                                      captureRequirement.status ||
+                                      'pending'
+                                    }
+                                    title="Abrir agenda da captação"
+                                    onClick={() =>
+                                      setCycleAgendaItem(
+                                        item,
+                                      )
+                                    }
+                                  >
+                                    <strong>
+                                      CAP
+                                    </strong>
+
+                                    <span>
+                                      {captureRequirement.status ===
+                                      'completed'
+                                        ? 'Realizada'
+                                        : captureRequirement.status ===
+                                            'confirmed'
+                                          ? 'Confirmada'
+                                          : captureRequirement.status ===
+                                              'scheduled'
+                                            ? String(
+                                                captureRequirement
+                                                  .calendar_event
+                                                  ?.starts_at ||
+                                                  captureRequirement
+                                                    .scheduled_at ||
+                                                  '',
+                                              )
+                                                .slice(
+                                                  0,
+                                                  16,
+                                                )
+                                                .replace(
+                                                  'T',
+                                                  ' · ',
+                                                ) ||
+                                              'Agendada'
+                                            : 'Pendente'}
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
 
                             <div className="board-a15-card-responsible">
                               <i className="ti ti-user" />
@@ -2183,6 +2335,16 @@ export default function BoardWorkspace({
           </div>
         </div>
       )}
+
+      <CycleAgendaPanel
+        item={cycleAgendaItem}
+        activeBoardId={
+          activeBoardId
+        }
+        onClose={() =>
+          setCycleAgendaItem(null)
+        }
+      />
 
       <NextCycleGeneratorModal
         open={cycleModalOpen}

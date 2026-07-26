@@ -106,6 +106,12 @@ export default async function AgendaPage({
   searchParams: {
     period?: string
     start?: string
+    event?: string
+    new?: string
+    work_item?: string
+    client?: string
+    type?: string
+    return?: string
   }
 }) {
   noStore()
@@ -117,6 +123,54 @@ export default async function AgendaPage({
     '28',
     'month',
   ]
+
+  const allowedIntegrationTypes = [
+    'reu_a',
+    'cap_e',
+    'cap_s',
+  ]
+
+  const safeReturnUrl =
+    searchParams.return &&
+    searchParams.return.startsWith(
+      '/dashboard/',
+    ) &&
+    !searchParams.return.startsWith(
+      '//',
+    )
+      ? searchParams.return
+      : ''
+
+  const integrationPrefill = {
+    create:
+      searchParams.new === '1',
+    eventId:
+      String(
+        searchParams.event || '',
+      ),
+    workItemId:
+      String(
+        searchParams.work_item || '',
+      ),
+    clientId:
+      String(
+        searchParams.client || '',
+      ),
+    type:
+      allowedIntegrationTypes.includes(
+        String(
+          searchParams.type || '',
+        ),
+      )
+        ? String(searchParams.type)
+        : 'reu_a',
+    returnUrl:
+      safeReturnUrl,
+    date:
+      String(
+        searchParams.start || '',
+      ),
+  }
 
   const period =
     allowed.includes(
@@ -307,6 +361,9 @@ export default async function AgendaPage({
       end={ymd(end)}
       loadErrors={
         loadErrors
+      }
+      integrationPrefill={
+        integrationPrefill
       }
     />
   )
