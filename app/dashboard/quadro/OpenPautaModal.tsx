@@ -651,354 +651,392 @@ export default function OpenPautaModal({
       onClick={onClose}
     >
       <form
-        className="modal pauta-open-modal pauta-open-modal-v2"
+        className="modal pauta-open-modal pauta-open-modal-v3"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="open-pauta-title"
         onClick={(event) =>
           event.stopPropagation()
         }
         onSubmit={submit}
       >
-        <div className="modal-head pauta-open-modal-head">
-          <div>
-            <div className="modal-title">
-              Abrir nova Pauta
-            </div>
-
-            <div className="modal-sub">
-              Organize a produção do mês e crie um card mensal para cada cliente selecionado.
-            </div>
-          </div>
-
-          <button
-            className="mclose"
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-          >
-            <i className="ti ti-x" />
-          </button>
-        </div>
-
-        <div className="modal-body pauta-open-modal-body pauta-open-modal-body-v2">
-          <div className="pauta-open-definition">
-            <div className="pauta-open-definition-icon">
-              <i className="ti ti-calendar-stats" />
-            </div>
+        <header className="pauta-open-v3-head">
+          <div className="pauta-open-v3-title">
+            <span className="pauta-open-v3-title-icon">
+              <i className="ti ti-calendar-plus" />
+            </span>
 
             <div>
-              <strong>
-                A Pauta é a referência operacional do mês.
-              </strong>
+              <h2 id="open-pauta-title">
+                Abrir nova Pauta
+              </h2>
 
-              <span>
-                A produção pode começar no mês anterior. O Magic Number define o prazo interno e “Programado até” define a cobertura real exigida para concluir os clientes.
-              </span>
+              <p>
+                Defina a meta do mês e escolha os clientes que participarão da operação.
+              </p>
             </div>
           </div>
 
-          <div className="pauta-open-layout">
-            <section className="pauta-open-setup-card">
-              <div className="pauta-open-section-head">
-                <div>
-                  <span>1. Definição da Pauta</span>
-                  <strong>{pautaName}</strong>
-                </div>
+          <div className="pauta-open-v3-head-actions">
+            <span className="pauta-open-v3-name-chip">
+              <i className="ti ti-wand" />
+              {pautaName}
+            </span>
 
-                <span className="pauta-open-auto-name">
-                  <i className="ti ti-wand" />
-                  Nome automático
-                </span>
+            <button
+              className="mclose"
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              aria-label="Fechar"
+            >
+              <i className="ti ti-x" />
+            </button>
+          </div>
+        </header>
+
+        <div className="pauta-open-v3-steps" aria-hidden="true">
+          <span className="active">
+            <b>1</b>
+            Configuração
+          </span>
+
+          <i />
+
+          <span className="active">
+            <b>2</b>
+            Clientes
+          </span>
+
+          <i />
+
+          <span>
+            <b>3</b>
+            Confirmação
+          </span>
+        </div>
+
+        <div className="pauta-open-v3-body">
+          <section className="pauta-open-v3-config">
+            <div className="pauta-open-v3-section-title">
+              <div>
+                <span>Configuração mensal</span>
+                <strong>{formatMonthLabel(monthKey)}</strong>
               </div>
 
-              <div className="pauta-open-month-field">
-                <label className="fl">
-                  Mês de referência
-                </label>
+              <small>Nome gerado automaticamente</small>
+            </div>
+
+            <label className="pauta-open-v3-field">
+              <span>Mês de referência</span>
+
+              <input
+                className="fi"
+                type="month"
+                value={monthKey}
+                required
+                onChange={(event) =>
+                  changeMonth(
+                    event.target.value,
+                  )
+                }
+              />
+
+              <small>
+                Mês que será acompanhado no Quadro Operacional.
+              </small>
+            </label>
+
+            <div className="pauta-open-v3-date-grid">
+              <label className="pauta-open-v3-date-field">
+                <span>
+                  <i className="ti ti-target-arrow" />
+                  Magic Number
+                </span>
 
                 <input
                   className="fi"
-                  type="month"
-                  value={monthKey}
+                  type="date"
+                  value={magicNumberDate}
                   required
                   onChange={(event) =>
-                    changeMonth(
+                    setMagicNumberDate(
                       event.target.value,
                     )
                   }
                 />
 
                 <small>
-                  Mês de produção e publicação que será acompanhado no Quadro.
+                  Prazo interno para concluir os clientes.
                 </small>
-              </div>
+              </label>
 
-              <div className="pauta-open-date-grid-v2">
-                <label className="pauta-open-date-card">
-                  <span className="pauta-open-date-title">
-                    <i className="ti ti-target-arrow" />
-                    Magic Number
-                  </span>
-
-                  <input
-                    className="fi"
-                    type="date"
-                    value={magicNumberDate}
-                    required
-                    onChange={(event) =>
-                      setMagicNumberDate(
-                        event.target.value,
-                      )
-                    }
-                  />
-
-                  <small>
-                    Prazo interno para os cards chegarem a Concluído.
-                  </small>
-                </label>
-
-                <label className="pauta-open-date-card">
-                  <span className="pauta-open-date-title">
-                    <i className="ti ti-calendar-check" />
-                    Programado até
-                  </span>
-
-                  <input
-                    className="fi"
-                    type="date"
-                    value={scheduledUntilDate}
-                    required
-                    min={referenceDate(monthKey)}
-                    onChange={(event) =>
-                      setScheduledUntilDate(
-                        event.target.value,
-                      )
-                    }
-                  />
-
-                  <small>
-                    Cobertura mínima de programação. Pode ser parcial ou mensal completa.
-                  </small>
-                </label>
-              </div>
-
-              <div
-                className="pauta-open-coverage"
-                data-coverage={coverage.key}
-              >
-                <i
-                  className={
-                    coverage.key ===
-                    'complete'
-                      ? 'ti ti-circle-check'
-                      : coverage.key ===
-                          'invalid'
-                        ? 'ti ti-alert-triangle'
-                        : 'ti ti-chart-donut-2'
-                  }
-                />
-
-                <div>
-                  <strong>
-                    {coverage.label}
-                  </strong>
-
-                  <span>
-                    {coverage.detail}
-                  </span>
-                </div>
-              </div>
-
-              <div className="pauta-open-summary-card">
-                <div className="pauta-open-summary-head">
-                  <span>Resumo da abertura</span>
-                  <strong>{formatMonthLabel(monthKey)}</strong>
-                </div>
-
-                <div className="pauta-open-summary-grid">
-                  <div>
-                    <strong>
-                      {selectedClientIds.length}
-                    </strong>
-                    <span>cards mensais</span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {selectedSummary.alignment}
-                    </strong>
-                    <span>reuniões previstas</span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {selectedSummary.capture}
-                    </strong>
-                    <span>captações previstas</span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {selectedSummary.withoutServices}
-                    </strong>
-                    <span>sem serviço ativo</span>
-                  </div>
-                </div>
-
-                <div className="pauta-open-summary-dates">
-                  <span>
-                    <i className="ti ti-target-arrow" />
-                    Meta em {formatDate(magicNumberDate)}
-                  </span>
-
-                  <span>
-                    <i className="ti ti-calendar-check" />
-                    Cobertura até {formatDate(scheduledUntilDate)}
-                  </span>
-                </div>
-              </div>
-            </section>
-
-            <section className="pauta-open-clients pauta-open-clients-v2">
-              <div className="pauta-open-clients-head">
-                <div>
-                  <span>2. Clientes participantes</span>
-
-                  <strong>
-                    {selectedClientIds.length}
-                    {' '}de{' '}
-                    {clients.length}
-                    {' '}selecionado(s)
-                  </strong>
-                </div>
-
-                <label className="checkbox-line pauta-open-select-all">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={(event) =>
-                      setSelectedClientIds(
-                        event.target.checked
-                          ? clients.map(
-                              (client: any) =>
-                                String(client.id),
-                            )
-                          : [],
-                      )
-                    }
-                  />
-
-                  Selecionar todos os ativos
-                </label>
-              </div>
-
-              <div className="sbox pauta-open-search">
-                <i className="ti ti-search" />
+              <label className="pauta-open-v3-date-field">
+                <span>
+                  <i className="ti ti-calendar-check" />
+                  Programado até
+                </span>
 
                 <input
-                  value={query}
-                  placeholder="Buscar cliente"
+                  className="fi"
+                  type="date"
+                  value={scheduledUntilDate}
+                  required
+                  min={referenceDate(monthKey)}
                   onChange={(event) =>
-                    setQuery(
+                    setScheduledUntilDate(
                       event.target.value,
                     )
                   }
                 />
+
+                <small>
+                  Cobertura mínima exigida para concluir.
+                </small>
+              </label>
+            </div>
+
+            <div
+              className="pauta-open-v3-coverage"
+              data-coverage={coverage.key}
+            >
+              <i
+                className={
+                  coverage.key === 'complete'
+                    ? 'ti ti-circle-check'
+                    : coverage.key === 'invalid'
+                      ? 'ti ti-alert-triangle'
+                      : coverage.key === 'extended'
+                        ? 'ti ti-calendar-up'
+                        : 'ti ti-chart-donut-2'
+                }
+              />
+
+              <div>
+                <strong>{coverage.label}</strong>
+                <span>{coverage.detail}</span>
+              </div>
+            </div>
+
+            <div className="pauta-open-v3-summary">
+              <div className="pauta-open-v3-summary-head">
+                <span>Resumo da abertura</span>
+                <strong>{pautaName}</strong>
               </div>
 
-              <div className="pauta-open-client-list pauta-open-client-list-v2">
-                {filteredClients.map(
-                  (client: any) => {
-                    const services =
-                      servicesByClient.get(
-                        String(client.id),
-                      ) || []
+              <div className="pauta-open-v3-metrics">
+                <div>
+                  <strong>{selectedClientIds.length}</strong>
+                  <span>clientes</span>
+                </div>
 
-                    return (
-                      <label
-                        className="pauta-open-client pauta-open-client-v2"
-                        key={client.id}
-                        title={client.name}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedClientIds.includes(
-                            String(client.id),
-                          )}
-                          onChange={(event) =>
-                            toggleClient(
+                <div>
+                  <strong>{selectedSummary.alignment}</strong>
+                  <span>reuniões</span>
+                </div>
+
+                <div>
+                  <strong>{selectedSummary.capture}</strong>
+                  <span>captações</span>
+                </div>
+
+                <div
+                  data-warning={
+                    selectedSummary.withoutServices > 0
+                      ? 'true'
+                      : 'false'
+                  }
+                >
+                  <strong>{selectedSummary.withoutServices}</strong>
+                  <span>sem serviço</span>
+                </div>
+              </div>
+
+              <div className="pauta-open-v3-summary-dates">
+                <span>
+                  <i className="ti ti-target-arrow" />
+                  Meta {formatDate(magicNumberDate)}
+                </span>
+
+                <span>
+                  <i className="ti ti-calendar-check" />
+                  Cobertura {formatDate(scheduledUntilDate)}
+                </span>
+              </div>
+            </div>
+
+            {error && (
+              <div className="notice notice-err pauta-open-v3-error">
+                <i className="ti ti-alert-circle" />
+                <span>{error}</span>
+              </div>
+            )}
+          </section>
+
+          <section className="pauta-open-v3-clients">
+            <div className="pauta-open-v3-clients-head">
+              <div>
+                <span>Clientes participantes</span>
+                <strong>
+                  {selectedClientIds.length} de {clients.length} selecionados
+                </strong>
+              </div>
+
+              <label className="pauta-open-v3-select-all">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={(event) =>
+                    setSelectedClientIds(
+                      event.target.checked
+                        ? clients.map(
+                            (client: any) =>
                               String(client.id),
-                              event.target.checked,
-                            )
+                          )
+                        : [],
+                    )
+                  }
+                />
+
+                Selecionar todos
+              </label>
+            </div>
+
+            <div className="sbox pauta-open-v3-search">
+              <i className="ti ti-search" />
+
+              <input
+                value={query}
+                placeholder="Buscar cliente por nome"
+                onChange={(event) =>
+                  setQuery(
+                    event.target.value,
+                  )
+                }
+              />
+
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Limpar busca"
+                >
+                  <i className="ti ti-x" />
+                </button>
+              )}
+            </div>
+
+            <div className="pauta-open-v3-client-list">
+              {filteredClients.map(
+                (client: any) => {
+                  const services =
+                    servicesByClient.get(
+                      String(client.id),
+                    ) || []
+
+                  const selected =
+                    selectedClientIds.includes(
+                      String(client.id),
+                    )
+
+                  return (
+                    <label
+                      className="pauta-open-v3-client"
+                      data-selected={selected ? 'true' : 'false'}
+                      key={client.id}
+                      title={client.name}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(event) =>
+                          toggleClient(
+                            String(client.id),
+                            event.target.checked,
+                          )
+                        }
+                      />
+
+                      <span
+                        className="pauta-open-client-avatar"
+                        style={{
+                          color:
+                            client.avatar_color ||
+                            '#475569',
+                          background:
+                            client.avatar_bg ||
+                            '#E2E8F0',
+                        }}
+                      >
+                        {client.avatar_initials ||
+                          String(
+                            client.name || 'CL',
+                          )
+                            .slice(0, 2)
+                            .toUpperCase()}
+                      </span>
+
+                      <span className="pauta-open-v3-client-copy">
+                        <strong>{client.name}</strong>
+
+                        <small
+                          data-warning={
+                            services.length === 0
+                              ? 'true'
+                              : 'false'
+                          }
+                        >
+                          {services.length === 0
+                            ? 'Sem serviço ativo'
+                            : services.length === 1
+                              ? '1 serviço ativo'
+                              : services.length +
+                                ' serviços ativos'}
+                        </small>
+                      </span>
+
+                      <span className="pauta-open-v3-client-state">
+                        <i
+                          className={
+                            selected
+                              ? 'ti ti-circle-check-filled'
+                              : 'ti ti-circle'
                           }
                         />
+                      </span>
+                    </label>
+                  )
+                },
+              )}
 
-                        <span
-                          className="pauta-open-client-avatar"
-                          style={{
-                            color:
-                              client.avatar_color ||
-                              '#475569',
-                            background:
-                              client.avatar_bg ||
-                              '#E2E8F0',
-                          }}
-                        >
-                          {client.avatar_initials ||
-                            String(
-                              client.name ||
-                              'CL',
-                            )
-                              .slice(0, 2)
-                              .toUpperCase()}
-                        </span>
+              {filteredClients.length === 0 && (
+                <div className="pauta-open-v3-empty">
+                  <i className="ti ti-search-off" />
+                  <strong>Nenhum cliente encontrado</strong>
+                  <span>Revise o termo usado na busca.</span>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
 
-                        <span className="pauta-open-client-copy">
-                          <strong>
-                            {client.name}
-                          </strong>
+        <footer className="pauta-open-v3-foot">
+          <div className="pauta-open-v3-transaction">
+            <i className="ti ti-shield-check" />
 
-                          <small
-                            data-warning={
-                              services.length ===
-                              0
-                                ? 'true'
-                                : 'false'
-                            }
-                          >
-                            {services.length ===
-                            0
-                              ? 'Sem serviço ativo'
-                              : services.length ===
-                                  1
-                                ? '1 serviço ativo'
-                                : services.length +
-                                  ' serviços ativos'}
-                          </small>
-                        </span>
-                      </label>
-                    )
-                  },
-                )}
+            <div>
+              <strong>
+                {selectedClientIds.length} cards serão criados de uma só vez.
+              </strong>
 
-                {filteredClients.length ===
-                  0 && (
-                  <div className="empty compact">
-                    Nenhum cliente encontrado.
-                  </div>
-                )}
-              </div>
-            </section>
+              <span>
+                Se um cliente falhar, toda a abertura será cancelada.
+              </span>
+            </div>
           </div>
 
-          <div className="pauta-open-confirmation-card">
-            <div>
-              <span>3. Confirmação</span>
-              <strong>
-                {selectedClientIds.length} card(s) serão criados em uma única operação.
-              </strong>
-              <small>
-                Se qualquer cliente falhar, toda a abertura será cancelada. Digite exatamente ABRIR PAUTA.
-              </small>
-            </div>
+          <label className="pauta-open-v3-confirmation">
+            <span>Digite ABRIR PAUTA</span>
 
             <input
               className="fi"
@@ -1011,28 +1049,9 @@ export default function OpenPautaModal({
                 )
               }
             />
-          </div>
+          </label>
 
-          {error && (
-            <div className="notice notice-err">
-              <i className="ti ti-alert-circle" />
-
-              <span>
-                {error}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-foot pauta-open-modal-foot">
-          <div className="pauta-open-footer-summary">
-            <strong>{pautaName}</strong>
-            <span>
-              Magic Number {formatDate(magicNumberDate)} · Programado até {formatDate(scheduledUntilDate)}
-            </span>
-          </div>
-
-          <div className="pauta-open-footer-actions">
+          <div className="pauta-open-v3-actions">
             <button
               className="bsec"
               type="button"
@@ -1048,18 +1067,16 @@ export default function OpenPautaModal({
               disabled={
                 loading ||
                 datesInvalid ||
-                selectedClientIds.length ===
-                  0 ||
-                confirmation !==
-                  'ABRIR PAUTA'
+                selectedClientIds.length === 0 ||
+                confirmation !== 'ABRIR PAUTA'
               }
             >
               {loading
-                ? 'Abrindo Pauta...'
+                ? 'Abrindo...'
                 : 'Abrir Pauta'}
             </button>
           </div>
-        </div>
+        </footer>
       </form>
     </div>
   )
