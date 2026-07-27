@@ -138,9 +138,63 @@ function periodLabel(period: string, start: Date) {
   if (period === 'day') return start.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
   return `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${addDays(start, Number(period)-1).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`
 }
-function navigate(period: string, start: Date, direction: number) {
-  const step = period === 'month' ? new Date(start.getFullYear(), start.getMonth()+direction, 1, 12) : addDays(start, direction * (period === 'day' ? 1 : Number(period)))
-  return `/dashboard/agenda?period=${period}&start=${ymd(step)}`
+function agendaHref(
+  period: string,
+  start: Date,
+  pautaKey = 'all',
+) {
+  const params =
+    new URLSearchParams({
+      period,
+      start: ymd(start),
+    })
+
+  if (
+    pautaKey &&
+    pautaKey !== 'all'
+  ) {
+    params.set(
+      'pauta',
+      pautaKey,
+    )
+  }
+
+  return (
+    '/dashboard/agenda?' +
+    params.toString()
+  )
+}
+
+function navigate(
+  period: string,
+  start: Date,
+  direction: number,
+  pautaKey = 'all',
+) {
+  const step =
+    period === 'month'
+      ? new Date(
+          start.getFullYear(),
+          start.getMonth() +
+            direction,
+          1,
+          12,
+        )
+      : addDays(
+          start,
+          direction *
+            (
+              period === 'day'
+                ? 1
+                : Number(period)
+            ),
+        )
+
+  return agendaHref(
+    period,
+    step,
+    pautaKey,
+  )
 }
 function eventType(
   type: string,
@@ -183,6 +237,141 @@ function formatDate(
     parts[0]
   )
 }
+type PautaMilestone = {
+  id: string
+  pauta_id: string
+  board_id: string
+  date: string
+  kind:
+    | 'magic_number'
+    | 'scheduled_until'
+  title: string
+  pauta: any
+}
+
+type DemandDeadline = {
+  id: string
+  work_item_id: string
+  board_id: string | null
+  pauta_id: string | null
+  client_id: string | null
+  responsible_id: string | null
+  date: string
+  title: string
+  demand: any
+}
+
+function pautaMilestones(
+  pautas: any[],
+) {
+  return pautas.flatMap(
+    (pauta: any) => [
+      {
+        id:
+          'pauta-magic-' +
+          pauta.id,
+        pauta_id:
+          pauta.id,
+        board_id:
+          pauta.board_id,
+        date:
+          String(
+            pauta.magic_number_date ||
+            '',
+          ).slice(0, 10),
+        kind:
+          'magic_number' as const,
+        title:
+          'Magic Number · ' +
+          pauta.name,
+        pauta,
+      },
+      {
+        id:
+          'pauta-programado-' +
+          pauta.id,
+        pauta_id:
+          pauta.id,
+        board_id:
+          pauta.board_id,
+        date:
+          String(
+            pauta.scheduled_until_date ||
+            '',
+          ).slice(0, 10),
+        kind:
+          'scheduled_until' as const,
+        title:
+          'Programado até · ' +
+          pauta.name,
+        pauta,
+      },
+    ],
+  ).filter(
+    (
+      milestone:
+        PautaMilestone,
+    ) =>
+      Boolean(
+        milestone.date,
+      ),
+  )
+}
+
+function demandDeadlines(
+  demands: any[],
+) {
+  return demands
+    .filter(
+      (demand: any) =>
+        !demand.is_pauta_card &&
+        Boolean(
+          demand.final_deadline ||
+          demand.internal_deadline,
+        ),
+    )
+    .map(
+      (demand: any) => ({
+        id:
+          'demand-deadline-' +
+          demand.id,
+        work_item_id:
+          demand.id,
+        board_id:
+          demand.board_id ||
+          null,
+        pauta_id:
+          demand.pauta_id ||
+          null,
+        client_id:
+          demand.client_id ||
+          null,
+        responsible_id:
+          demand.responsible_id ||
+          null,
+        date:
+          String(
+            demand.final_deadline ||
+            demand.internal_deadline ||
+            '',
+          ).slice(0, 10),
+        title:
+          'Prazo · ' +
+          demand.title,
+        demand,
+      }),
+    )
+    .filter(
+      (
+        deadline:
+          DemandDeadline,
+      ) =>
+        Boolean(
+          deadline.date,
+        ),
+    )
+}
+
 function minutesFromDate(value: string) { const date = new Date(value); return date.getHours() * 60 + date.getMinutes() }
 function addHour(time: string) {
   const [h, m] = time.split(':').map(Number)
@@ -420,6 +609,8 @@ export default function AgendaView({
   clients,
   profiles,
   demands,
+  pautas,
+  activePautaKey = 'all',
   period,
   start,
   end,
@@ -430,6 +621,7 @@ export default function AgendaView({
   const safeClients = Array.isArray(clients) ? clients.filter(Boolean) : []
   const safeProfiles = Array.isArray(profiles) ? profiles.filter(Boolean) : []
   const safeDemands = Array.isArray(demands) ? demands.filter(Boolean) : []
+  const safePautas = Array.isArray(pautas) ? pautas.filter(Boolean) : []
   const safeLoadErrors = Array.isArray(loadErrors) ? loadErrors.filter(Boolean) : []
 
   const [showModal, setShowModal] = useState(false)
@@ -439,8 +631,12 @@ export default function AgendaView({
   const [profileFilter, setProfileFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [demandFilter, setDemandFilter] = useState('all')
+  const [pautaFilter, setPautaFilter] = useState(
+    activePautaKey || 'all',
+  )
   const [showHoliday, setShowHoliday] = useState(true)
   const [showOpportunities, setShowOpportunities] = useState(true)
+  const [showDeadlines, setShowDeadlines] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const suppressEventClickRef = useRef(false)
@@ -461,6 +657,16 @@ export default function AgendaView({
     selectedWorkItemId,
     setSelectedWorkItemId,
   ] = useState('')
+
+  const [
+    selectedPautaId,
+    setSelectedPautaId,
+  ] = useState(
+    activePautaKey !== 'all' &&
+    activePautaKey !== 'legacy'
+      ? activePautaKey
+      : '',
+  )
 
   const [
     contactMode,
@@ -543,12 +749,170 @@ export default function AgendaView({
   const startDate = new Date(`${start}T12:00:00`)
   const endDate = new Date(`${end}T12:00:00`)
   const refs = getCalendarReferences(startDate.getFullYear()).concat(endDate.getFullYear() === startDate.getFullYear() ? [] : getCalendarReferences(endDate.getFullYear()))
-  const filteredEvents = useMemo(() => safeEvents.filter((event: any) =>
-    (clientFilter === 'all' || event.client_id === clientFilter) &&
-    (profileFilter === 'all' || event.responsible_id === profileFilter) &&
-    (typeFilter === 'all' || event.type === typeFilter) &&
-    (demandFilter === 'all' || event.work_item_id === demandFilter)
-  ), [safeEvents, clientFilter, profileFilter, typeFilter, demandFilter])
+
+  const activePauta =
+    safePautas.find(
+      (pauta: any) =>
+        pauta.id ===
+        pautaFilter,
+    ) || null
+
+  const filteredEvents = useMemo(
+    () =>
+      safeEvents.filter(
+        (event: any) =>
+          (
+            pautaFilter === 'all' ||
+            (
+              pautaFilter === 'legacy'
+                ? !event.pauta_id
+                : event.pauta_id ===
+                  pautaFilter
+            )
+          ) &&
+          (
+            clientFilter === 'all' ||
+            event.client_id ===
+              clientFilter
+          ) &&
+          (
+            profileFilter === 'all' ||
+            event.responsible_id ===
+              profileFilter
+          ) &&
+          (
+            typeFilter === 'all' ||
+            event.type ===
+              typeFilter
+          ) &&
+          (
+            demandFilter === 'all' ||
+            event.work_item_id ===
+              demandFilter
+          ),
+      ),
+    [
+      safeEvents,
+      pautaFilter,
+      clientFilter,
+      profileFilter,
+      typeFilter,
+      demandFilter,
+    ],
+  )
+
+  const visiblePautas =
+    safePautas.filter(
+      (pauta: any) =>
+        pautaFilter === 'all' ||
+        (
+          pautaFilter !== 'legacy' &&
+          pauta.id === pautaFilter
+        ),
+    )
+
+  const visiblePautaMilestones =
+    useMemo(
+      () =>
+        pautaMilestones(
+          visiblePautas,
+        )
+          .filter(
+            (
+              milestone:
+                PautaMilestone,
+            ) =>
+              milestone.date >=
+                start &&
+              milestone.date <
+                end,
+          )
+          .sort(
+            (
+              first:
+                PautaMilestone,
+              second:
+                PautaMilestone,
+            ) =>
+              first.date.localeCompare(
+                second.date,
+              ),
+          ),
+      [
+        safePautas,
+        pautaFilter,
+        start,
+        end,
+      ],
+    )
+
+  const modalDemands =
+    safeDemands.filter(
+      (demand: any) =>
+        selectedPautaId
+          ? demand.pauta_id ===
+            selectedPautaId
+          : !demand.pauta_id,
+    )
+
+  const visibleDemandDeadlines =
+    useMemo(
+      () =>
+        demandDeadlines(
+          safeDemands,
+        )
+          .filter(
+            (
+              deadline:
+                DemandDeadline,
+            ) =>
+              showDeadlines &&
+              deadline.date >= start &&
+              deadline.date < end &&
+              (
+                pautaFilter === 'all' ||
+                (
+                  pautaFilter === 'legacy'
+                    ? !deadline.pauta_id
+                    : deadline.pauta_id === pautaFilter
+                )
+              ) &&
+              (
+                clientFilter === 'all' ||
+                deadline.client_id === clientFilter
+              ) &&
+              (
+                profileFilter === 'all' ||
+                deadline.responsible_id === profileFilter
+              ) &&
+              (
+                demandFilter === 'all' ||
+                deadline.work_item_id === demandFilter
+              ),
+          )
+          .sort(
+            (
+              first:
+                DemandDeadline,
+              second:
+                DemandDeadline,
+            ) =>
+              first.date.localeCompare(
+                second.date,
+              ),
+          ),
+      [
+        safeDemands,
+        showDeadlines,
+        pautaFilter,
+        clientFilter,
+        profileFilter,
+        demandFilter,
+        start,
+        end,
+      ],
+    )
+
   const refsVisible = refs.filter((ref) => (ref.kind === 'opportunity' ? showOpportunities : showHoliday) && ref.date >= start && ref.date < end)
   const isMonth = period === 'month'
   const isLongRange = period === '14' || period === '28'
@@ -572,6 +936,7 @@ export default function AgendaView({
       type?: string
       clientId?: string
       workItemId?: string
+      pautaId?: string
     },
   ) {
     setEditing(null)
@@ -599,6 +964,16 @@ export default function AgendaView({
 
     setSelectedWorkItemId(
       options?.workItemId || '',
+    )
+
+    setSelectedPautaId(
+      options?.pautaId ||
+      (
+        pautaFilter !== 'all' &&
+        pautaFilter !== 'legacy'
+          ? pautaFilter
+          : ''
+      ),
     )
 
     setContactMode(
@@ -675,6 +1050,10 @@ export default function AgendaView({
 
     setSelectedWorkItemId(
       event.work_item_id || '',
+    )
+
+    setSelectedPautaId(
+      event.pauta_id || '',
     )
 
     setContactMode(
@@ -781,6 +1160,8 @@ export default function AgendaView({
             integrationPrefill.clientId,
           workItemId:
             integrationPrefill.workItemId,
+          pautaId:
+            integrationPrefill.pautaId,
         },
       )
     }
@@ -1568,24 +1949,338 @@ export default function AgendaView({
     )
   }
 
+  function changePautaFilter(
+    nextValue: string,
+  ) {
+    setPautaFilter(
+      nextValue,
+    )
+
+    setDemandFilter('all')
+
+    const url =
+      new URL(
+        window.location.href,
+      )
+
+    if (
+      nextValue === 'all'
+    ) {
+      url.searchParams.delete(
+        'pauta',
+      )
+    } else {
+      url.searchParams.set(
+        'pauta',
+        nextValue,
+      )
+    }
+
+    window.history.replaceState(
+      {},
+      '',
+      url.toString(),
+    )
+  }
+
+  function renderPautaMilestone(
+    milestone: PautaMilestone,
+    compact = true,
+  ) {
+    const isMagic =
+      milestone.kind ===
+      'magic_number'
+
+    return (
+      <Link
+        key={milestone.id}
+        href={
+          '/dashboard/quadro?board=' +
+          milestone.board_id +
+          '&pauta=' +
+          milestone.pauta_id
+        }
+        className={
+          'agenda-pauta-milestone ' +
+          (
+            isMagic
+              ? 'is-magic'
+              : 'is-scheduled'
+          ) +
+          (
+            compact
+              ? ' is-compact'
+              : ''
+          )
+        }
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+        title={
+          milestone.title +
+          ' · ' +
+          formatDate(
+            milestone.date,
+          )
+        }
+      >
+        <i
+          className={
+            isMagic
+              ? 'ti ti-target-arrow'
+              : 'ti ti-calendar-check'
+          }
+        />
+
+        <span>
+          {isMagic
+            ? 'Magic Number'
+            : 'Programado até'}
+
+          {compact && (
+            <>
+              {' · '}
+              {String(
+                milestone.pauta.name ||
+                '',
+              ).replace(
+                /^Pauta\s+/i,
+                '',
+              )}
+            </>
+          )}
+        </span>
+
+        {!compact && (
+          <small>
+            {milestone.pauta.name}
+          </small>
+        )}
+      </Link>
+    )
+  }
+
+  function renderDemandDeadline(
+    deadline: DemandDeadline,
+  ) {
+    const href =
+      deadline.board_id
+        ? (
+            '/dashboard/quadro?board=' +
+            deadline.board_id +
+            '&item=' +
+            deadline.work_item_id +
+            (
+              deadline.pauta_id
+                ? '&pauta=' +
+                  deadline.pauta_id
+                : ''
+            )
+          )
+        : (
+            '/dashboard/demandas/' +
+            deadline.work_item_id
+          )
+
+    return (
+      <Link
+        key={deadline.id}
+        href={href}
+        className="agenda-demand-deadline"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+        title={
+          deadline.title +
+          ' · ' +
+          formatDate(
+            deadline.date,
+          )
+        }
+      >
+        <i className="ti ti-flag-3" />
+
+        <span>
+          {deadline.demand.title}
+        </span>
+      </Link>
+    )
+  }
+
   return <div className="page-wrap ops-page">
-    <div className="topbar">
-      <div className="tb-title">Agenda</div>
-      <div className="tb-sub">{periodLabel(period, startDate)}</div>
-      <div className="agenda-periods">{[['day','Dia'],['7','7d'],['14','14d'],['28','28d'],['month','Mês']].map(([key, label]) => <Link key={key} href={`/dashboard/agenda?period=${key}&start=${start}`} className={`fb ${period === key ? 'on' : ''}`}>{label}</Link>)}</div>
-      <Link href={navigate(period, startDate, -1)} className="bico"><i className="ti ti-chevron-left" /></Link>
-      <Link href={navigate(period, startDate, 1)} className="bico"><i className="ti ti-chevron-right" /></Link>
-      <button className="bpri" onClick={() => openCreate()}><i className="ti ti-plus" /> Nova agenda</button>
+    <div className="topbar agenda-pauta-topbar">
+      <div>
+        <div className="tb-title">Agenda</div>
+        <div className="tb-sub">
+          {periodLabel(period, startDate)}
+        </div>
+      </div>
+
+      <div className="agenda-periods">
+        {[
+          ['day', 'Dia'],
+          ['7', '7d'],
+          ['14', '14d'],
+          ['28', '28d'],
+          ['month', 'Mês'],
+        ].map(
+          (
+            [
+              key,
+              label,
+            ],
+          ) => (
+            <Link
+              key={key}
+              href={agendaHref(
+                key,
+                startDate,
+                pautaFilter,
+              )}
+              className={
+                `fb ${
+                  period === key
+                    ? 'on'
+                    : ''
+                }`
+              }
+            >
+              {label}
+            </Link>
+          ),
+        )}
+      </div>
+
+      <Link
+        href={navigate(
+          period,
+          startDate,
+          -1,
+          pautaFilter,
+        )}
+        className="bico"
+      >
+        <i className="ti ti-chevron-left" />
+      </Link>
+
+      <Link
+        href={navigate(
+          period,
+          startDate,
+          1,
+          pautaFilter,
+        )}
+        className="bico"
+      >
+        <i className="ti ti-chevron-right" />
+      </Link>
+
+      <button
+        className="bpri"
+        onClick={() =>
+          openCreate(
+            start,
+            '09:00',
+            {
+              pautaId:
+                activePauta?.id ||
+                '',
+            },
+          )
+        }
+      >
+        <i className="ti ti-plus" />
+        Nova agenda
+      </button>
     </div>
     <div className="agenda-content">
       <div className="agenda-filters">
+        <select
+          className="fi compact agenda-pauta-filter"
+          value={pautaFilter}
+          onChange={(event) =>
+            changePautaFilter(
+              event.target.value,
+            )
+          }
+        >
+          <option value="all">
+            Todas as Pautas
+          </option>
+
+          {safePautas.map(
+            (pauta: any) => (
+              <option
+                key={pauta.id}
+                value={pauta.id}
+              >
+                {pauta.name}
+              </option>
+            ),
+          )}
+
+          <option value="legacy">
+            Sem Pauta / Legado
+          </option>
+        </select>
+
         <select className="fi compact" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}><option value="all">Todos os clientes</option>{safeClients.map((client: any) => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
         <select className="fi compact" value={profileFilter} onChange={(e) => setProfileFilter(e.target.value)}><option value="all">Toda equipe</option>{safeProfiles.map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select>
         <select className="fi compact" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}><option value="all">Todos os tipos</option>{EVENT_TYPES.map(([id, code, label]) => <option key={id} value={id}>{code} — {label}</option>)}</select>
         <select className="fi compact" value={demandFilter} onChange={(e) => setDemandFilter(e.target.value)}><option value="all">Todas demandas</option>{safeDemands.map((demand: any) => <option key={demand.id} value={demand.id}>{demand.title}</option>)}</select>
+        <button className={`fb ${showDeadlines ? 'on' : ''}`} onClick={() => setShowDeadlines(!showDeadlines)}>Prazos</button>
         <button className={`fb ${showHoliday ? 'on' : ''}`} onClick={() => setShowHoliday(!showHoliday)}>Feriados</button>
         <button className={`fb ${showOpportunities ? 'on' : ''}`} onClick={() => setShowOpportunities(!showOpportunities)}>Datas de marketing</button>
       </div>
+
+      {activePauta && (
+        <div className="agenda-pauta-context">
+          <div>
+            <span>
+              Pauta selecionada
+            </span>
+
+            <strong>
+              {activePauta.name}
+            </strong>
+          </div>
+
+          <div className="agenda-pauta-context-dates">
+            <span>
+              <i className="ti ti-target-arrow" />
+              Magic Number
+              <strong>
+                {formatDate(
+                  activePauta.magic_number_date,
+                )}
+              </strong>
+            </span>
+
+            <span>
+              <i className="ti ti-calendar-check" />
+              Programado até
+              <strong>
+                {formatDate(
+                  activePauta.scheduled_until_date,
+                )}
+              </strong>
+            </span>
+          </div>
+
+          <Link
+            className="bsec"
+            href={
+              '/dashboard/quadro?board=' +
+              activePauta.board_id +
+              '&pauta=' +
+              activePauta.id
+            }
+          >
+            <i className="ti ti-layout-kanban" />
+            Abrir no Quadro
+          </Link>
+        </div>
+      )}
       {safeLoadErrors.length > 0 && <div className="notice notice-err"><i className="ti ti-alert-circle" /><span>{safeLoadErrors.join(' | ')}</span></div>}
       <div className={isMonth ? 'agenda-layout' : 'agenda-layout range-layout'}>
         <section className="calendar-shell">
@@ -1594,9 +2289,13 @@ export default function AgendaView({
             <div className="calendar-month-grid">{monthCells.map(({ date, key, current }) => {
               const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
               const dayRefs = refsVisible.filter((ref) => ref.date === key)
+              const dayMilestones = visiblePautaMilestones.filter((milestone) => milestone.date === key)
+              const dayDeadlines = visibleDemandDeadlines.filter((deadline) => deadline.date === key)
               const today = key === ymd(new Date())
               return <div className={`calendar-cell ${current ? '' : 'muted'} ${today ? 'today' : ''}`} key={key} onClick={() => current && openCreate(key)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData('event-id'); if (id) move(id, key) }}>
                 <div className="calendar-day-number">{date.getDate()}</div>
+                {dayMilestones.slice(0, 2).map((milestone) => renderPautaMilestone(milestone, true))}
+                {dayDeadlines.slice(0, 2).map((deadline) => renderDemandDeadline(deadline))}
                 {dayRefs.slice(0, 2).map((ref) => <div key={ref.id} className={`calendar-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`} title={`${ref.title} · ${ref.sourceLabel}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</div>)}
                 {dayEvents.slice(0, 3).map((event: any) => renderEventButton(event, true))}
                 {dayEvents.length > 3 && <div className="calendar-more">+{dayEvents.length - 3} agendas</div>}
@@ -1607,15 +2306,19 @@ export default function AgendaView({
               const key = ymd(day)
               const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
               const dayRefs = refsVisible.filter((ref) => ref.date === key)
-              return <button type="button" className="agenda-range-day" key={key} onClick={() => openCreate(key)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData('event-id'); if (id) move(id, key) }}>
+              const dayMilestones = visiblePautaMilestones.filter((milestone) => milestone.date === key)
+              const dayDeadlines = visibleDemandDeadlines.filter((deadline) => deadline.date === key)
+              return <div role="button" tabIndex={0} className="agenda-range-day" key={key} onClick={() => openCreate(key)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') openCreate(key) }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData('event-id'); if (id) move(id, key) }}>
                 <div className="agenda-range-head"><span>{dayNames[day.getDay()]}</span><b>{day.getDate()}</b></div>
                 <div className="agenda-range-list">
+                  {dayMilestones.map((milestone) => renderPautaMilestone(milestone, true))}
+                  {dayDeadlines.map((deadline) => renderDemandDeadline(deadline))}
                   {dayRefs.slice(0, 2).map((ref) => <div key={ref.id} className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</div>)}
                   {dayEvents.slice(0, 5).map((event: any) => renderEventButton(event, true))}
-                  {dayEvents.length === 0 && dayRefs.length === 0 && <div className="range-empty compact">Livre</div>}
+                  {dayEvents.length === 0 && dayRefs.length === 0 && dayMilestones.length === 0 && dayDeadlines.length === 0 && <div className="range-empty compact">Livre</div>}
                   {dayEvents.length > 5 && <div className="calendar-more">+{dayEvents.length - 5} agendas</div>}
                 </div>
-              </button>
+              </div>
             })}
           </div> : <div className="timeline-wrap">
             <div className="timeline-head" style={{ gridTemplateColumns: `72px repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))` }}><div className="timeline-corner">Horário</div>{rangeDays.map((day) => <div className="timeline-day-head" key={ymd(day)}><b>{dayNames[day.getDay()]}</b><span>{day.getDate()}</span></div>)}</div>
@@ -1629,6 +2332,8 @@ export default function AgendaView({
                   const allDayEvents = dayEvents.filter((event: any) => event.all_day)
                   const timedLayout = layoutTimedEvents(timedEvents)
                   const dayRefs = refsVisible.filter((ref) => ref.date === key)
+                  const dayMilestones = visiblePautaMilestones.filter((milestone) => milestone.date === key)
+                  const dayDeadlines = visibleDemandDeadlines.filter((deadline) => deadline.date === key)
                   return <div
                     className="timeline-day"
                     data-date={key}
@@ -1647,6 +2352,8 @@ export default function AgendaView({
                     }}
                   >
                     <div className="timeline-all-day">
+                      {dayMilestones.map((milestone) => renderPautaMilestone(milestone, true))}
+                      {dayDeadlines.map((deadline) => renderDemandDeadline(deadline))}
                       {dayRefs.map((ref) => <span key={ref.id} className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</span>)}
                       {allDayEvents.map((event: any) => renderEventButton(event, true))}
                     </div>
@@ -1665,6 +2372,125 @@ export default function AgendaView({
           </div>}
         </section>
         <aside className="agenda-side">
+          <div className="side-card agenda-pauta-side-card">
+            <div className="stitle">
+              Marcos das Pautas
+            </div>
+
+            {visiblePautaMilestones
+              .slice(0, 8)
+              .map(
+                (
+                  milestone,
+                ) => (
+                  <Link
+                    key={milestone.id}
+                    className="agenda-pauta-side-item"
+                    href={
+                      '/dashboard/quadro?board=' +
+                      milestone.board_id +
+                      '&pauta=' +
+                      milestone.pauta_id
+                    }
+                  >
+                    <i
+                      className={
+                        milestone.kind ===
+                        'magic_number'
+                          ? 'ti ti-target-arrow'
+                          : 'ti ti-calendar-check'
+                      }
+                    />
+
+                    <div>
+                      <b>
+                        {milestone.kind ===
+                        'magic_number'
+                          ? 'Magic Number'
+                          : 'Programado até'}
+                      </b>
+
+                      <small>
+                        {milestone.pauta.name}
+                        {' · '}
+                        {formatDate(
+                          milestone.date,
+                        )}
+                      </small>
+                    </div>
+                  </Link>
+                ),
+              )}
+
+            {visiblePautaMilestones.length === 0 && (
+              <div className="range-empty">
+                Nenhum marco de Pauta no período.
+              </div>
+            )}
+          </div>
+
+          <div className="side-card agenda-deadline-side-card">
+            <div className="stitle">
+              Prazos de demandas
+            </div>
+
+            {visibleDemandDeadlines
+              .slice(0, 8)
+              .map(
+                (
+                  deadline,
+                ) => {
+                  const href =
+                    deadline.board_id
+                      ? (
+                          '/dashboard/quadro?board=' +
+                          deadline.board_id +
+                          '&item=' +
+                          deadline.work_item_id +
+                          (
+                            deadline.pauta_id
+                              ? '&pauta=' +
+                                deadline.pauta_id
+                              : ''
+                          )
+                        )
+                      : (
+                          '/dashboard/demandas/' +
+                          deadline.work_item_id
+                        )
+
+                  return (
+                    <Link
+                      key={deadline.id}
+                      className="agenda-pauta-side-item is-deadline"
+                      href={href}
+                    >
+                      <i className="ti ti-flag-3" />
+
+                      <div>
+                        <b>
+                          {deadline.demand.title}
+                        </b>
+
+                        <small>
+                          Prazo em{' '}
+                          {formatDate(
+                            deadline.date,
+                          )}
+                        </small>
+                      </div>
+                    </Link>
+                  )
+                },
+              )}
+
+            {visibleDemandDeadlines.length === 0 && (
+              <div className="range-empty">
+                Nenhum prazo no período.
+              </div>
+            )}
+          </div>
+
           <div className="side-card"><div className="stitle">Próximas agendas</div>{filteredEvents.slice(0, 8).map((event: any) => <button key={event.id} className="next-event" onClick={() => openEdit(event)}><span>{localTime(event.starts_at)}</span><div><b>{event.title}</b><small>{event.client?.name || event.custom_name || event.responsible?.full_name || 'Interno Ampy'}</small></div></button>)}{filteredEvents.length === 0 && <div className="range-empty">Nenhuma agenda no período.</div>}</div>
           <div className="side-card"><div className="stitle">Legenda</div><div className="legend-row agenda-pending-legend"><i style={{ background: UNCONFIRMED_COLOR }} /> Aguardando confirmação</div>{EVENT_TYPES.map(([id, code, label, color]) => <div className="legend-row" key={id}><i style={{ background: color }} /> {code} — {label}</div>)}</div>
         </aside>
@@ -2040,44 +2866,140 @@ export default function AgendaView({
                   </div>
                 </div>
 
-                <div className="fg agenda-a19-demand-row">
-                  <label className="fl">
-                    Demanda vinculada
-                  </label>
+                <div className="frow agenda-a19-context-row">
+                  <div className="fg">
+                    <label className="fl">
+                      Pauta vinculada
+                    </label>
 
-                  <select
-                    className="fi"
-                    name="work_item_id"
-                    value={
-                      selectedWorkItemId
-                    }
-                    onChange={(event) =>
-                      setSelectedWorkItemId(
-                        event.target.value,
-                      )
-                    }
-                  >
-                    <option value="">
-                      Não vincular
-                    </option>
+                    <select
+                      className="fi"
+                      name="pauta_id"
+                      value={
+                        selectedPautaId
+                      }
+                      onChange={(event) => {
+                        const nextPautaId =
+                          event.target.value
 
-                    {safeDemands.map(
-                      (
-                        demand: any,
-                      ) => (
-                        <option
-                          key={
-                            demand.id
-                          }
-                          value={
-                            demand.id
-                          }
-                        >
-                          {demand.title}
-                        </option>
-                      ),
-                    )}
-                  </select>
+                        setSelectedPautaId(
+                          nextPautaId,
+                        )
+
+                        const selectedDemand =
+                          safeDemands.find(
+                            (demand: any) =>
+                              demand.id ===
+                              selectedWorkItemId,
+                          )
+
+                        if (
+                          selectedDemand &&
+                          (
+                            selectedDemand.pauta_id ||
+                            ''
+                          ) !==
+                            nextPautaId
+                        ) {
+                          setSelectedWorkItemId(
+                            '',
+                          )
+                        }
+                      }}
+                    >
+                      <option value="">
+                        Sem Pauta / Legado
+                      </option>
+
+                      {safePautas.map(
+                        (
+                          pauta: any,
+                        ) => (
+                          <option
+                            key={
+                              pauta.id
+                            }
+                            value={
+                              pauta.id
+                            }
+                          >
+                            {pauta.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Demanda vinculada
+                    </label>
+
+                    <select
+                      className="fi"
+                      name="work_item_id"
+                      value={
+                        selectedWorkItemId
+                      }
+                      onChange={(event) => {
+                        const nextWorkItemId =
+                          event.target.value
+
+                        setSelectedWorkItemId(
+                          nextWorkItemId,
+                        )
+
+                        const nextDemand =
+                          safeDemands.find(
+                            (demand: any) =>
+                              demand.id ===
+                              nextWorkItemId,
+                          )
+
+                        if (!nextDemand) {
+                          return
+                        }
+
+                        setSelectedPautaId(
+                          nextDemand.pauta_id ||
+                          '',
+                        )
+
+                        if (
+                          nextDemand.client_id
+                        ) {
+                          setSelectedClientId(
+                            nextDemand.client_id,
+                          )
+
+                          setContactMode(
+                            'client',
+                          )
+                        }
+                      }}
+                    >
+                      <option value="">
+                        Não vincular
+                      </option>
+
+                      {modalDemands.map(
+                        (
+                          demand: any,
+                        ) => (
+                          <option
+                            key={
+                              demand.id
+                            }
+                            value={
+                              demand.id
+                            }
+                          >
+                            {demand.title}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
                 </div>
 
                 <label className="agenda-a19-check">

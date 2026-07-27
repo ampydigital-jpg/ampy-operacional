@@ -111,6 +111,7 @@ export default async function AgendaPage({
     work_item?: string
     client?: string
     type?: string
+    pauta?: string
     return?: string
   }
 }) {
@@ -164,6 +165,10 @@ export default async function AgendaPage({
       )
         ? String(searchParams.type)
         : 'reu_a',
+    pautaId:
+      String(
+        searchParams.pauta || '',
+      ),
     returnUrl:
       safeReturnUrl,
     date:
@@ -222,11 +227,12 @@ export default async function AgendaPage({
     clientsResult,
     profilesResult,
     demandsResult,
+    pautasResult,
   ] = await Promise.all([
     supabase
       .from('calendar_events')
       .select(
-        'id,title,custom_name,type,client_id,work_item_id,responsible_id,starts_at,ends_at,all_day,color,recurrence_rule,series_id,series_sequence,recurrence_until,auto_recurrence,location,notes,confirmed,drive_link,created_by,created_at,updated_at',
+        'id,title,custom_name,type,client_id,work_item_id,pauta_id,responsible_id,starts_at,ends_at,all_day,color,recurrence_rule,series_id,series_sequence,recurrence_until,auto_recurrence,location,notes,confirmed,drive_link,created_by,created_at,updated_at',
       )
       .gte(
         'starts_at',
@@ -269,15 +275,31 @@ export default async function AgendaPage({
     supabase
       .from('work_items')
       .select(
-        'id,title,client_id,status,destino',
+        'id,title,client_id,responsible_id,status,destino,board_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline',
       )
       .not(
         'status',
         'in',
-        '(archived,cancelled,done)',
+        '(archived,cancelled)',
       )
       .order('title')
-      .limit(300),
+      .limit(1200),
+
+    supabase
+      .from('pautas')
+      .select(
+        'id,board_id,name,reference_month,magic_number_date,scheduled_until_date,lifecycle_status,opened_at,closed_at,archived_at,created_at,updated_at',
+      )
+      .is(
+        'archived_at',
+        null,
+      )
+      .order(
+        'reference_month',
+        {
+          ascending: false,
+        },
+      ),
   ])
 
   const clients =
@@ -289,6 +311,26 @@ export default async function AgendaPage({
   const demands =
     demandsResult.data || []
 
+  const pautas =
+    pautasResult.data || []
+
+  const requestedPautaKey =
+    String(
+      searchParams.pauta || '',
+    )
+
+  const activePautaKey =
+    requestedPautaKey === 'legacy' ||
+    requestedPautaKey === 'all'
+      ? requestedPautaKey
+      : pautas.some(
+          (pauta: any) =>
+            pauta.id ===
+            requestedPautaKey,
+        )
+        ? requestedPautaKey
+        : 'all'
+
   const clientsById =
     mapById(clients)
 
@@ -297,6 +339,9 @@ export default async function AgendaPage({
 
   const demandsById =
     mapById(demands)
+
+  const pautasById =
+    mapById(pautas)
 
   const events =
     (
@@ -325,6 +370,35 @@ export default async function AgendaPage({
                 event.work_item_id,
               ) || null
             : null,
+
+        pauta_id:
+          event.pauta_id ||
+          (
+            event.work_item_id
+              ? demandsById.get(
+                  event.work_item_id,
+                )?.pauta_id || null
+              : null
+          ),
+
+        pauta:
+          (
+            event.pauta_id ||
+            (
+              event.work_item_id
+                ? demandsById.get(
+                    event.work_item_id,
+                  )?.pauta_id || null
+                : null
+            )
+          )
+            ? pautasById.get(
+                event.pauta_id ||
+                demandsById.get(
+                  event.work_item_id,
+                )?.pauta_id,
+              ) || null
+            : null,
       }),
     )
 
@@ -348,6 +422,11 @@ export default async function AgendaPage({
       ? 'Demandas: ' +
         demandsResult.error.message
       : null,
+
+    pautasResult.error
+      ? 'Pautas: ' +
+        pautasResult.error.message
+      : null,
   ].filter(Boolean) as string[]
 
   return (
@@ -356,6 +435,10 @@ export default async function AgendaPage({
       clients={clients}
       profiles={profiles}
       demands={demands}
+      pautas={pautas}
+      activePautaKey={
+        activePautaKey
+      }
       period={period}
       start={ymd(start)}
       end={ymd(end)}

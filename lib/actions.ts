@@ -83,17 +83,139 @@ async function validateWorkItemLinks(supabase: ReturnType<typeof createClient>, 
   return { ok: true as const }
 }
 
-async function validateCalendarLinks(supabase: ReturnType<typeof createClient>, clientId: string | null, workItemId: string | null) {
-  if (!workItemId) return { clientId, ok: true as const }
-  const { data: item, error } = await supabase
+async function validateCalendarLinks(
+  supabase: ReturnType<typeof createClient>,
+  clientId: string | null,
+  workItemId: string | null,
+  pautaId: string | null,
+) {
+  if (!workItemId) {
+    if (pautaId) {
+      const {
+        data: pauta,
+        error: pautaError,
+      } = await supabase
+        .from('pautas')
+        .select(
+          'id,archived_at',
+        )
+        .eq(
+          'id',
+          pautaId,
+        )
+        .single()
+
+      if (
+        pautaError ||
+        !pauta ||
+        pauta.archived_at
+      ) {
+        return {
+          error:
+            'A Pauta vinculada à agenda não está disponível.',
+        } as const
+      }
+
+      if (clientId) {
+        const {
+          data: pautaCard,
+          error: pautaCardError,
+        } = await supabase
+          .from('work_items')
+          .select('id')
+          .eq('pauta_id', pautaId)
+          .eq('client_id', clientId)
+          .eq('is_pauta_card', true)
+          .maybeSingle()
+
+        if (
+          pautaCardError ||
+          !pautaCard
+        ) {
+          return {
+            error:
+              'O cliente selecionado não participa desta Pauta.',
+          } as const
+        }
+      }
+    }
+
+    return {
+      clientId,
+      pautaId,
+      ok: true as const,
+    }
+  }
+
+  const {
+    data: item,
+    error,
+  } = await supabase
     .from('work_items')
-    .select('id, client_id, status')
-    .eq('id', workItemId)
+    .select(
+      'id,client_id,status,pauta_id',
+    )
+    .eq(
+      'id',
+      workItemId,
+    )
     .single()
-  if (error || !item) return { error: 'Demanda vinculada Ã  agenda não foi encontrada.' as const }
-  if (['archived', 'cancelled'].includes(item.status)) return { error: 'Não vincule agenda a uma demanda arquivada ou cancelada.' as const }
-  if (clientId && item.client_id !== clientId) return { error: 'Cliente da agenda não corresponde ao cliente da demanda vinculada.' as const }
-  return { clientId: item.client_id || clientId, ok: true as const }
+
+  if (
+    error ||
+    !item
+  ) {
+    return {
+      error:
+        'Demanda vinculada à agenda não foi encontrada.',
+    } as const
+  }
+
+  if (
+    [
+      'archived',
+      'cancelled',
+    ].includes(
+      item.status,
+    )
+  ) {
+    return {
+      error:
+        'Não vincule agenda a uma demanda arquivada ou cancelada.',
+    } as const
+  }
+
+  if (
+    clientId &&
+    item.client_id !== clientId
+  ) {
+    return {
+      error:
+        'Cliente da agenda não corresponde ao cliente da demanda vinculada.',
+    } as const
+  }
+
+  if (
+    pautaId &&
+    item.pauta_id !== pautaId
+  ) {
+    return {
+      error:
+        'A Pauta da agenda não corresponde à Pauta da demanda vinculada.',
+    } as const
+  }
+
+  return {
+    clientId:
+      item.client_id ||
+      clientId,
+
+    pautaId:
+      item.pauta_id ||
+      pautaId,
+
+    ok: true as const,
+  }
 }
 
 
@@ -1309,6 +1431,10 @@ export async function createCalendarEventAction(
         formData,
         'work_item_id',
       ),
+      nullable(
+        formData,
+        'pauta_id',
+      ),
     )
 
   if ('error' in linked) {
@@ -1514,6 +1640,9 @@ export async function createCalendarEventAction(
             'work_item_id',
           ),
 
+        pauta_id:
+          linked.pautaId,
+
         responsible_id:
           responsibleId,
 
@@ -1646,7 +1775,7 @@ export async function updateCalendarEventAction(
   } = await supabase
     .from('calendar_events')
     .select(
-      'id,responsible_id,created_by,work_item_id,title,starts_at,ends_at,series_id,confirmed,type,custom_name',
+      'id,responsible_id,created_by,work_item_id,pauta_id,title,starts_at,ends_at,series_id,confirmed,type,custom_name',
     )
     .eq('id', id)
     .single()
@@ -1723,6 +1852,10 @@ export async function updateCalendarEventAction(
       nullable(
         formData,
         'work_item_id',
+      ),
+      nullable(
+        formData,
+        'pauta_id',
       ),
     )
 
@@ -1811,6 +1944,9 @@ export async function updateCalendarEventAction(
         formData,
         'work_item_id',
       ),
+
+    pauta_id:
+      linked.pautaId,
 
     responsible_id:
       responsibleId,

@@ -194,6 +194,17 @@ function agendaHref({
     )
   }
 
+  if (
+    activePautaKey &&
+    activePautaKey !== 'all' &&
+    activePautaKey !== 'legacy'
+  ) {
+    params.set(
+      'pauta',
+      activePautaKey,
+    )
+  }
+
   let returnPath =
     '/dashboard/quadro?board=' +
     encodeURIComponent(

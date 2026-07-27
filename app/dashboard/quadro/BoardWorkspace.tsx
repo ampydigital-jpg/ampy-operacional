@@ -1,6 +1,8 @@
 
 'use client'
 
+import Link from 'next/link'
+
 // AMPY-V17-A23-1-5B-REFINO-SEGURO
 
 // AMPY-V17-A23.1.4-LAYOUT-CANONICO
@@ -1546,31 +1548,51 @@ export default function BoardWorkspace({
             )}
           </div>
 
-          {canManage && (
-            <div className="board-pauta-heading-actions">
-              <button
-                className="bpri board-pauta-open-button"
-                type="button"
-                onClick={() =>
-                  setPautaModalOpen(
-                    true,
-                  )
+          <div className="board-pauta-heading-actions">
+            {activePauta && (
+              <Link
+                className="bsec board-pauta-agenda-link"
+                href={
+                  '/dashboard/agenda?period=month&start=' +
+                  String(
+                    activePauta.magic_number_date ||
+                    activePauta.reference_month,
+                  ).slice(0, 7) +
+                  '-01&pauta=' +
+                  activePauta.id
                 }
               >
-                <i className="ti ti-calendar-plus" />
-                Abrir nova Pauta
-              </button>
+                <i className="ti ti-calendar-event" />
+                Ver na Agenda
+              </Link>
+            )}
 
-              <button
-                className="bsec"
-                type="button"
-                onClick={createColumn}
-              >
-                <i className="ti ti-column-insert-right" />
-                Nova coluna
-              </button>
-            </div>
-          )}
+            {canManage && (
+              <>
+                <button
+                  className="bpri board-pauta-open-button"
+                  type="button"
+                  onClick={() =>
+                    setPautaModalOpen(
+                      true,
+                    )
+                  }
+                >
+                  <i className="ti ti-calendar-plus" />
+                  Abrir nova Pauta
+                </button>
+
+                <button
+                  className="bsec"
+                  type="button"
+                  onClick={createColumn}
+                >
+                  <i className="ti ti-column-insert-right" />
+                  Nova coluna
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
