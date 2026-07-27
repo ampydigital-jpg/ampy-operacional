@@ -8,6 +8,10 @@ import {
 } from 'react'
 
 import {
+  createPortal,
+} from 'react-dom'
+
+import {
   openMonthlyPautaAction,
 } from '@/lib/actions'
 
@@ -342,6 +346,55 @@ export default function OpenPautaModal({
     setError,
   ] = useState('')
 
+  const [
+    mounted,
+    setMounted,
+  ] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+
+    const previousOverflow =
+      document.body.style.overflow
+
+    document.body.style.overflow =
+      'hidden'
+
+    function handleKeyDown(
+      event: KeyboardEvent,
+    ) {
+      if (
+        event.key === 'Escape' &&
+        !loading
+      ) {
+        onClose()
+      }
+    }
+
+    window.addEventListener(
+      'keydown',
+      handleKeyDown,
+    )
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow
+
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown,
+      )
+    }
+  }, [
+    open,
+    loading,
+    onClose,
+  ])
+
   useEffect(() => {
     if (!open) return
 
@@ -522,7 +575,7 @@ export default function OpenPautaModal({
       servicesByClient,
     ])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
   const allSelected =
     clients.length > 0 &&
@@ -645,46 +698,56 @@ export default function OpenPautaModal({
     setLoading(false)
   }
 
-  return (
+  return createPortal(
     <div
-      className="modal-ov pauta-open-modal-ov"
-      onClick={onClose}
+      className="pauta-launch-overlay"
+      onMouseDown={(event) => {
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+          if (!loading) {
+            onClose()
+          }
+        }
+      }}
     >
       <form
-        className="modal pauta-open-modal pauta-open-modal-v3"
+        className="pauta-launch-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="open-pauta-title"
-        onClick={(event) =>
-          event.stopPropagation()
-        }
         onSubmit={submit}
       >
-        <header className="pauta-open-v3-head">
-          <div className="pauta-open-v3-title">
-            <span className="pauta-open-v3-title-icon">
+        <header className="pauta-launch-header">
+          <div className="pauta-launch-heading">
+            <span className="pauta-launch-heading-icon">
               <i className="ti ti-calendar-plus" />
             </span>
 
             <div>
+              <span className="pauta-launch-eyebrow">
+                Operação mensal
+              </span>
+
               <h2 id="open-pauta-title">
                 Abrir nova Pauta
               </h2>
 
               <p>
-                Defina a meta do mês e escolha os clientes que participarão da operação.
+                Defina a meta, revise a cobertura e escolha os clientes participantes.
               </p>
             </div>
           </div>
 
-          <div className="pauta-open-v3-head-actions">
-            <span className="pauta-open-v3-name-chip">
+          <div className="pauta-launch-header-actions">
+            <span className="pauta-launch-name">
               <i className="ti ti-wand" />
               {pautaName}
             </span>
 
             <button
-              className="mclose"
+              className="pauta-launch-close"
               type="button"
               onClick={onClose}
               disabled={loading}
@@ -695,39 +758,18 @@ export default function OpenPautaModal({
           </div>
         </header>
 
-        <div className="pauta-open-v3-steps" aria-hidden="true">
-          <span className="active">
-            <b>1</b>
-            Configuração
-          </span>
-
-          <i />
-
-          <span className="active">
-            <b>2</b>
-            Clientes
-          </span>
-
-          <i />
-
-          <span>
-            <b>3</b>
-            Confirmação
-          </span>
-        </div>
-
-        <div className="pauta-open-v3-body">
-          <section className="pauta-open-v3-config">
-            <div className="pauta-open-v3-section-title">
+        <div className="pauta-launch-content">
+          <section className="pauta-launch-config">
+            <div className="pauta-launch-section-head">
               <div>
-                <span>Configuração mensal</span>
+                <span>Configuração</span>
                 <strong>{formatMonthLabel(monthKey)}</strong>
               </div>
 
-              <small>Nome gerado automaticamente</small>
+              <small>Nome automático</small>
             </div>
 
-            <label className="pauta-open-v3-field">
+            <label className="pauta-launch-field">
               <span>Mês de referência</span>
 
               <input
@@ -743,12 +785,12 @@ export default function OpenPautaModal({
               />
 
               <small>
-                Mês que será acompanhado no Quadro Operacional.
+                Mês acompanhado no Quadro Operacional.
               </small>
             </label>
 
-            <div className="pauta-open-v3-date-grid">
-              <label className="pauta-open-v3-date-field">
+            <div className="pauta-launch-date-grid">
+              <label className="pauta-launch-date-card">
                 <span>
                   <i className="ti ti-target-arrow" />
                   Magic Number
@@ -771,7 +813,7 @@ export default function OpenPautaModal({
                 </small>
               </label>
 
-              <label className="pauta-open-v3-date-field">
+              <label className="pauta-launch-date-card">
                 <span>
                   <i className="ti ti-calendar-check" />
                   Programado até
@@ -797,7 +839,7 @@ export default function OpenPautaModal({
             </div>
 
             <div
-              className="pauta-open-v3-coverage"
+              className="pauta-launch-coverage"
               data-coverage={coverage.key}
             >
               <i
@@ -818,13 +860,13 @@ export default function OpenPautaModal({
               </div>
             </div>
 
-            <div className="pauta-open-v3-summary">
-              <div className="pauta-open-v3-summary-head">
-                <span>Resumo da abertura</span>
+            <div className="pauta-launch-summary">
+              <div className="pauta-launch-summary-head">
+                <span>Resumo</span>
                 <strong>{pautaName}</strong>
               </div>
 
-              <div className="pauta-open-v3-metrics">
+              <div className="pauta-launch-metrics">
                 <div>
                   <strong>{selectedClientIds.length}</strong>
                   <span>clientes</span>
@@ -852,7 +894,7 @@ export default function OpenPautaModal({
                 </div>
               </div>
 
-              <div className="pauta-open-v3-summary-dates">
+              <div className="pauta-launch-summary-dates">
                 <span>
                   <i className="ti ti-target-arrow" />
                   Meta {formatDate(magicNumberDate)}
@@ -866,15 +908,15 @@ export default function OpenPautaModal({
             </div>
 
             {error && (
-              <div className="notice notice-err pauta-open-v3-error">
+              <div className="notice notice-err pauta-launch-error">
                 <i className="ti ti-alert-circle" />
                 <span>{error}</span>
               </div>
             )}
           </section>
 
-          <section className="pauta-open-v3-clients">
-            <div className="pauta-open-v3-clients-head">
+          <section className="pauta-launch-clients">
+            <div className="pauta-launch-clients-head">
               <div>
                 <span>Clientes participantes</span>
                 <strong>
@@ -882,7 +924,7 @@ export default function OpenPautaModal({
                 </strong>
               </div>
 
-              <label className="pauta-open-v3-select-all">
+              <label className="pauta-launch-select-all">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -902,7 +944,7 @@ export default function OpenPautaModal({
               </label>
             </div>
 
-            <div className="sbox pauta-open-v3-search">
+            <div className="sbox pauta-launch-search">
               <i className="ti ti-search" />
 
               <input
@@ -926,7 +968,7 @@ export default function OpenPautaModal({
               )}
             </div>
 
-            <div className="pauta-open-v3-client-list">
+            <div className="pauta-launch-client-list">
               {filteredClients.map(
                 (client: any) => {
                   const services =
@@ -941,7 +983,7 @@ export default function OpenPautaModal({
 
                   return (
                     <label
-                      className="pauta-open-v3-client"
+                      className="pauta-launch-client"
                       data-selected={selected ? 'true' : 'false'}
                       key={client.id}
                       title={client.name}
@@ -976,7 +1018,7 @@ export default function OpenPautaModal({
                             .toUpperCase()}
                       </span>
 
-                      <span className="pauta-open-v3-client-copy">
+                      <span className="pauta-launch-client-copy">
                         <strong>{client.name}</strong>
 
                         <small
@@ -995,7 +1037,7 @@ export default function OpenPautaModal({
                         </small>
                       </span>
 
-                      <span className="pauta-open-v3-client-state">
+                      <span className="pauta-launch-client-state">
                         <i
                           className={
                             selected
@@ -1010,7 +1052,7 @@ export default function OpenPautaModal({
               )}
 
               {filteredClients.length === 0 && (
-                <div className="pauta-open-v3-empty">
+                <div className="pauta-launch-empty">
                   <i className="ti ti-search-off" />
                   <strong>Nenhum cliente encontrado</strong>
                   <span>Revise o termo usado na busca.</span>
@@ -1020,23 +1062,23 @@ export default function OpenPautaModal({
           </section>
         </div>
 
-        <footer className="pauta-open-v3-foot">
-          <div className="pauta-open-v3-transaction">
+        <footer className="pauta-launch-footer">
+          <div className="pauta-launch-transaction">
             <i className="ti ti-shield-check" />
 
             <div>
               <strong>
-                {selectedClientIds.length} cards serão criados de uma só vez.
+                {selectedClientIds.length} cards serão criados em uma única operação.
               </strong>
 
               <span>
-                Se um cliente falhar, toda a abertura será cancelada.
+                Se qualquer cliente falhar, toda a abertura será cancelada.
               </span>
             </div>
           </div>
 
-          <label className="pauta-open-v3-confirmation">
-            <span>Digite ABRIR PAUTA</span>
+          <label className="pauta-launch-confirmation">
+            <span>Confirme digitando ABRIR PAUTA</span>
 
             <input
               className="fi"
@@ -1051,7 +1093,7 @@ export default function OpenPautaModal({
             />
           </label>
 
-          <div className="pauta-open-v3-actions">
+          <div className="pauta-launch-actions">
             <button
               className="bsec"
               type="button"
@@ -1078,6 +1120,7 @@ export default function OpenPautaModal({
           </div>
         </footer>
       </form>
-    </div>
+    </div>,
+    document.body,
   )
 }
