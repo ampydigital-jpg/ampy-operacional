@@ -8,7 +8,7 @@ import type { DemandProcess, WorkItemStatus } from '@/types'
 import { ampyLocalDateTimeToIso } from '@/lib/date'
 
 const ALL_PATHS = [
-  '/dashboard', '/dashboard/demandas', '/dashboard/quadro', '/dashboard/kanban',
+  '/dashboard', '/dashboard/demandas', '/dashboard/quadro', '/dashboard/pautas', '/dashboard/kanban',
   '/dashboard/projetos', '/dashboard/agenda', '/dashboard/meu-dia',
   '/dashboard/minha-semana', '/dashboard/semana-equipe', '/dashboard/avisos',
   '/dashboard/clientes', '/dashboard/equipe', '/dashboard/feed-preview',
@@ -3421,6 +3421,7 @@ export async function createBoardAction(formData: FormData) {
       description: nullable(formData, 'description'),
       color: value(formData, 'color') || '#2563EB',
       status: value(formData, 'status') || 'active',
+      board_kind: 'custom',
       created_by: user.id,
       updated_at: new Date().toISOString(),
     })
@@ -3991,6 +3992,24 @@ export async function openMonthlyPautaAction(
     return {
       error:
         'Selecione o Quadro da Pauta.',
+    }
+  }
+
+  const boardResult = await supabase
+    .from('boards')
+    .select('id,board_kind,status')
+    .eq('id', boardId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (
+    boardResult.error ||
+    !boardResult.data ||
+    boardResult.data.board_kind !== 'pauta'
+  ) {
+    return {
+      error:
+        'A Pauta deve ser aberta em um quadro operacional do tipo Pauta.',
     }
   }
 

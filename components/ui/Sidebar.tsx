@@ -17,7 +17,8 @@ const groups = [
   { label: 'Operação', items: [
     { href: '/dashboard/clientes', label: 'Painel de Clientes', icon: 'ti-users' },
     { href: '/dashboard/demandas', label: 'Demandas', icon: 'ti-checklist' },
-    { href: '/dashboard/quadro', label: 'Quadro', icon: 'ti-layout-kanban' },
+    { href: '/dashboard/pautas', label: 'Pautas', icon: 'ti-calendar-stats' },
+    { href: '/dashboard/quadro', label: 'Quadros', icon: 'ti-layout-kanban' },
     { href: '/dashboard/projetos', label: 'Projetos', icon: 'ti-route' },
     { href: '/dashboard/agenda', label: 'Agenda', icon: 'ti-calendar-event' },
     { href: '/dashboard/avisos', label: 'Avisos', icon: 'ti-bell-ringing' },

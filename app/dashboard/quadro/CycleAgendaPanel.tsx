@@ -206,7 +206,7 @@ function agendaHref({
   }
 
   let returnPath =
-    '/dashboard/quadro?board=' +
+    '/dashboard/pautas?board=' +
     encodeURIComponent(
       activeBoardId,
     )

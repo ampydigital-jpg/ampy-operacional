@@ -389,6 +389,7 @@ export default function BoardWorkspace({
   clientServices = [],
   canManage = false,
   loadErrors = [],
+  workspaceMode = 'boards',
 }: any) {
   const [items, setItems] = useState<any[]>(
     Array.isArray(demands)
@@ -505,6 +506,14 @@ export default function BoardWorkspace({
 
   const deepLinkHandled =
     useRef('')
+
+  const isPautaWorkspace =
+    workspaceMode === 'pautas'
+
+  const workspaceBasePath: string =
+    isPautaWorkspace
+      ? '/dashboard/pautas'
+      : '/dashboard/quadro'
 
   const activeBoard =
     boards.find(
@@ -895,7 +904,7 @@ export default function BoardWorkspace({
       result.id
     ) {
       window.location.href =
-        '/dashboard/quadro?board=' +
+        workspaceBasePath + '?board=' +
         result.id
       return
     }
@@ -994,7 +1003,7 @@ export default function BoardWorkspace({
     }
 
     window.location.href =
-      '/dashboard/quadro'
+      workspaceBasePath
   }
 
   async function createColumn() {
@@ -1250,10 +1259,12 @@ export default function BoardWorkspace({
       <div className="topbar">
         <div>
           <div className="tb-title">
-            Quadro
+            {isPautaWorkspace ? 'Pautas' : 'Quadros'}
           </div>
           <div className="tb-sub">
-            Quadros e colunas configuráveis.
+            {isPautaWorkspace
+              ? 'Operação mensal, Magic Number e programação.'
+              : 'Quadros livres com colunas e demandas configuráveis.'}
           </div>
         </div>
 
@@ -1280,7 +1291,7 @@ export default function BoardWorkspace({
             value={activeBoardId}
             onChange={(event) => {
               window.location.href =
-                '/dashboard/quadro?board=' +
+                workspaceBasePath + '?board=' +
                 event.target.value
             }}
           >
@@ -1303,45 +1314,47 @@ export default function BoardWorkspace({
           </select>
         </div>
 
-        <div className="board-pauta-selector">
-          <span>Pauta ativa</span>
+        {isPautaWorkspace && (
+          <div className="board-pauta-selector">
+            <span>Pauta ativa</span>
 
-          <select
-            className="fi compact"
-            value={activePautaKey}
-            onChange={(event) => {
-              const next =
-                event.target.value
+            <select
+              className="fi compact"
+              value={activePautaKey}
+              onChange={(event) => {
+                const next =
+                  event.target.value
 
-              window.location.href =
-                '/dashboard/quadro?board=' +
-                activeBoardId +
-                '&pauta=' +
-                encodeURIComponent(
-                  next,
-                )
-            }}
-          >
-            {pautas.map(
-              (pauta: any) => (
-                <option
-                  key={pauta.id}
-                  value={pauta.id}
-                >
-                  {pauta.name}
-                </option>
-              ),
-            )}
+                window.location.href =
+                  workspaceBasePath + '?board=' +
+                  activeBoardId +
+                  '&pauta=' +
+                  encodeURIComponent(
+                    next,
+                  )
+              }}
+            >
+              {pautas.map(
+                (pauta: any) => (
+                  <option
+                    key={pauta.id}
+                    value={pauta.id}
+                  >
+                    {pauta.name}
+                  </option>
+                ),
+              )}
 
-            <option value="legacy">
-              Sem Pauta / Legado
-            </option>
+              <option value="legacy">
+                Sem Pauta / Legado
+              </option>
 
-            <option value="all">
-              Todas as Pautas
-            </option>
-          </select>
-        </div>
+              <option value="all">
+                Todas as Pautas
+              </option>
+            </select>
+          </div>
+        )}
 
         <select
           className="fi compact"
@@ -1519,7 +1532,7 @@ export default function BoardWorkspace({
               </div>
             )}
 
-            {legacyPautaView && (
+            {isPautaWorkspace && legacyPautaView && (
               <div className="board-pauta-summary legacy">
                 <span>
                   <i className="ti ti-archive" />
@@ -1533,7 +1546,7 @@ export default function BoardWorkspace({
               </div>
             )}
 
-            {readOnlyPautaView && (
+            {isPautaWorkspace && readOnlyPautaView && (
               <div className="board-pauta-summary readonly">
                 <span>
                   <i className="ti ti-eye" />
@@ -1569,6 +1582,7 @@ export default function BoardWorkspace({
 
             {canManage && (
               <>
+                {isPautaWorkspace && (
                 <button
                   className="bpri board-pauta-open-button"
                   type="button"
@@ -1581,6 +1595,7 @@ export default function BoardWorkspace({
                   <i className="ti ti-calendar-plus" />
                   Abrir nova Pauta
                 </button>
+                )}
 
                 <button
                   className="bsec"
@@ -2557,15 +2572,17 @@ export default function BoardWorkspace({
         }
       />
 
-      <OpenPautaModal
-        open={pautaModalOpen}
-        boardId={activeBoardId}
-        clients={clients}
-        clientServices={clientServices}
-        onClose={() =>
-          setPautaModalOpen(false)
-        }
-      />
+      {isPautaWorkspace && (
+        <OpenPautaModal
+          open={pautaModalOpen}
+          boardId={activeBoardId}
+          clients={clients}
+          clientServices={clientServices}
+          onClose={() =>
+            setPautaModalOpen(false)
+          }
+        />
+      )}
 
       {personalizeColumn && (
         <div

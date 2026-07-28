@@ -1,8 +1,7 @@
 import { unstable_noStore as noStore } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import BoardWorkspace from './BoardWorkspace'
+import BoardWorkspace from '../quadro/BoardWorkspace'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -52,7 +51,7 @@ async function hasTotalAccess() {
   )
 }
 
-export default async function QuadroPage({
+export default async function PautasPage({
   searchParams,
 }: {
   searchParams: {
@@ -62,39 +61,6 @@ export default async function QuadroPage({
   }
 }) {
   noStore()
-
-  if (
-    searchParams.pauta &&
-    searchParams.pauta !== 'legacy'
-  ) {
-    const params = new URLSearchParams()
-
-    if (searchParams.board) {
-      params.set(
-        'board',
-        searchParams.board,
-      )
-    }
-
-    if (searchParams.pauta) {
-      params.set(
-        'pauta',
-        searchParams.pauta,
-      )
-    }
-
-    if (searchParams.item) {
-      params.set(
-        'item',
-        searchParams.item,
-      )
-    }
-
-    redirect(
-      '/dashboard/pautas?' +
-        params.toString(),
-    )
-  }
 
   const supabase = createClient()
 
@@ -111,7 +77,7 @@ export default async function QuadroPage({
         'id,name,description,color,status,board_kind,created_at,updated_at',
       )
       .eq('status', 'active')
-      .eq('board_kind', 'custom')
+      .eq('board_kind', 'pauta')
       .order('created_at'),
     supabase
       .from('clients')
@@ -184,9 +150,40 @@ export default async function QuadroPage({
 
   const pautas = pautasResult.data || []
 
-  const activePautaKey = 'legacy'
+  const requestedPauta = String(
+    searchParams.pauta || '',
+  )
 
-  const activePauta = null
+  const defaultPauta =
+    pautas.find(
+      (pauta: any) =>
+        pauta.lifecycle_status === 'open',
+    ) ||
+    pautas.find(
+      (pauta: any) =>
+        pauta.lifecycle_status === 'draft',
+    ) ||
+    pautas[0] ||
+    null
+
+  const activePautaKey =
+    requestedPauta === 'all' ||
+    requestedPauta === 'legacy'
+      ? requestedPauta
+      : pautas.some(
+            (pauta: any) =>
+              pauta.id === requestedPauta,
+          )
+        ? requestedPauta
+        : String(
+            defaultPauta?.id || 'legacy',
+          )
+
+  const activePauta =
+    pautas.find(
+      (pauta: any) =>
+        pauta.id === activePautaKey,
+    ) || null
 
   if (activeBoardId) {
     columnsResult = await supabase
@@ -353,7 +350,7 @@ export default async function QuadroPage({
       clientServices={clientServices}
       canManage={await hasTotalAccess()}
       loadErrors={loadErrors}
-      workspaceMode="boards"
+      workspaceMode="pautas"
     />
   )
 }

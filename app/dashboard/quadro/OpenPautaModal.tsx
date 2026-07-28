@@ -684,7 +684,7 @@ export default function OpenPautaModal({
       result.pautaId
     ) {
       window.location.href =
-        '/dashboard/quadro?board=' +
+        '/dashboard/pautas?board=' +
         boardId +
         '&pauta=' +
         result.pautaId
