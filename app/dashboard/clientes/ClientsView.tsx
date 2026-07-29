@@ -529,19 +529,12 @@ export default function ClientsView({
     setDateScope,
   ] = useState('all')
 
+  // AMPY-V7-A3.4B.2-FECHAMENTO-PAINEL
   const [
     selectedId,
     setSelectedId,
-  ] = useState(
-    safeClients.find(
-      (client: any) =>
-        String(
-          client.status ||
-          'active',
-        ) === 'active',
-    )?.id ||
-      safeClients[0]?.id ||
-      null,
+  ] = useState<string | null>(
+    null,
   )
 
   const [
@@ -751,16 +744,22 @@ export default function ClientsView({
 
   const selected =
     useMemo(
-      () =>
-        filteredClients.find(
-          (client: any) =>
-            client.id ===
-            selectedId,
-        ) ||
-        filteredClients[0] ||
-        null,
+      () => {
+        if (!selectedId) {
+          return null
+        }
+
+        return (
+          safeClients.find(
+            (client: any) =>
+              client.id ===
+              selectedId,
+          ) ||
+          null
+        )
+      },
       [
-        filteredClients,
+        safeClients,
         selectedId,
       ],
     )
@@ -873,6 +872,13 @@ export default function ClientsView({
     setLoading(false)
     resetLogoState(selected)
     setEdit(true)
+  }
+
+  function closeClientPanel() {
+    setSelectedId(null)
+    setEdit(false)
+    setServiceModal(false)
+    setError('')
   }
 
   function selectClient(
@@ -1612,11 +1618,7 @@ export default function ClientsView({
               className="client-panel-backdrop"
               type="button"
               aria-label="Fechar painel do cliente"
-              onClick={() =>
-                setSelectedId(
-                  null,
-                )
-              }
+              onClick={closeClientPanel}
             />
 
             <aside
@@ -1687,12 +1689,10 @@ export default function ClientsView({
               </div>
 
               <button
+                type="button"
                 className="mclose"
-                onClick={() =>
-                  setSelectedId(
-                    null,
-                  )
-                }
+                aria-label="Fechar painel do cliente"
+                onClick={closeClientPanel}
               >
                 <i className="ti ti-x" />
               </button>
