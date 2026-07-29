@@ -1,13 +1,39 @@
 'use client'
 
+// AMPY-V7-A3.4B — EDIÇÃO COMPLETA DE SERVIÇOS DO CLIENTE
+
 import {
   useState,
   type FormEvent,
 } from 'react'
 
 import {
+  removeClientServiceAction,
   updateClientServiceAction,
 } from '@/lib/actions'
+
+function serviceStatusLabel(
+  status?: string | null,
+) {
+  const value =
+    String(
+      status || 'active',
+    )
+
+  if (value === 'active') {
+    return 'Ativo'
+  }
+
+  if (value === 'paused') {
+    return 'Pausado'
+  }
+
+  if (value === 'onboarding') {
+    return 'Onboarding'
+  }
+
+  return 'Inativo'
+}
 
 function captureLabel(service: any) {
   if (
@@ -33,8 +59,12 @@ function captureLabel(service: any) {
 
 export default function ClientServiceCycleSettings({
   service,
+  services = [],
+  profiles = [],
 }: {
   service: any
+  services?: any[]
+  profiles?: any[]
 }) {
   const [
     editing,
@@ -58,7 +88,6 @@ export default function ClientServiceCycleSettings({
     service?.requires_capture !== false,
   )
 
-
   async function submit(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -80,7 +109,47 @@ export default function ClientServiceCycleSettings({
     ) {
       setError(
         result.error ||
-          'Erro ao salvar as regras da Pauta.',
+          'Erro ao salvar o serviço.',
+      )
+
+      setLoading(false)
+      return
+    }
+
+    window.location.reload()
+  }
+
+  async function removeService() {
+    const serviceName =
+      service?.service?.name ||
+      'este serviço'
+
+    if (
+      !confirm(
+        'Remover ' +
+          serviceName +
+          ' deste cliente? ' +
+          'Quando houver demandas vinculadas, o histórico será preservado.',
+      )
+    ) {
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    const result =
+      await removeClientServiceAction(
+        service.id,
+      )
+
+    if (
+      result &&
+      'error' in result
+    ) {
+      setError(
+        result.error ||
+          'Erro ao remover o serviço.',
       )
 
       setLoading(false)
@@ -94,9 +163,27 @@ export default function ClientServiceCycleSettings({
     <div className="client-service-cycle">
       <div className="client-service-cycle-summary">
         <span>
+          <i className="ti ti-activity" />
+
+          {serviceStatusLabel(
+            service?.status,
+          )}
+        </span>
+
+        <span>
           <i className="ti ti-calendar-stats" />
 
-          Regras da Pauta
+          {service?.monthly_quantity
+            ? String(
+                service.monthly_quantity,
+              ) +
+              ' ' +
+              (
+                service.quantity_unit ||
+                'entregas'
+              ) +
+              ' / mês'
+            : 'Sem quantidade mensal'}
         </span>
 
         <span>
@@ -118,23 +205,26 @@ export default function ClientServiceCycleSettings({
           type="button"
           onClick={() => {
             setError('')
+            setRequiresCapture(
+              service?.requires_capture !== false,
+            )
             setEditing(
               (current) =>
                 !current,
             )
           }}
         >
-          <i className="ti ti-settings" />
+          <i className="ti ti-edit" />
 
           {editing
-            ? 'Fechar'
-            : 'Configurar Pauta'}
+            ? 'Fechar edição'
+            : 'Editar serviço'}
         </button>
       </div>
 
       {editing && (
         <form
-          className="client-service-cycle-form"
+          className="client-service-cycle-form client-service-editor-form"
           onSubmit={submit}
         >
           <input
@@ -149,22 +239,182 @@ export default function ClientServiceCycleSettings({
             value="1"
           />
 
-          <input
-            type="hidden"
-            name="cycle_duration_days"
-            value={
-              service?.cycle_duration_days ||
-              30
-            }
-          />
-
-          <div className="client-service-pauta-note">
-            <i className="ti ti-info-circle" />
-
+          <label className="fg">
             <span>
-              Estas regras definem quais pendências de Agenda serão criadas para o cliente ao abrir uma nova Pauta.
+              Serviço
             </span>
-          </div>
+
+            <select
+              className="fi"
+              name="service_catalog_id"
+              defaultValue={
+                service.service_catalog_id ||
+                ''
+              }
+              required
+            >
+              <option value="">
+                Selecione
+              </option>
+
+              {services.map(
+                (item: any) => (
+                  <option
+                    key={item.id}
+                    value={item.id}
+                  >
+                    {item.name}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+
+          <label className="fg">
+            <span>
+              Situação
+            </span>
+
+            <select
+              className="fi"
+              name="status"
+              defaultValue={
+                service.status ||
+                'active'
+              }
+            >
+              <option value="active">
+                Ativo
+              </option>
+
+              <option value="paused">
+                Pausado
+              </option>
+
+              <option value="onboarding">
+                Onboarding
+              </option>
+
+              <option value="inactive">
+                Inativo
+              </option>
+            </select>
+          </label>
+
+          <label className="fg">
+            <span>
+              Quantidade mensal
+            </span>
+
+            <input
+              className="fi"
+              name="monthly_quantity"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={
+                service.monthly_quantity ??
+                ''
+              }
+            />
+          </label>
+
+          <label className="fg">
+            <span>
+              Unidade
+            </span>
+
+            <input
+              className="fi"
+              name="quantity_unit"
+              defaultValue={
+                service.quantity_unit ||
+                ''
+              }
+              placeholder="conteúdos, vídeos..."
+            />
+          </label>
+
+          <label className="fg">
+            <span>
+              Responsável
+            </span>
+
+            <select
+              className="fi"
+              name="responsible_id"
+              defaultValue={
+                service.responsible_id ||
+                ''
+              }
+            >
+              <option value="">
+                Não definido
+              </option>
+
+              {profiles.map(
+                (profile: any) => (
+                  <option
+                    key={profile.id}
+                    value={profile.id}
+                  >
+                    {profile.full_name}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+
+          <label className="fg">
+            <span>
+              Início do serviço
+            </span>
+
+            <input
+              className="fi"
+              name="started_at"
+              type="date"
+              defaultValue={
+                String(
+                  service.started_at ||
+                  '',
+                ).slice(
+                  0,
+                  10,
+                )
+              }
+            />
+          </label>
+
+          <label className="fg">
+            <span>
+              Duração da Pauta
+            </span>
+
+            <div className="client-service-duration-input">
+              <input
+                className="fi"
+                name="cycle_duration_days"
+                type="number"
+                min="1"
+                max="365"
+                step="1"
+                defaultValue={
+                  service.cycle_duration_days ||
+                  28
+                }
+                required
+              />
+
+              <span>
+                dias
+              </span>
+            </div>
+
+            <small className="client-service-help">
+              Período usado para organizar o acompanhamento operacional.
+            </small>
+          </label>
 
           <div className="client-service-cycle-options">
             <label className="checkbox-line">
@@ -183,10 +433,15 @@ export default function ClientServiceCycleSettings({
               <input
                 type="checkbox"
                 name="requires_capture"
-                checked={requiresCapture}
-                onChange={(event) =>
+                checked={
+                  requiresCapture
+                }
+                onChange={(
+                  event,
+                ) =>
                   setRequiresCapture(
-                    event.target.checked,
+                    event.target
+                      .checked,
                   )
                 }
               />
@@ -195,18 +450,20 @@ export default function ClientServiceCycleSettings({
             </label>
           </div>
 
-          <div className="fg">
-            <label className="fl">
+          <label className="fg">
+            <span>
               Local padrão da captação
-            </label>
+            </span>
 
             <select
               className="fi"
               name="default_capture_type"
-              disabled={!requiresCapture}
               defaultValue={
-                service?.default_capture_type ||
+                service.default_capture_type ||
                 ''
+              }
+              disabled={
+                !requiresCapture
               }
             >
               <option value="">
@@ -221,7 +478,24 @@ export default function ClientServiceCycleSettings({
                 Em estúdio
               </option>
             </select>
-          </div>
+          </label>
+
+          <label className="fg client-service-editor-full">
+            <span>
+              Observações
+            </span>
+
+            <textarea
+              className="fi"
+              name="notes"
+              rows={3}
+              defaultValue={
+                service.notes ||
+                ''
+              }
+              placeholder="Informações operacionais do serviço"
+            />
+          </label>
 
           {error && (
             <div className="notice notice-err">
@@ -235,27 +509,53 @@ export default function ClientServiceCycleSettings({
 
           <div className="client-service-cycle-actions">
             <button
-              className="bsec"
+              className="bsec danger-action"
               type="button"
               disabled={loading}
-              onClick={() =>
-                setEditing(false)
+              onClick={
+                removeService
               }
             >
-              Cancelar
+              <i className="ti ti-trash" />
+
+              Remover serviço
             </button>
 
-            <button
-              className="bpri"
-              type="submit"
-              disabled={loading}
-            >
-              {loading
-                ? 'Salvando...'
-                : 'Salvar regras'}
-            </button>
+            <div className="client-service-cycle-actions-main">
+              <button
+                className="bsec"
+                type="button"
+                disabled={loading}
+                onClick={() =>
+                  setEditing(false)
+                }
+              >
+                Cancelar
+              </button>
+
+              <button
+                className="bpri"
+                type="submit"
+                disabled={loading}
+              >
+                {loading
+                  ? 'Salvando...'
+                  : 'Salvar serviço'}
+              </button>
+            </div>
           </div>
         </form>
+      )}
+
+      {!editing &&
+        error && (
+        <div className="notice notice-err">
+          <i className="ti ti-alert-circle" />
+
+          <span>
+            {error}
+          </span>
+        </div>
       )}
     </div>
   )

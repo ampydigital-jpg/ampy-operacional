@@ -748,44 +748,198 @@ export async function updateClientServiceAction(formData: FormData) {
     }
   }
 
+  const {
+    data: currentService,
+    error: currentServiceError,
+  } = await supabase
+    .from('client_services')
+    .select(
+      'id,client_id,service_catalog_id,status',
+    )
+    .eq('id', id)
+    .maybeSingle()
+
+  if (
+    currentServiceError ||
+    !currentService
+  ) {
+    return {
+      error:
+        currentServiceError?.message ||
+        'Serviço não encontrado.',
+    }
+  }
+
   const update: Record<string, unknown> = {}
+
+  if (
+    formData.has(
+      'service_catalog_id',
+    )
+  ) {
+    const serviceCatalogId =
+      value(
+        formData,
+        'service_catalog_id',
+      )
+
+    if (!serviceCatalogId) {
+      return {
+        error: 'Selecione o serviço.',
+      }
+    }
+
+    const {
+      data: duplicateService,
+      error: duplicateError,
+    } = await supabase
+      .from('client_services')
+      .select('id')
+      .eq(
+        'client_id',
+        currentService.client_id,
+      )
+      .eq(
+        'service_catalog_id',
+        serviceCatalogId,
+      )
+      .neq('id', id)
+      .neq(
+        'status',
+        'cancelled',
+      )
+      .neq(
+        'status',
+        'archived',
+      )
+      .neq(
+        'status',
+        'inactive',
+      )
+      .limit(1)
+      .maybeSingle()
+
+    if (duplicateError) {
+      return {
+        error: duplicateError.message,
+      }
+    }
+
+    if (duplicateService) {
+      return {
+        error:
+          'Este serviço já está vinculado ao cliente.',
+      }
+    }
+
+    update.service_catalog_id =
+      serviceCatalogId
+  }
 
   if (formData.has('responsible_id')) {
     update.responsible_id =
-      nullable(formData, 'responsible_id')
+      nullable(
+        formData,
+        'responsible_id',
+      )
   }
 
   if (formData.has('status')) {
-    update.status =
-      value(formData, 'status') || 'active'
+    const status =
+      value(
+        formData,
+        'status',
+      ) ||
+      'active'
+
+    if (
+      ![
+        'active',
+        'paused',
+        'onboarding',
+        'inactive',
+      ].includes(status)
+    ) {
+      return {
+        error:
+          'Situação do serviço inválida.',
+      }
+    }
+
+    update.status = status
   }
 
-  if (formData.has('monthly_quantity')) {
-    const monthly =
-      value(formData, 'monthly_quantity')
+  if (formData.has('started_at')) {
+    update.started_at =
+      nullable(
+        formData,
+        'started_at',
+      )
+  }
 
-    update.monthly_quantity =
-      monthly
-        ? Number(monthly)
-        : null
+  if (
+    formData.has(
+      'monthly_quantity',
+    )
+  ) {
+    const monthly =
+      value(
+        formData,
+        'monthly_quantity',
+      )
+
+    if (monthly) {
+      const parsedMonthly =
+        Number(monthly)
+
+      if (
+        !Number.isFinite(
+          parsedMonthly,
+        ) ||
+        parsedMonthly < 0
+      ) {
+        return {
+          error:
+            'Informe uma quantidade mensal válida.',
+        }
+      }
+
+      update.monthly_quantity =
+        parsedMonthly
+    } else {
+      update.monthly_quantity =
+        null
+    }
   }
 
   if (formData.has('quantity_unit')) {
     update.quantity_unit =
-      nullable(formData, 'quantity_unit')
+      nullable(
+        formData,
+        'quantity_unit',
+      )
   }
 
   if (formData.has('notes')) {
     update.notes =
-      nullable(formData, 'notes')
+      nullable(
+        formData,
+        'notes',
+      )
   }
 
   const cycleSettingsPresent =
-    value(formData, 'cycle_settings_present') === '1'
+    value(
+      formData,
+      'cycle_settings_present',
+    ) === '1'
 
   if (cycleSettingsPresent) {
     const duration = Number(
-      value(formData, 'cycle_duration_days'),
+      value(
+        formData,
+        'cycle_duration_days',
+      ),
     )
 
     if (
@@ -794,18 +948,26 @@ export async function updateClientServiceAction(formData: FormData) {
       duration > 365
     ) {
       return {
-        error: 'Informe uma duração entre 1 e 365 dias.',
+        error:
+          'Informe uma duração entre 1 e 365 dias.',
       }
     }
 
     const requiresAlignmentMeeting =
-      formData.get('requires_alignment_meeting') === 'on'
+      formData.get(
+        'requires_alignment_meeting',
+      ) === 'on'
 
     const requiresCapture =
-      formData.get('requires_capture') === 'on'
+      formData.get(
+        'requires_capture',
+      ) === 'on'
 
     const requestedCaptureType =
-      value(formData, 'default_capture_type')
+      value(
+        formData,
+        'default_capture_type',
+      )
 
     update.cycle_duration_days =
       duration
@@ -818,7 +980,12 @@ export async function updateClientServiceAction(formData: FormData) {
 
     update.default_capture_type =
       requiresCapture &&
-      ['cap_e', 'cap_s'].includes(requestedCaptureType)
+      [
+        'cap_e',
+        'cap_s',
+      ].includes(
+        requestedCaptureType,
+      )
         ? requestedCaptureType
         : null
   }
@@ -827,7 +994,8 @@ export async function updateClientServiceAction(formData: FormData) {
     Object.keys(update).length === 0
   ) {
     return {
-      error: 'Nenhuma alteração informada.',
+      error:
+        'Nenhuma alteração informada.',
     }
   }
 
@@ -846,6 +1014,121 @@ export async function updateClientServiceAction(formData: FormData) {
 
   return {
     success: true,
+  }
+}
+
+export async function removeClientServiceAction(
+  id: string,
+) {
+  const { supabase, profile } =
+    await getCurrentProfile()
+
+  if (
+    !profile ||
+    !isManager(
+      profile.role,
+    )
+  ) {
+    return forbidden()
+  }
+
+  if (!id) {
+    return {
+      error: 'Serviço inválido.',
+    }
+  }
+
+  const {
+    data: service,
+    error: serviceError,
+  } = await supabase
+    .from('client_services')
+    .select(
+      'id,client_id,status',
+    )
+    .eq('id', id)
+    .maybeSingle()
+
+  if (
+    serviceError ||
+    !service
+  ) {
+    return {
+      error:
+        serviceError?.message ||
+        'Serviço não encontrado.',
+    }
+  }
+
+  const {
+    count: linkedWorkItems,
+    error: linkedWorkItemsError,
+  } = await supabase
+    .from('work_items')
+    .select(
+      'id',
+      {
+        count: 'exact',
+        head: true,
+      },
+    )
+    .eq(
+      'client_service_id',
+      id,
+    )
+
+  if (linkedWorkItemsError) {
+    return {
+      error:
+        linkedWorkItemsError.message,
+    }
+  }
+
+  if (
+    Number(
+      linkedWorkItems || 0,
+    ) > 0
+  ) {
+    const { error } =
+      await supabase
+        .from(
+          'client_services',
+        )
+        .update({
+          status: 'cancelled',
+        })
+        .eq('id', id)
+
+    if (error) {
+      return {
+        error: error.message,
+      }
+    }
+
+    revalidateOperationalPaths()
+
+    return {
+      success: true,
+      preservedHistory: true,
+    }
+  }
+
+  const { error } = await supabase
+    .from('client_services')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    preservedHistory: false,
   }
 }
 

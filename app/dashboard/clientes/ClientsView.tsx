@@ -770,7 +770,17 @@ export default function ClientsView({
       ? safeClientServices.filter(
           (service: any) =>
             service.client_id ===
-            selected.id,
+              selected.id &&
+            ![
+              'cancelled',
+              'archived',
+              'inactive',
+            ].includes(
+              String(
+                service.status ||
+                '',
+              ),
+            ),
         )
       : []
 
@@ -1597,7 +1607,30 @@ export default function ClientsView({
         </main>
 
         {selected && (
-          <aside className="client-panel">
+          <>
+            <button
+              className="client-panel-backdrop"
+              type="button"
+              aria-label="Fechar painel do cliente"
+              onClick={() =>
+                setSelectedId(
+                  null,
+                )
+              }
+            />
+
+            <aside
+              className="client-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-label={
+                'Painel do cliente ' +
+                text(
+                  selected.name,
+                  'Cliente',
+                )
+              }
+            >
             <header className="client-panel-header clients-a21-panel-header">
               <ClientLogo
                 client={selected}
@@ -1968,6 +2001,12 @@ export default function ClientsView({
                             service={
                               service
                             }
+                            services={
+                              safeServices
+                            }
+                            profiles={
+                              safeProfiles
+                            }
                           />
                         </div>
                       ),
@@ -2187,7 +2226,8 @@ export default function ClientsView({
                 Excluir da operação
               </button>
             </footer>
-          </aside>
+            </aside>
+          </>
         )}
       </div>
 

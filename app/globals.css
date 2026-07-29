@@ -13406,3 +13406,243 @@ small,
 .agenda-pauta-side-item.is-deadline > i {
   color: #CA8A04;
 }
+
+/* =========================================================
+   AMPY-V7-A3.4B — PAINEL DE CLIENTES E SERVIÇOS EDITÁVEIS
+   ========================================================= */
+
+.clients-a21 .client-layout {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.clients-a21 .client-table-wrap {
+  width: 100%;
+  height: 100%;
+  border-right: 0;
+}
+
+.clients-a21 .client-panel-backdrop {
+  all: unset;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: block;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.clients-a21 .client-panel {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  bottom: 14px;
+  z-index: 81;
+
+  display: grid;
+  grid-template-rows:
+    auto
+    auto
+    minmax(0, 1fr)
+    auto;
+
+  width: min(
+    760px,
+    calc(100vw - 96px)
+  );
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+
+  overflow: hidden;
+
+  border: 1px solid #D9E1EA;
+  border-radius: 20px;
+
+  background: #FFFFFF;
+
+  box-shadow:
+    0 28px 80px
+    rgba(15, 23, 42, 0.3);
+}
+
+.clients-a21 .client-panel-body {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.clients-a21 .client-panel-body > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.clients-a21 .client-tabs {
+  flex: 0 0 auto;
+  scrollbar-gutter: stable;
+}
+
+.clients-a21 .client-actions {
+  position: relative;
+  z-index: 2;
+
+  flex: 0 0 auto;
+}
+
+.clients-a21 .service-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+
+  overflow: hidden;
+}
+
+.clients-a21 .client-service-cycle,
+.clients-a21 .client-service-cycle-summary,
+.clients-a21 .client-service-cycle-form,
+.clients-a21 .client-service-cycle-form > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.clients-a21 .client-service-cycle-summary {
+  align-items: center;
+}
+
+.clients-a21 .client-service-cycle-summary .text-button {
+  flex: 0 0 auto;
+}
+
+.clients-a21 .client-service-editor-form {
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  width: 100%;
+
+  overflow: hidden;
+
+  border-color: #DDE5EE;
+  background: #F8FAFC;
+}
+
+.clients-a21 .client-service-editor-form .fg,
+.clients-a21 .client-service-editor-form .fi,
+.clients-a21 .client-service-editor-form input,
+.clients-a21 .client-service-editor-form select,
+.clients-a21 .client-service-editor-form textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.clients-a21 .client-service-editor-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.clients-a21 .client-service-editor-full {
+  grid-column: 1 / -1;
+}
+
+.clients-a21 .client-service-cycle-actions {
+  grid-column: 1 / -1;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  min-width: 0;
+}
+
+.clients-a21 .client-service-cycle-actions-main {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+
+  min-width: 0;
+}
+
+.clients-a21 .client-service-cycle-actions button {
+  min-height: 40px;
+  padding:
+    8px
+    13px;
+}
+
+.clients-a21 .client-service-cycle-actions .danger-action {
+  border-color:
+    rgba(
+      220,
+      38,
+      38,
+      0.28
+    );
+
+  background: #FFF1F1;
+  color: #B42318;
+}
+
+@media (max-width: 860px) {
+  .clients-a21 .client-panel {
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    width: 100vw;
+
+    border: 0;
+    border-radius: 0;
+  }
+
+  .clients-a21 .client-service-editor-form {
+    grid-template-columns: 1fr;
+  }
+
+  .clients-a21 .client-service-editor-full,
+  .clients-a21 .client-service-cycle-actions {
+    grid-column: auto;
+  }
+
+  .clients-a21 .client-service-cycle-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clients-a21 .client-service-cycle-actions-main {
+    display: grid;
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+
+    width: 100%;
+  }
+
+  .clients-a21 .client-service-cycle-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .clients-a21 .client-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .clients-a21 .client-service-cycle-actions-main {
+    grid-template-columns: 1fr;
+  }
+}
