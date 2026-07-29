@@ -21,7 +21,9 @@ import {
   updateClientAction,
 } from '@/lib/actions'
 
-import ClientServiceCycleSettings from './ClientServiceCycleSettings'
+import ClientServiceCycleSettings, {
+  ClientServiceFields,
+} from './ClientServiceCycleSettings'
 
 const SEGMENTS = [
   'Moda',
@@ -2925,10 +2927,12 @@ function ServiceModal({
   return (
     <div
       className="modal-ov"
-      onClick={onClose}
+      onClick={
+        onClose
+      }
     >
       <div
-        className="modal"
+        className="modal client-service-modal"
         onClick={(
           event,
         ) =>
@@ -2936,20 +2940,33 @@ function ServiceModal({
         }
       >
         <div className="modal-head">
-          <div className="modal-title">
-            Vincular serviço
+          <div>
+            <div className="modal-title">
+              Vincular serviço
+            </div>
+
+            <div className="modal-sub">
+              Configure o serviço e as regras operacionais usadas nas Pautas.
+            </div>
           </div>
 
           <button
+            type="button"
             className="mclose"
-            onClick={onClose}
+            aria-label="Fechar vínculo de serviço"
+            onClick={
+              onClose
+            }
           >
             <i className="ti ti-x" />
           </button>
         </div>
 
         <form
-          onSubmit={onSubmit}
+          className="client-service-create-form"
+          onSubmit={
+            onSubmit
+          }
         >
           <div className="modal-body">
             <input
@@ -2960,188 +2977,15 @@ function ServiceModal({
               }
             />
 
-            <div className="fg">
-              <label className="fl">
-                Serviço *
-              </label>
-
-              <select
-                className="fi"
-                name="service_catalog_id"
-                required
-              >
-                <option value="">
-                  Selecionar
-                </option>
-
-                {services.map(
-                  (
-                    service:
-                      any,
-                  ) => (
-                    <option
-                      key={
-                        service.id
-                      }
-                      value={
-                        service.id
-                      }
-                    >
-                      {
-                        service.name
-                      }
-                    </option>
-                  ),
-                )}
-              </select>
-            </div>
-
-            <div className="frow">
-              <div className="fg">
-                <label className="fl">
-                  Quantidade mensal
-                </label>
-
-                <input
-                  className="fi"
-                  type="number"
-                  min="0"
-                  name="monthly_quantity"
-                  placeholder="Ex.: 12"
-                />
-              </div>
-
-              <div className="fg">
-                <label className="fl">
-                  Unidade
-                </label>
-
-                <select
-                  className="fi"
-                  name="quantity_unit"
-                >
-                  <option value="">
-                    Não se aplica
-                  </option>
-
-                  <option value="conteúdos">
-                    conteúdos
-                  </option>
-
-                  <option value="vídeos">
-                    vídeos
-                  </option>
-
-                  <option value="entregas">
-                    entregas
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div className="fg">
-              <label className="fl">
-                Responsável
-              </label>
-
-              <select
-                className="fi"
-                name="responsible_id"
-              >
-                <option value="">
-                  Definir depois
-                </option>
-
-                {profiles.map(
-                  (
-                    profile:
-                      any,
-                  ) => (
-                    <option
-                      key={
-                        profile.id
-                      }
-                      value={
-                        profile.id
-                      }
-                    >
-                      {
-                        profile.full_name
-                      }
-                    </option>
-                  ),
-                )}
-              </select>
-            </div>
-
-
-            <input
-              type="hidden"
-              name="cycle_settings_present"
-              value="1"
+            <ClientServiceFields
+              mode="create"
+              services={
+                services
+              }
+              profiles={
+                profiles
+              }
             />
-
-            <input
-              type="hidden"
-              name="cycle_duration_days"
-              value="30"
-            />
-
-            <div className="client-service-link-cycle">
-              <div className="client-service-pauta-note">
-                <i className="ti ti-info-circle" />
-
-                <span>
-                  Defina quais pendências de Agenda este serviço exigirá ao abrir uma nova Pauta.
-                </span>
-              </div>
-
-              <div className="client-service-cycle-options">
-                <label className="checkbox-line">
-                  <input
-                    type="checkbox"
-                    name="requires_alignment_meeting"
-                    defaultChecked
-                  />
-
-                  Exigir reunião de alinhamento
-                </label>
-
-                <label className="checkbox-line">
-                  <input
-                    type="checkbox"
-                    name="requires_capture"
-                    defaultChecked
-                  />
-
-                  Exigir captação
-                </label>
-              </div>
-
-              <div className="fg">
-                <label className="fl">
-                  Local padrão da captação
-                </label>
-
-                <select
-                  className="fi"
-                  name="default_capture_type"
-                  defaultValue=""
-                >
-                  <option value="">
-                    Escolher ao agendar
-                  </option>
-
-                  <option value="cap_e">
-                    Externa
-                  </option>
-
-                  <option value="cap_s">
-                    Em estúdio
-                  </option>
-                </select>
-              </div>
-            </div>
 
             {error && (
               <div className="notice notice-err">
@@ -3158,14 +3002,19 @@ function ServiceModal({
             <button
               className="bsec"
               type="button"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
             >
               Cancelar
             </button>
 
             <button
               className="bpri"
-              disabled={loading}
+              type="submit"
+              disabled={
+                loading
+              }
             >
               {loading
                 ? 'Vinculando...'

@@ -13646,3 +13646,435 @@ small,
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   AMPY-V7-A3.4B.3 — FORMULÁRIO ÚNICO DE SERVIÇOS
+   ========================================================= */
+
+.clients-a21 .client-panel {
+  width:
+    min(
+      860px,
+      calc(
+        100vw -
+        72px
+      )
+    );
+}
+
+.clients-a21 .service-card {
+  overflow:
+    visible;
+}
+
+.clients-a21 .client-service-cycle-summary {
+  flex-wrap:
+    wrap;
+}
+
+.clients-a21 .client-service-form-shell {
+  display:
+    block;
+
+  width:
+    100%;
+
+  padding:
+    16px;
+
+  overflow:
+    visible;
+
+  border:
+    1px solid
+    #DDE5EE;
+
+  border-radius:
+    14px;
+
+  background:
+    #F8FAFC;
+}
+
+.client-service-modal {
+  display:
+    grid;
+
+  grid-template-rows:
+    auto
+    minmax(
+      0,
+      1fr
+    );
+
+  width:
+    min(
+      820px,
+      calc(
+        100vw -
+        32px
+      )
+    );
+
+  max-width:
+    820px;
+
+  max-height:
+    min(
+      780px,
+      calc(
+        100dvh -
+        32px
+      )
+    );
+
+  overflow:
+    hidden;
+}
+
+.client-service-modal
+.client-service-create-form {
+  display:
+    grid;
+
+  grid-template-rows:
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+
+  min-height:
+    0;
+}
+
+.client-service-modal
+.modal-body {
+  min-height:
+    0;
+
+  overflow-x:
+    hidden;
+
+  overflow-y:
+    auto;
+
+  scrollbar-gutter:
+    stable;
+}
+
+.client-service-fields-grid {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:
+    14px;
+
+  width:
+    100%;
+
+  min-width:
+    0;
+}
+
+.client-service-fields-grid
+> * {
+  min-width:
+    0;
+}
+
+.client-service-fields-grid
+.fi,
+.client-service-fields-grid
+input,
+.client-service-fields-grid
+select,
+.client-service-fields-grid
+textarea {
+  width:
+    100%;
+
+  min-width:
+    0;
+
+  max-width:
+    100%;
+}
+
+.client-service-fields-grid
+textarea {
+  min-height:
+    92px;
+
+  resize:
+    vertical;
+}
+
+.client-service-fields-full {
+  grid-column:
+    1 /
+    -1;
+}
+
+.client-service-active-note {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    9px;
+
+  min-height:
+    42px;
+
+  padding:
+    10px
+    12px;
+
+  border:
+    1px solid
+    #BBF7D0;
+
+  border-radius:
+    10px;
+
+  background:
+    #F0FDF4;
+
+  color:
+    #166534;
+
+  font-size:
+    12px;
+}
+
+.client-service-active-note
+i {
+  flex:
+    0
+    0
+    auto;
+
+  font-size:
+    18px;
+}
+
+.client-service-rules {
+  display:
+    grid;
+
+  gap:
+    12px;
+
+  padding:
+    14px;
+
+  border:
+    1px solid
+    #D9E3EF;
+
+  border-radius:
+    12px;
+
+  background:
+    #FFFFFF;
+}
+
+.client-service-rules-head
+> div {
+  display:
+    grid;
+
+  gap:
+    3px;
+}
+
+.client-service-rules-head
+b {
+  color:
+    #0F172A;
+
+  font-size:
+    13px;
+}
+
+.client-service-rules-head
+span {
+  color:
+    #64748B;
+
+  font-size:
+    11px;
+
+  line-height:
+    1.45;
+}
+
+.client-service-rule-grid {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:
+    10px;
+}
+
+.client-service-rule-card {
+  display:
+    grid;
+
+  grid-template-columns:
+    auto
+    minmax(
+      0,
+      1fr
+    );
+
+  align-items:
+    flex-start;
+
+  gap:
+    10px;
+
+  min-width:
+    0;
+
+  padding:
+    12px;
+
+  border:
+    1px solid
+    #DCE5EF;
+
+  border-radius:
+    10px;
+
+  background:
+    #F8FAFC;
+
+  cursor:
+    pointer;
+}
+
+.client-service-rule-card:hover {
+  border-color:
+    #94A3B8;
+
+  background:
+    #F1F5F9;
+}
+
+.client-service-rule-card
+input {
+  width:
+    17px;
+
+  height:
+    17px;
+
+  margin:
+    2px
+    0
+    0;
+
+  accent-color:
+    #2563EB;
+}
+
+.client-service-rule-card
+> span {
+  display:
+    grid;
+
+  gap:
+    3px;
+
+  min-width:
+    0;
+}
+
+.client-service-rule-card
+b {
+  color:
+    #0F172A;
+
+  font-size:
+    12px;
+}
+
+.client-service-rule-card
+small {
+  color:
+    #64748B;
+
+  font-size:
+    10px;
+
+  line-height:
+    1.4;
+}
+
+.client-service-capture-field {
+  margin:
+    0;
+}
+
+.clients-a21
+.client-service-cycle-actions {
+  margin-top:
+    14px;
+}
+
+@media (
+  max-width:
+  860px
+) {
+  .clients-a21 .client-panel {
+    width:
+      100vw;
+  }
+
+  .client-service-modal {
+    width:
+      calc(
+        100vw -
+        20px
+      );
+
+    max-height:
+      calc(
+        100dvh -
+        20px
+      );
+  }
+
+  .client-service-fields-grid,
+  .client-service-rule-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .client-service-fields-full {
+    grid-column:
+      auto;
+  }
+}
