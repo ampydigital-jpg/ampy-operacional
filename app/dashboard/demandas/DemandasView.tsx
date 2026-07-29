@@ -162,25 +162,34 @@ function fmtShort(
 }
 
 function processMatches(
-  destino:
-    | string
-    | null
-    | undefined,
+  item: any,
   selected: string,
 ) {
   const value =
-    String(destino || 'quadro')
+    String(
+      item?.destino ||
+      'quadro',
+    )
 
   if (selected === 'all') {
     return true
   }
 
+  if (selected === 'pauta') {
+    return Boolean(
+      item?.pauta_id,
+    )
+  }
+
   if (selected === 'quadro') {
-    return [
-      'quadro',
-      'kanban',
-      'ambos',
-    ].includes(value)
+    return (
+      !item?.pauta_id &&
+      [
+        'quadro',
+        'kanban',
+        'ambos',
+      ].includes(value)
+    )
   }
 
   if (selected === 'projeto') {
@@ -191,6 +200,21 @@ function processMatches(
   }
 
   return value === selected
+}
+
+function demandOriginLabel(
+  item: any,
+) {
+  if (item?.pauta_id) {
+    return 'Pauta'
+  }
+
+  return (
+    PROCESS_LABEL[
+      item?.destino
+    ] ||
+    'Quadro'
+  )
 }
 
 function automaticTitle(
@@ -252,6 +276,24 @@ function isExtraDemand(
 function demandOriginHref(
   item: any,
 ) {
+  if (
+    item?.pauta_id &&
+    item?.board_id
+  ) {
+    return (
+      '/dashboard/pautas?board=' +
+      encodeRouteValue(
+        item.board_id,
+      ) +
+      '&pauta=' +
+      encodeRouteValue(
+        item.pauta_id,
+      ) +
+      '&item=' +
+      encodeRouteValue(item.id)
+    )
+  }
+
   if (item?.board_id) {
     return (
       '/dashboard/quadro?board=' +
@@ -409,6 +451,9 @@ export default function DemandasView({
   clientServices = [],
   boards = [],
   boardColumns = [],
+  pautas = [],
+  pautaCards = [],
+  initialCreateContext = null,
   loadErrors = [],
 }: any) {
   const safeDemands =
@@ -441,16 +486,61 @@ export default function DemandasView({
       ? boardColumns.filter(Boolean)
       : []
 
+  const safePautas =
+    Array.isArray(pautas)
+      ? pautas.filter(Boolean)
+      : []
+
+  const safePautaCards =
+    Array.isArray(pautaCards)
+      ? pautaCards.filter(Boolean)
+      : []
+
+  const safeCustomBoards =
+    safeBoards.filter(
+      (board: any) =>
+        board.board_kind ===
+        'custom',
+    )
+
   const safeLoadErrors =
     Array.isArray(loadErrors)
       ? loadErrors.filter(Boolean)
       : []
 
+  const initialFormKind =
+    [
+      'pauta',
+      'quadro',
+      'avulsa',
+    ].includes(
+      String(
+        initialCreateContext
+          ?.kind ||
+        '',
+      ),
+    )
+      ? (
+          String(
+            initialCreateContext
+              ?.kind,
+          ) as
+            | 'pauta'
+            | 'quadro'
+            | 'avulsa'
+        )
+      : 'pauta'
+
   const [items, setItems] =
     useState(safeDemands)
 
   const [open, setOpen] =
-    useState(false)
+    useState(
+      Boolean(
+        initialCreateContext
+          ?.open,
+      ),
+    )
 
   const [search, setSearch] =
     useState('')
@@ -482,17 +572,44 @@ export default function DemandasView({
     formKind,
     setFormKind,
   ] = useState<
-    'quadro' | 'avulsa'
-  >('avulsa')
+    'pauta' |
+    'quadro' |
+    'avulsa'
+  >(
+    initialFormKind,
+  )
+
+  const [
+    formPauta,
+    setFormPauta,
+  ] = useState(
+    String(
+      initialCreateContext
+        ?.pautaId ||
+      '',
+    ),
+  )
 
   const [formClient, setFormClient] =
     useState('')
 
   const [formBoard, setFormBoard] =
-    useState('')
+    useState(
+      String(
+        initialCreateContext
+          ?.boardId ||
+        '',
+      ),
+    )
 
   const [formColumn, setFormColumn] =
-    useState('')
+    useState(
+      String(
+        initialCreateContext
+          ?.columnId ||
+        '',
+      ),
+    )
 
   const [formStart, setFormStart] =
     useState('')
@@ -512,6 +629,45 @@ export default function DemandasView({
         client.id === formClient,
     ) || null
 
+  const selectedPauta =
+    safePautas.find(
+      (pauta: any) =>
+        pauta.id === formPauta,
+    ) || null
+
+  const resolvedFormBoard =
+    formKind === 'pauta'
+      ? selectedPauta
+          ?.board_id || ''
+      : formBoard
+
+  const pautaClientIds =
+    new Set(
+      safePautaCards
+        .filter(
+          (item: any) =>
+            item.pauta_id ===
+              formPauta &&
+            item.is_pauta_card ===
+              true,
+        )
+        .map(
+          (item: any) =>
+            item.client_id,
+        )
+        .filter(Boolean),
+    )
+
+  const formClients =
+    formKind === 'pauta'
+      ? safeClients.filter(
+          (client: any) =>
+            pautaClientIds.has(
+              client.id,
+            ),
+        )
+      : safeClients
+
   const activeServices =
     formClient
       ? safeClientServices.filter(
@@ -523,11 +679,11 @@ export default function DemandasView({
       : []
 
   const activeColumns =
-    formBoard
+    resolvedFormBoard
       ? safeColumns.filter(
           (column: any) =>
             column.board_id ===
-            formBoard,
+            resolvedFormBoard,
         )
       : []
 
@@ -621,7 +777,7 @@ export default function DemandasView({
           matchesStatus &&
           matchesDeadline &&
           processMatches(
-            item.destino,
+            item,
             process,
           ) &&
           (
@@ -772,9 +928,8 @@ export default function DemandasView({
   ])
 
   function openDemandModal() {
-    setFormKind(
-    'avulsa',
-  )
+    setFormKind('pauta')
+    setFormPauta('')
     setFormClient('')
     setFormBoard('')
     setFormColumn('')
@@ -817,7 +972,8 @@ export default function DemandasView({
       return
     }
 
-    window.location.reload()
+    window.location.href =
+      '/dashboard/demandas'
   }
 
   async function archive(
@@ -888,8 +1044,8 @@ export default function DemandasView({
           </div>
 
           <div className="tb-sub">
-            Quadro, Extras e Projetos
-            em uma visão operacional.
+            Pautas, Quadros, Extras e Projetos
+            na mesma operação.
           </div>
         </div>
 
@@ -904,7 +1060,7 @@ export default function DemandasView({
                   event.target.value,
                 )
               }
-              placeholder="Buscar demanda, cliente, Quadro ou coluna..."
+              placeholder="Buscar demanda, cliente, Pauta, Quadro ou coluna..."
             />
           </div>
 
@@ -914,7 +1070,7 @@ export default function DemandasView({
             onClick={openDemandModal}
           >
             <i className="ti ti-plus" />
-            Novo Extra
+            Nova demanda
           </button>
         </div>
       </div>
@@ -966,6 +1122,9 @@ export default function DemandasView({
         >
           <option value="all">
             Todas as origens
+          </option>
+          <option value="pauta">
+            Pauta
           </option>
           <option value="quadro">
             Quadro
@@ -1235,16 +1394,50 @@ export default function DemandasView({
 
                       <td>
                         <span className="demandas-a16-origin">
-                          {PROCESS_LABEL[
-                            item.destino
-                          ] ||
-                            'Quadro'}
+                          {demandOriginLabel(
+                            item,
+                          )}
                         </span>
                       </td>
 
                       <td>
                         <div className="demandas-a23-origin-links">
-                          {item.board_id && (
+                          {item.pauta_id &&
+                            item.board_id && (
+                            <div>
+                              <Link
+                                className="demandas-a16-context-link"
+                                href={
+                                  '/dashboard/pautas?board=' +
+                                  encodeRouteValue(
+                                    item.board_id,
+                                  ) +
+                                  '&pauta=' +
+                                  encodeRouteValue(
+                                    item.pauta_id,
+                                  ) +
+                                  '&item=' +
+                                  encodeRouteValue(
+                                    item.id,
+                                  )
+                                }
+                              >
+                                {item.pauta
+                                  ?.name ||
+                                  'Abrir Pauta'}
+                              </Link>
+
+                              <small>
+                                {item
+                                  .board_column
+                                  ?.name ||
+                                  'Sem coluna'}
+                              </small>
+                            </div>
+                          )}
+
+                          {item.board_id &&
+                            !item.pauta_id && (
                             <div>
                               <Link
                                 className="demandas-a16-context-link"
@@ -1420,16 +1613,25 @@ export default function DemandasView({
                       </td>
 
                       <td>
-                        <button
-                          className="icon-btn danger"
-                          type="button"
-                          title="Arquivar"
-                          onClick={() =>
-                            archive(item.id)
-                          }
-                        >
-                          <i className="ti ti-archive" />
-                        </button>
+                        {item.is_pauta_card ? (
+                          <span
+                            className="badge bmut"
+                            title="Card mensal gerenciado pela Pauta"
+                          >
+                            Pauta
+                          </span>
+                        ) : (
+                          <button
+                            className="icon-btn danger"
+                            type="button"
+                            title="Arquivar"
+                            onClick={() =>
+                              archive(item.id)
+                            }
+                          >
+                            <i className="ti ti-archive" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )
@@ -1456,14 +1658,13 @@ export default function DemandasView({
             <div className="modal-head">
               <div>
                 <div className="modal-title">
-                  Novo Extra
+                  Nova demanda
                 </div>
 
                 <div className="modal-sub">
-                  Crie no Quadro ou
-                  registre um Extra.
-                  Projetos permanecem na
-                  aba Projetos.
+                  Vincule à Pauta, ao Quadro
+                  personalizado ou registre
+                  um Extra sem contexto.
                 </div>
               </div>
 
@@ -1486,7 +1687,51 @@ export default function DemandasView({
                   </label>
 
                   <div className="demandas-a16-kind">
+                    <button
+                      type="button"
+                      className={
+                        formKind ===
+                        'pauta'
+                          ? 'active'
+                          : ''
+                      }
+                      onClick={() => {
+                        setFormKind(
+                          'pauta',
+                        )
+                        setFormPauta('')
+                        setFormBoard('')
+                        setFormColumn('')
+                        setFormClient('')
+                        setError('')
+                      }}
+                    >
+                      <i className="ti ti-calendar-stats" />
+                      Pauta
+                    </button>
 
+                    <button
+                      type="button"
+                      className={
+                        formKind ===
+                        'quadro'
+                          ? 'active'
+                          : ''
+                      }
+                      onClick={() => {
+                        setFormKind(
+                          'quadro',
+                        )
+                        setFormPauta('')
+                        setFormBoard('')
+                        setFormColumn('')
+                        setFormClient('')
+                        setError('')
+                      }}
+                    >
+                      <i className="ti ti-layout-kanban" />
+                      Quadro
+                    </button>
 
                     <button
                       type="button"
@@ -1500,8 +1745,10 @@ export default function DemandasView({
                         setFormKind(
                           'avulsa',
                         )
+                        setFormPauta('')
                         setFormBoard('')
                         setFormColumn('')
+                        setFormClient('')
                         setError('')
                       }}
                     >
@@ -1518,7 +1765,155 @@ export default function DemandasView({
                 </div>
 
                 {formKind ===
-                'quadro' ? (
+                'pauta' ? (
+                  <>
+                    <div className="frow">
+                      <div className="fg">
+                        <label className="fl">
+                          Pauta *
+                        </label>
+
+                        <select
+                          className="fi"
+                          name="pauta_id"
+                          required
+                          value={formPauta}
+                          onChange={(
+                            event,
+                          ) => {
+                            setFormPauta(
+                              event.target
+                                .value,
+                            )
+                            setFormColumn('')
+                            setFormClient('')
+                          }}
+                        >
+                          <option
+                            value=""
+                            disabled
+                          >
+                            Selecione a Pauta
+                          </option>
+
+                          {safePautas
+                            .filter(
+                              (
+                                pauta: any,
+                              ) =>
+                                [
+                                  'open',
+                                  'draft',
+                                ].includes(
+                                  String(
+                                    pauta.lifecycle_status ||
+                                    '',
+                                  ),
+                                ),
+                            )
+                            .map(
+                              (
+                                pauta: any,
+                              ) => (
+                                <option
+                                  key={
+                                    pauta.id
+                                  }
+                                  value={
+                                    pauta.id
+                                  }
+                                >
+                                  {
+                                    pauta.name
+                                  }
+                                </option>
+                              ),
+                            )}
+                        </select>
+                      </div>
+
+                      <div className="fg">
+                        <label className="fl">
+                          Coluna *
+                        </label>
+
+                        <select
+                          className="fi"
+                          name="board_column_id"
+                          required
+                          disabled={
+                            !formPauta
+                          }
+                          value={formColumn}
+                          onChange={(
+                            event,
+                          ) =>
+                            setFormColumn(
+                              event.target
+                                .value,
+                            )
+                          }
+                        >
+                          <option
+                            value=""
+                            disabled
+                          >
+                            {formPauta
+                              ? 'Selecione a coluna'
+                              : 'Selecione a Pauta primeiro'}
+                          </option>
+
+                          {activeColumns.map(
+                            (
+                              column: any,
+                            ) => (
+                              <option
+                                key={
+                                  column.id
+                                }
+                                value={
+                                  column.id
+                                }
+                              >
+                                {
+                                  column.name
+                                }
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="fg">
+                      <label className="fl">
+                        Título da demanda *
+                      </label>
+
+                      <input
+                        className="fi"
+                        name="title"
+                        required
+                        minLength={2}
+                        maxLength={180}
+                        placeholder="Ex.: Ajustar campanha de agosto"
+                      />
+                    </div>
+
+                    {formPauta &&
+                      formClients.length ===
+                        0 && (
+                        <div className="notice notice-warn">
+                          <i className="ti ti-alert-triangle" />
+
+                          <span>
+                            Esta Pauta ainda não possui clientes vinculados. Inclua o cliente pela edição da Pauta antes de criar a demanda.
+                          </span>
+                        </div>
+                      )}
+                  </>
+                ) : formKind ===
+                  'quadro' ? (
                   <>
                     <div className="frow">
                       <div className="fg">
@@ -1548,7 +1943,7 @@ export default function DemandasView({
                             Selecione o Quadro
                           </option>
 
-                          {safeBoards.map(
+                          {safeCustomBoards.map(
                             (
                               board: any,
                             ) => (
@@ -1658,8 +2053,8 @@ export default function DemandasView({
                   <div className="fg">
                     <label className="fl">
                       Cliente
-                      {formKind ===
-                      'quadro'
+                      {formKind !==
+                      'avulsa'
                         ? ' *'
                         : ''}
                     </label>
@@ -1668,8 +2063,13 @@ export default function DemandasView({
                       className="fi"
                       name="client_id"
                       required={
+                        formKind !==
+                        'avulsa'
+                      }
+                      disabled={
                         formKind ===
-                        'quadro'
+                          'pauta' &&
+                        !formPauta
                       }
                       value={formClient}
                       onChange={(event) =>
@@ -1682,17 +2082,22 @@ export default function DemandasView({
                       <option
                         value=""
                         disabled={
-                          formKind ===
-                          'quadro'
+                          formKind !==
+                          'avulsa'
                         }
                       >
                         {formKind ===
-                        'quadro'
-                          ? 'Selecione o cliente'
-                          : 'Interno Ampy'}
+                        'pauta'
+                          ? formPauta
+                            ? 'Selecione o cliente da Pauta'
+                            : 'Selecione a Pauta primeiro'
+                          : formKind ===
+                              'quadro'
+                            ? 'Selecione o cliente'
+                            : 'Interno Ampy'}
                       </option>
 
-                      {safeClients.map(
+                      {formClients.map(
                         (
                           client: any,
                         ) => (

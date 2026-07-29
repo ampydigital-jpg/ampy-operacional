@@ -32,7 +32,17 @@ export const dynamic =
 
 export const revalidate = 0
 
-export default async function DemandasPage() {
+export default async function DemandasPage({
+  searchParams,
+}: {
+  searchParams: {
+    new?: string
+    context?: string
+    pauta?: string
+    board?: string
+    column?: string
+  }
+}) {
   noStore()
 
   const supabase = createClient()
@@ -47,10 +57,12 @@ export default async function DemandasPage() {
     columnsResult,
     projectStepsResult,
     projectStatusesResult,
+    pautasResult,
+    pautaCardsResult,
   ] = await Promise.all([
     supabase
       .from('work_items')
-      .select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at,card_tag,card_tag_color')
+      .select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at,card_tag,card_tag_color')
       .not(
         'status',
         'in',
@@ -89,7 +101,7 @@ export default async function DemandasPage() {
     supabase
       .from('boards')
       .select(
-        'id,name,color,status',
+        'id,name,color,status,board_kind',
       )
       .eq('status', 'active')
       .order('name'),
@@ -127,6 +139,40 @@ export default async function DemandasPage() {
         'position',
         { ascending: true },
       ),
+
+    supabase
+      .from('pautas')
+      .select(
+        'id,board_id,name,reference_month,magic_number_date,scheduled_until_date,lifecycle_status,archived_at',
+      )
+      .is(
+        'archived_at',
+        null,
+      )
+      .order(
+        'reference_month',
+        { ascending: false },
+      ),
+
+    supabase
+      .from('work_items')
+      .select(
+        'id,title,pauta_id,client_id,board_id,board_column_id,is_pauta_card,status,created_at',
+      )
+      .eq(
+        'is_pauta_card',
+        true,
+      )
+      .not(
+        'status',
+        'in',
+        '(archived,cancelled)',
+      )
+      .order(
+        'created_at',
+        { ascending: false },
+      )
+      .limit(2000),
   ])
 
   const clients =
@@ -158,6 +204,12 @@ export default async function DemandasPage() {
     projectStatusesResult.data ||
     []
 
+  const pautas =
+    pautasResult.data || []
+
+  const pautaCards =
+    pautaCardsResult.data || []
+
   const clientServicesRaw =
     clientServicesResult.data || []
 
@@ -175,6 +227,9 @@ export default async function DemandasPage() {
 
   const columnsById =
     mapById(columns)
+
+  const pautasById =
+    mapById(pautas)
 
   const projectStatusesById =
     mapById(projectStatuses)
@@ -257,6 +312,13 @@ export default async function DemandasPage() {
         item.board_column_id
           ? columnsById.get(
               item.board_column_id,
+            ) || null
+          : null,
+
+      pauta:
+        item.pauta_id
+          ? pautasById.get(
+              item.pauta_id,
             ) || null
           : null,
     }))
@@ -362,7 +424,57 @@ export default async function DemandasPage() {
       ? 'Status dos projetos: ' +
         projectStatusesResult.error.message
       : null,
+
+    pautasResult.error
+      ? 'Pautas: ' +
+        pautasResult.error.message
+      : null,
+
+    pautaCardsResult.error
+      ? 'Cards mensais das Pautas: ' +
+        pautaCardsResult.error.message
+      : null,
   ].filter(Boolean) as string[]
+
+  const requestedContext =
+    String(
+      searchParams.context ||
+      '',
+    )
+
+  const initialCreateContext = {
+    open:
+      searchParams.new === '1',
+
+    kind:
+      [
+        'pauta',
+        'quadro',
+        'avulsa',
+      ].includes(
+        requestedContext,
+      )
+        ? requestedContext
+        : 'pauta',
+
+    pautaId:
+      String(
+        searchParams.pauta ||
+        '',
+      ),
+
+    boardId:
+      String(
+        searchParams.board ||
+        '',
+      ),
+
+    columnId:
+      String(
+        searchParams.column ||
+        '',
+      ),
+  }
 
   return (
     <DemandasView
@@ -374,6 +486,11 @@ export default async function DemandasPage() {
       }
       boards={boards}
       boardColumns={columns}
+      pautas={pautas}
+      pautaCards={pautaCards}
+      initialCreateContext={
+        initialCreateContext
+      }
       loadErrors={loadErrors}
     />
   )

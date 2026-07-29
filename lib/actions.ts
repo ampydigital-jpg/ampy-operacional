@@ -59,7 +59,7 @@ async function canOperateWorkItem(id: string) {
   if (!user || !profile) return { error: 'Sessão inválida ou usuário inativo.' as const }
   const { data: item, error } = await supabase
     .from('work_items')
-    .select('id, title, client_id, client_service_id, responsible_id, created_by, status, destino')
+    .select('id,title,client_id,client_service_id,responsible_id,created_by,status,destino,board_id,board_column_id,pauta_id,is_pauta_card,pauta_card_id,completed_at')
     .eq('id', id)
     .single()
   if (error || !item) return { error: 'Demanda não encontrada.' as const }
@@ -1295,8 +1295,11 @@ export async function updateWorkItemStatusAction(id: string, status: WorkItemSta
   if ('error' in permission) return permission
   const { supabase, user, item } = permission
   const update: Record<string, unknown> = { status }
-  if (['done', 'delivered', 'cancelled', 'archived'].includes(String(status))) update.closed_at = new Date().toISOString()
-  if (['done', 'delivered', 'cancelled', 'archived'].includes(item.status) && !['done', 'delivered', 'cancelled', 'archived'].includes(String(status))) update.closed_at = null
+  const completed = ['done', 'delivered', 'approved'].includes(String(status))
+  const closed = completed || ['cancelled', 'archived'].includes(String(status))
+  update.closed_at = closed ? new Date().toISOString() : null
+  update.completed_at = completed ? new Date().toISOString() : null
+  update.completed_by = completed ? user.id : null
   const { error } = await supabase.from('work_items').update(update).eq('id', id)
   if (error) return { error: error.message }
   await addHistory(id, user.id, 'status', item.status, status)
@@ -1308,8 +1311,25 @@ export async function updateWorkItemStatusAction(id: string, status: WorkItemSta
 export async function deleteWorkItemAction(id: string) {
   const permission = await canOperateWorkItem(id)
   if ('error' in permission) return permission
-  const { supabase, user } = permission
-  const { error } = await supabase.from('work_items').update({ status: 'archived', closed_at: new Date().toISOString() }).eq('id', id)
+  const { supabase, user, item } = permission
+
+  if (item.is_pauta_card) {
+    return {
+      error:
+        'O card mensal principal é gerenciado pela Pauta e não pode ser arquivado como uma demanda comum.',
+    }
+  }
+
+  const { error } = await supabase
+    .from('work_items')
+    .update({
+      status: 'archived',
+      closed_at: new Date().toISOString(),
+      completed_at: null,
+      completed_by: null,
+    })
+    .eq('id', id)
+
   if (error) return { error: error.message }
   await addHistory(id, user.id, 'archived', null, 'archived')
   revalidateOperationalPaths()
@@ -5488,6 +5508,16 @@ export async function updateBoardColumnDemandAction(
     )
       ? new Date().toISOString()
       : null,
+    completed_at: ['done', 'delivered', 'approved'].includes(
+      column.operational_status,
+    )
+      ? new Date().toISOString()
+      : null,
+    completed_by: ['done', 'delivered', 'approved'].includes(
+      column.operational_status,
+    )
+      ? user.id
+      : null,
   }
 
   if (isManager(profile.role)) {
@@ -5560,6 +5590,16 @@ export async function moveBoardCardAction(
         column.operational_status,
       )
         ? new Date().toISOString()
+        : null,
+      completed_at: ['done', 'delivered', 'approved'].includes(
+        column.operational_status,
+      )
+        ? new Date().toISOString()
+        : null,
+      completed_by: ['done', 'delivered', 'approved'].includes(
+        column.operational_status,
+      )
+        ? user.id
         : null,
     })
     .eq('id', id)
@@ -6086,12 +6126,13 @@ export async function createDemandFromDemandasAction(
     )
 
   if (
+    demandKind !== 'pauta' &&
     demandKind !== 'quadro' &&
     demandKind !== 'avulsa'
   ) {
     return {
       error:
-        'Selecione Quadro ou Extra.',
+        'Selecione Pauta, Quadro ou Extra.',
     }
   }
 
@@ -6197,8 +6238,256 @@ export async function createDemandFromDemandasAction(
   }
 
   let payload: any = null
+  let historyContext = ''
 
   if (
+    demandKind === 'pauta'
+  ) {
+    const pautaId =
+      value(
+        formData,
+        'pauta_id',
+      )
+
+    const boardColumnId =
+      value(
+        formData,
+        'board_column_id',
+      )
+
+    const title =
+      value(
+        formData,
+        'title',
+      )
+
+    if (!pautaId) {
+      return {
+        error:
+          'Selecione a Pauta.',
+      }
+    }
+
+    if (!boardColumnId) {
+      return {
+        error:
+          'Selecione a coluna.',
+      }
+    }
+
+    if (!clientId) {
+      return {
+        error:
+          'Selecione o cliente da Pauta.',
+      }
+    }
+
+    if (!title) {
+      return {
+        error:
+          'Informe o título da demanda.',
+      }
+    }
+
+    const [
+      pautaResult,
+      columnResult,
+      clientResult,
+      mainCardResult,
+    ] = await Promise.all([
+      supabase
+        .from('pautas')
+        .select(
+          'id,board_id,name,lifecycle_status,archived_at',
+        )
+        .eq(
+          'id',
+          pautaId,
+        )
+        .maybeSingle(),
+
+      supabase
+        .from('board_columns')
+        .select(
+          'id,board_id,name,operational_status',
+        )
+        .eq(
+          'id',
+          boardColumnId,
+        )
+        .maybeSingle(),
+
+      supabase
+        .from('clients')
+        .select(
+          'id,name,status',
+        )
+        .eq(
+          'id',
+          clientId,
+        )
+        .eq(
+          'status',
+          'active',
+        )
+        .maybeSingle(),
+
+      supabase
+        .from('work_items')
+        .select(
+          'id,pauta_id,client_id,is_pauta_card,status',
+        )
+        .eq(
+          'pauta_id',
+          pautaId,
+        )
+        .eq(
+          'client_id',
+          clientId,
+        )
+        .eq(
+          'is_pauta_card',
+          true,
+        )
+        .not(
+          'status',
+          'in',
+          '(archived,cancelled)',
+        )
+        .maybeSingle(),
+    ])
+
+    const pauta =
+      pautaResult.data
+
+    const column =
+      columnResult.data
+
+    const client =
+      clientResult.data
+
+    const mainCard =
+      mainCardResult.data
+
+    if (
+      pautaResult.error ||
+      !pauta ||
+      pauta.archived_at ||
+      ![
+        'open',
+        'draft',
+      ].includes(
+        String(
+          pauta.lifecycle_status ||
+          '',
+        ),
+      )
+    ) {
+      return {
+        error:
+          'Pauta inválida, encerrada ou arquivada.',
+      }
+    }
+
+    if (
+      columnResult.error ||
+      !column ||
+      column.board_id !==
+        pauta.board_id
+    ) {
+      return {
+        error:
+          'A coluna não pertence ao Quadro operacional desta Pauta.',
+      }
+    }
+
+    if (
+      clientResult.error ||
+      !client
+    ) {
+      return {
+        error:
+          'Cliente inválido ou inativo.',
+      }
+    }
+
+    if (
+      mainCardResult.error ||
+      !mainCard
+    ) {
+      return {
+        error:
+          'Este cliente ainda não participa da Pauta. Inclua-o pela edição da Pauta antes de criar demandas adicionais.',
+      }
+    }
+
+    payload = {
+      title,
+      description: null,
+
+      type:
+        String(
+          column.name ||
+          'Demanda da Pauta',
+        ),
+
+      origin: 'planned',
+      destino: 'quadro',
+
+      status:
+        column.operational_status ||
+        'not_started',
+
+      priority,
+
+      client_id: clientId,
+
+      client_service_id:
+        clientServiceId,
+
+      responsible_id:
+        responsibleId,
+
+      created_by: user.id,
+
+      board_id:
+        pauta.board_id,
+
+      board_column_id:
+        boardColumnId,
+
+      pauta_id:
+        pauta.id,
+
+      is_pauta_card:
+        false,
+
+      pauta_card_id:
+        mainCard.id,
+
+      internal_deadline:
+        startDate,
+
+      final_deadline:
+        finalDate,
+
+      drive_link:
+        nullable(
+          formData,
+          'drive_link',
+        ),
+
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+    }
+
+    historyContext =
+      'pauta:' +
+      pauta.id
+  } else if (
     demandKind === 'quadro'
   ) {
     const boardId =
@@ -6242,15 +6531,23 @@ export async function createDemandFromDemandasAction(
       supabase
         .from('boards')
         .select(
-          'id,name,status',
+          'id,name,status,board_kind',
         )
-        .eq('id', boardId)
-        .eq('status', 'active')
+        .eq(
+          'id',
+          boardId,
+        )
+        .eq(
+          'status',
+          'active',
+        )
         .maybeSingle(),
 
       supabase
         .from('board_columns')
-        .select('id,board_id,name,operational_status')
+        .select(
+          'id,board_id,name,operational_status',
+        )
         .eq(
           'id',
           boardColumnId,
@@ -6266,8 +6563,14 @@ export async function createDemandFromDemandasAction(
         .select(
           'id,name,status',
         )
-        .eq('id', clientId)
-        .eq('status', 'active')
+        .eq(
+          'id',
+          clientId,
+        )
+        .eq(
+          'status',
+          'active',
+        )
         .maybeSingle(),
     ])
 
@@ -6282,11 +6585,13 @@ export async function createDemandFromDemandasAction(
 
     if (
       boardResult.error ||
-      !board
+      !board ||
+      board.board_kind !==
+        'custom'
     ) {
       return {
         error:
-          'Quadro inválido ou inativo.',
+          'Quadro personalizado inválido ou inativo.',
       }
     }
 
@@ -6352,6 +6657,13 @@ export async function createDemandFromDemandasAction(
       board_column_id:
         boardColumnId,
 
+      pauta_id: null,
+
+      is_pauta_card:
+        false,
+
+      pauta_card_id: null,
+
       internal_deadline:
         startDate,
 
@@ -6370,6 +6682,10 @@ export async function createDemandFromDemandasAction(
           'notes',
         ),
     }
+
+    historyContext =
+      'quadro:' +
+      boardId
   } else {
     const title =
       value(
@@ -6412,6 +6728,13 @@ export async function createDemandFromDemandasAction(
 
       board_column_id: null,
 
+      pauta_id: null,
+
+      is_pauta_card:
+        false,
+
+      pauta_card_id: null,
+
       internal_deadline:
         startDate,
 
@@ -6430,6 +6753,9 @@ export async function createDemandFromDemandasAction(
           'notes',
         ),
     }
+
+    historyContext =
+      'extra'
   }
 
   if (!payload) {
@@ -6445,7 +6771,9 @@ export async function createDemandFromDemandasAction(
   } = await supabase
     .from('work_items')
     .insert(payload)
-    .select('id,title')
+    .select(
+      'id,title,pauta_id,board_id',
+    )
     .single()
 
   if (error || !created) {
@@ -6464,7 +6792,20 @@ export async function createDemandFromDemandasAction(
     created.title,
   )
 
+  if (historyContext) {
+    await addHistory(
+      created.id,
+      user.id,
+      'context',
+      null,
+      historyContext,
+    )
+  }
+
   revalidateOperationalPaths()
+  revalidatePath(
+    '/dashboard/pautas',
+  )
 
   return {
     success: true,

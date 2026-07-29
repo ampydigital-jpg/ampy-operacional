@@ -704,9 +704,26 @@ export default function BoardWorkspace({
     columnId: string,
   ) {
     if (!legacyPautaView) {
-      setError(
-        'Crie demandas adicionais pela área Demandas e vincule-as à Pauta correspondente.',
-      )
+      if (!activePauta) {
+        setError(
+          'Selecione uma Pauta específica antes de criar uma demanda.',
+        )
+        return
+      }
+
+      const params =
+        new URLSearchParams({
+          new: '1',
+          context: 'pauta',
+          pauta: activePauta.id,
+          board: activePauta.board_id,
+          column: columnId,
+        })
+
+      window.location.href =
+        '/dashboard/demandas?' +
+        params.toString()
+
       return
     }
 
@@ -2522,7 +2539,8 @@ export default function BoardWorkspace({
               </div>
 
               <div className="modal-foot">
-                {editing && (
+                {editing &&
+                  !editing.is_pauta_card && (
                   <button
                     className="bsec danger-button"
                     type="button"
@@ -2531,6 +2549,15 @@ export default function BoardWorkspace({
                   >
                     Arquivar
                   </button>
+                )}
+
+                {editing?.is_pauta_card && (
+                  <span
+                    className="badge bmut"
+                    title="Card mensal gerenciado pela Pauta"
+                  >
+                    Card mensal da Pauta
+                  </span>
                 )}
 
                 <button
