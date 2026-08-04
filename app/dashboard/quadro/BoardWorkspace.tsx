@@ -2531,24 +2531,6 @@ export default function BoardWorkspace({
                               </span>
                             </div>
 
-                            {!isPautaWorkspace &&
-                              !readOnlyPautaView &&
-                              !item.is_pauta_card && (
-                              <button
-                                type="button"
-                                className="bpri board-v9-complete-button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  void markCardCompleted(
-                                    item,
-                                  )
-                                }}
-                                disabled={loading}
-                              >
-                                <i className="ti ti-circle-check" />
-                                Marcar como concluído
-                              </button>
-                            )}
                           </article>
                         )
                       },
@@ -2989,6 +2971,23 @@ export default function BoardWorkspace({
                     disabled={loading}
                   >
                     Arquivar
+                  </button>
+                )}
+
+                {editing &&
+                  !editing.is_pauta_card && (
+                  <button
+                    className="bpri"
+                    type="button"
+                    onClick={() =>
+                      void markCardCompleted(
+                        editing,
+                      )
+                    }
+                    disabled={loading}
+                  >
+                    <i className="ti ti-circle-check" />
+                    Marcar como concluído
                   </button>
                 )}
 

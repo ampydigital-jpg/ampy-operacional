@@ -14,12 +14,52 @@ async function hasTotalAccess() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
+
   const admin = createAdminClient()
-  const byProfile = await admin.from('team_members').select('access_type,is_active').eq('profile_id', user.id).maybeSingle()
-  if (byProfile.data?.is_active !== false && byProfile.data?.access_type === 'total') return true
-  if (!user.email) return false
-  const byEmail = await admin.from('team_members').select('access_type,is_active').ilike('email', user.email).maybeSingle()
-  return byEmail.data?.is_active !== false && byEmail.data?.access_type === 'total'
+
+  const profileResult = await admin
+    .from('profiles')
+    .select('role,is_active,email')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (
+    profileResult.data?.is_active !== false &&
+    profileResult.data?.role === 'admin'
+  ) {
+    return true
+  }
+
+  const byProfile = await admin
+    .from('team_members')
+    .select('access_type,is_active')
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
+  if (
+    byProfile.data?.is_active !== false &&
+    byProfile.data?.access_type === 'total'
+  ) {
+    return true
+  }
+
+  const email =
+    user.email ||
+    profileResult.data?.email ||
+    ''
+
+  if (!email) return false
+
+  const byEmail = await admin
+    .from('team_members')
+    .select('access_type,is_active')
+    .ilike('email', email)
+    .maybeSingle()
+
+  return (
+    byEmail.data?.is_active !== false &&
+    byEmail.data?.access_type === 'total'
+  )
 }
 
 export default async function PautasPage({ searchParams }: { searchParams: { board?: string; pauta?: string; item?: string; archived?: string } }) {
@@ -39,7 +79,15 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     supabase.from('service_catalog').select('id,name,is_active').eq('is_active',true),
   ])
 
-  const boards = boardsResult.data || []
+  const boards = (boardsResult.data || []).map(
+    (board: any) => ({
+      ...board,
+      name:
+        board.board_kind === 'pauta'
+          ? ''
+          : board.name,
+    }),
+  )
   const distributionBoards = customBoardsResult.data || []
   const clients = clientsResult.data || []
   const profiles = profilesResult.data || []
