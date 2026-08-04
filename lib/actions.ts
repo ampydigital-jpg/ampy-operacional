@@ -1294,6 +1294,23 @@ export async function updateWorkItemStatusAction(id: string, status: WorkItemSta
   const permission = await canOperateWorkItem(id)
   if ('error' in permission) return permission
   const { supabase, user, item } = permission
+
+  const { count: activeAssignments, error: assignmentsError } =
+    await supabase
+      .from('work_item_board_assignments')
+      .select('id', { count: 'exact', head: true })
+      .eq('work_item_id', id)
+      .eq('assignment_status', 'active')
+
+  if (assignmentsError) return { error: assignmentsError.message }
+
+  if (Number(activeAssignments || 0) > 0) {
+    return {
+      error:
+        'O status global desta demanda é calculado pelos Quadros vinculados. Movimente o card dentro do Quadro correspondente.',
+    }
+  }
+
   const update: Record<string, unknown> = { status }
   const completed = ['done', 'delivered', 'approved'].includes(String(status))
   const closed = completed || ['cancelled', 'archived'].includes(String(status))
@@ -5154,6 +5171,292 @@ export async function deleteEmptyPautaAction(
       'Pautas não podem ser excluídas. Arquive a Pauta para retirá-la da operação ativa.',
   }
 }
+
+// =========================================================
+// V8-B — PAUTA MULTIQUADRO CONSOLIDADA
+// =========================================================
+
+type V8PautaClientInput = {
+  clientId: string
+  targetDate: string
+}
+
+type V8PautaDemandRow = {
+  clientId: string
+  clientServiceId: string
+  responsibleId: string
+  internalDeadline: string
+  finalDeadline: string
+  priority?: string
+  driveLink?: string
+  notes?: string
+  cardTag?: string
+  cardTagColor?: string
+}
+
+type V8PautaTarget = {
+  boardId: string
+  boardColumnId: string
+  isRequired?: boolean
+}
+
+function v8UniqueIds(input: unknown, limit = 300) {
+  return Array.from(
+    new Set(
+      (Array.isArray(input) ? input : [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, limit)
+}
+
+export async function addClientsToPautaV8Action(
+  pautaId: string,
+  clients: V8PautaClientInput[],
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem adicionar clientes à Pauta.',
+    )
+  }
+
+  const id = String(pautaId || '').trim()
+  const rows = (Array.isArray(clients) ? clients : [])
+    .map((row) => ({
+      client_id: String(row?.clientId || '').trim(),
+      target_date: String(row?.targetDate || '').trim(),
+    }))
+    .filter((row) => row.client_id)
+    .slice(0, 300)
+
+  if (!id || rows.length === 0) {
+    return { error: 'Selecione pelo menos um cliente.' }
+  }
+
+  if (String(confirmation || '').trim() !== 'ADICIONAR CLIENTES') {
+    return { error: 'Digite exatamente ADICIONAR CLIENTES.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'add_clients_to_pauta_v8',
+    {
+      p_pauta_id: id,
+      p_clients: rows,
+      p_confirmation: 'ADICIONAR CLIENTES',
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidatePautaManagementPaths(id)
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function updatePautaMemberTargetDateAction(
+  memberId: string,
+  targetDate: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem alterar a data-meta.',
+    )
+  }
+
+  const id = String(memberId || '').trim()
+  const date = String(targetDate || '').trim()
+
+  if (!id || !validPautaDate(date)) {
+    return { error: 'Informe uma data-meta válida.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'update_pauta_member_target_date',
+    {
+      p_member_id: id,
+      p_target_date: date,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function removePautaClientsBatchAction(
+  pautaId: string,
+  clientIds: string[],
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem retirar clientes da Pauta.',
+    )
+  }
+
+  const id = String(pautaId || '').trim()
+  const selected = v8UniqueIds(clientIds)
+
+  if (!id || selected.length === 0) {
+    return { error: 'Selecione pelo menos um cliente.' }
+  }
+
+  if (String(confirmation || '').trim() !== 'RETIRAR CLIENTES') {
+    return { error: 'Digite exatamente RETIRAR CLIENTES.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'remove_pauta_clients_batch',
+    {
+      p_pauta_id: id,
+      p_client_ids: selected,
+      p_confirmation: 'RETIRAR CLIENTES',
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidatePautaManagementPaths(id)
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function removePautaDemandsBatchAction(
+  pautaId: string,
+  workItemIds: string[],
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem retirar demandas da Pauta.',
+    )
+  }
+
+  const id = String(pautaId || '').trim()
+  const selected = v8UniqueIds(workItemIds)
+
+  if (!id || selected.length === 0) {
+    return { error: 'Selecione pelo menos uma demanda.' }
+  }
+
+  if (String(confirmation || '').trim() !== 'RETIRAR DEMANDAS') {
+    return { error: 'Digite exatamente RETIRAR DEMANDAS.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'remove_pauta_demands_batch',
+    {
+      p_pauta_id: id,
+      p_work_item_ids: selected,
+      p_confirmation: 'RETIRAR DEMANDAS',
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidatePautaManagementPaths(id)
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function createAndDistributePautaDemandsAction(
+  input: {
+    pautaId: string
+    rows: V8PautaDemandRow[]
+    targets: V8PautaTarget[]
+    confirmation: string
+  },
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem criar e distribuir demandas.',
+    )
+  }
+
+  const pautaId = String(input?.pautaId || '').trim()
+  const confirmation = String(input?.confirmation || '').trim()
+
+  const rows = (Array.isArray(input?.rows) ? input.rows : [])
+    .map((row) => ({
+      client_id: String(row?.clientId || '').trim(),
+      client_service_id: String(row?.clientServiceId || '').trim(),
+      responsible_id: String(row?.responsibleId || '').trim(),
+      internal_deadline: String(row?.internalDeadline || '').trim(),
+      final_deadline: String(row?.finalDeadline || '').trim(),
+      priority: String(row?.priority || 'normal').trim(),
+      drive_link: String(row?.driveLink || '').trim() || null,
+      notes: String(row?.notes || '').trim() || null,
+      card_tag: String(row?.cardTag || '').trim() || null,
+      card_tag_color: String(row?.cardTagColor || 'slate').trim(),
+    }))
+    .filter((row) => row.client_id)
+    .slice(0, 100)
+
+  const targets = (Array.isArray(input?.targets) ? input.targets : [])
+    .map((target) => ({
+      board_id: String(target?.boardId || '').trim(),
+      board_column_id: String(target?.boardColumnId || '').trim(),
+      is_required: target?.isRequired !== false,
+    }))
+    .filter((target) => target.board_id && target.board_column_id)
+    .slice(0, 30)
+
+  if (!pautaId || rows.length === 0 || targets.length === 0) {
+    return {
+      error: 'Selecione clientes e pelo menos um Quadro de destino.',
+    }
+  }
+
+  if (confirmation !== 'CRIAR E DISTRIBUIR') {
+    return { error: 'Digite exatamente CRIAR E DISTRIBUIR.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'create_and_distribute_pauta_demands',
+    {
+      p_pauta_id: pautaId,
+      p_rows: rows,
+      p_targets: targets,
+      p_confirmation: 'CRIAR E DISTRIBUIR',
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidatePautaManagementPaths(pautaId)
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function moveWorkItemBoardAssignmentAction(
+  assignmentId: string,
+  targetColumnId: string,
+) {
+  const id = String(assignmentId || '').trim()
+  const columnId = String(targetColumnId || '').trim()
+
+  if (!id || !columnId) {
+    return { error: 'Distribuição ou coluna inválida.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'move_work_item_board_assignment',
+    {
+      p_assignment_id: id,
+      p_target_column_id: columnId,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
 
 // =========================================================
 // AMPY-V17-A25.3A3B — PREPARAÇÃO E GERAÇÃO DE CICLOS

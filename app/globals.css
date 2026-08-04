@@ -14395,3 +14395,31 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================================================
+   V8-B — PAUTA MULTIQUADRO CONSOLIDADA
+   ========================================================= */
+.pauta-v8-panel{max-width:1180px}
+.pauta-v8-clients-layout{display:grid;gap:18px}
+.pauta-v8-section-head,.pauta-v8-subhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.pauta-v8-section-head>div:first-child,.pauta-v8-subhead>div:first-child{display:grid;gap:3px}
+.pauta-v8-section-head span{font-size:12px;color:var(--muted,#64748b)}
+.pauta-v8-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pauta-v8-table{display:grid;gap:8px}
+.pauta-v8-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line,#e2e8f0);border-radius:12px;background:var(--surface,#fff)}
+.pauta-v8-grow{min-width:0;flex:1;display:grid;gap:4px}
+.pauta-v8-grow>strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pauta-v8-grow>span,.pauta-v8-history small{font-size:12px;color:var(--muted,#64748b)}
+.pauta-v8-date{width:160px;flex:0 0 160px}
+.pauta-v8-confirm{max-width:420px;margin:12px 0}
+.pauta-v8-assignment-chips{display:flex;gap:6px;flex-wrap:wrap}
+.pauta-v8-assignment-chips span{font-size:11px;padding:4px 7px;border-radius:999px;background:#f1f5f9;color:#475569}
+.pauta-v8-create{display:grid;gap:14px}
+.pauta-v8-create-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.pauta-v8-create-grid>section{display:grid;align-content:start;gap:8px;padding:14px;border:1px solid var(--line,#e2e8f0);border-radius:12px}
+.pauta-v8-client-service,.pauta-v8-target{display:grid;gap:8px;padding:10px;border:1px solid var(--line,#e2e8f0);border-radius:10px}
+.pauta-v8-client-service label,.pauta-v8-target label,.pauta-v8-required{display:flex;align-items:center;gap:8px}
+.pauta-v8-history article>div{display:grid;gap:4px}
+.pauta-v8-history small{display:block;overflow-wrap:anywhere}
+@media(max-width:900px){.pauta-v8-create-grid{grid-template-columns:1fr}.pauta-v8-row{align-items:flex-start;flex-wrap:wrap}.pauta-v8-date{width:100%;flex:1 1 170px}.pauta-v8-section-head{align-items:flex-start;flex-direction:column}}

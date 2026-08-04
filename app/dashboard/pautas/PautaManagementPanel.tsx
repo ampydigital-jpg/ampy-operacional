@@ -1,81 +1,43 @@
-
 'use client'
 
 import {
-  useEffect,
   useMemo,
   useState,
   type FormEvent,
 } from 'react'
 
 import {
-  addClientsToPautaAction,
+  addClientsToPautaV8Action,
   changePautaLifecycleAction,
-  detachPautaDemandAction,
-  previewPautaClientAdditionsAction,
-  removePautaClientAction,
+  createAndDistributePautaDemandsAction,
+  removePautaClientsBatchAction,
+  removePautaDemandsBatchAction,
+  updatePautaMemberTargetDateAction,
   updatePautaSettingsAction,
 } from '@/lib/actions'
 
-type ConfirmationState = {
-  kind:
-    | 'remove-client'
-    | 'detach-demand'
-    | 'lifecycle'
-  title: string
-  description: string
-  phrase: string
-  clientId?: string
-  workItemId?: string
-  lifecycleAction?:
-    | 'close'
-    | 'reopen'
-    | 'archive'
-}
-
 function list(value: unknown) {
-  return Array.isArray(value)
-    ? value
-    : []
+  return Array.isArray(value) ? value : []
 }
 
-function dateValue(
-  value?: string | null,
-) {
-  return value
-    ? String(value).slice(0, 10)
-    : ''
+function dateValue(value?: string | null) {
+  return value ? String(value).slice(0, 10) : ''
 }
 
-function formatDate(
-  value?: string | null,
-) {
+function formatDate(value?: string | null) {
   if (!value) return '—'
-
-  return new Date(
-    String(value).slice(0, 10) +
-      'T12:00:00',
-  ).toLocaleDateString('pt-BR')
+  return new Date(String(value).slice(0, 10) + 'T12:00:00')
+    .toLocaleDateString('pt-BR')
 }
 
-function formatDateTime(
-  value?: string | null,
-) {
+function formatDateTime(value?: string | null) {
   if (!value) return '—'
-
   const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return '—'
-  }
-
-  return date.toLocaleString(
-    'pt-BR',
-    {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    },
-  )
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  })
 }
 
 function statusLabel(value?: string | null) {
@@ -84,22 +46,18 @@ function statusLabel(value?: string | null) {
     open: 'Aberta',
     closed: 'Concluída',
     archived: 'Arquivada',
-    active: 'Ativo',
-    removed: 'Retirado',
     not_started: 'Não iniciada',
     in_progress: 'Em andamento',
     waiting: 'Aguardando',
     blocked: 'Bloqueada',
     in_review: 'Em revisão',
     awaiting_approval: 'Aguardando aprovação',
-    scheduled: 'Programada',
-    done: 'Concluída',
-    delivered: 'Entregue',
     approved: 'Aprovada',
+    scheduled: 'Programada',
+    delivered: 'Entregue',
+    done: 'Concluída',
   }
-
-  return labels[String(value || '')] ||
-    String(value || '—')
+  return labels[String(value || '')] || String(value || '—')
 }
 
 function eventLabel(value?: string | null) {
@@ -108,32 +66,27 @@ function eventLabel(value?: string | null) {
     settings_updated: 'Configurações atualizadas',
     client_added: 'Cliente adicionado',
     client_removed: 'Cliente retirado',
+    client_target_date_set: 'Data-meta definida',
+    client_target_date_updated: 'Data-meta atualizada',
     demand_created: 'Demanda criada',
+    demand_created_multiboard: 'Demanda criada e distribuída',
     demand_detached: 'Demanda retirada',
-    pauta_closed: 'Pauta concluída',
-    pauta_reopened: 'Pauta reaberta',
-    pauta_archived: 'Pauta arquivada',
-    pauta_deleted: 'Pauta excluída',
+    assignment_moved: 'Demanda movimentada em Quadro',
+    lifecycle_close: 'Pauta concluída',
+    lifecycle_reopen: 'Pauta reaberta',
+    lifecycle_archive: 'Pauta arquivada',
   }
-
-  return labels[String(value || '')] ||
-    String(value || 'Atualização')
+  return labels[String(value || '')] || String(value || 'Atualização')
 }
 
-function classificationLabel(
-  value?: string | null,
-) {
-  const labels: Record<string, string> = {
-    ALREADY_IN_PAUTA: 'Já participa',
-    LEGACY_CARD_AVAILABLE: 'Possui card legado',
-    MULTIPLE_LEGACY_CARDS: 'Vários cards legados',
-    NO_ACTIVE_SERVICE: 'Sem serviço ativo',
-    NO_LEGACY_CARD: 'Pronto para adicionar',
-    INACTIVE_CLIENT: 'Cliente inativo',
-  }
-
-  return labels[String(value || '')] ||
-    String(value || 'Não analisado')
+function jsonSummary(value: unknown) {
+  if (!value || typeof value !== 'object') return ''
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (!entries.length) return ''
+  return entries
+    .slice(0, 5)
+    .map(([key, next]) => `${key}: ${String(next ?? '—')}`)
+    .join(' · ')
 }
 
 export default function PautaManagementPanel({
@@ -141,837 +94,353 @@ export default function PautaManagementPanel({
   onClose,
   snapshot,
   clients = [],
+  profiles = [],
+  clientServices = [],
+  distributionBoards = [],
+  distributionColumns = [],
   canManage = false,
 }: any) {
   const pauta = snapshot?.pauta || null
   const members = list(snapshot?.members)
-  const extraDemands =
-    list(snapshot?.extra_demands)
+  const demands = list(snapshot?.extra_demands)
   const events = list(snapshot?.events)
-  const legacyCandidates =
-    list(snapshot?.legacy_candidates)
-  const dependencies =
-    snapshot?.dependency_summary || {}
-
-  const [tab, setTab] =
-    useState<'overview' | 'clients' | 'history'>('overview')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [selectedClientIds, setSelectedClientIds] =
-    useState<string[]>([])
-  const [preview, setPreview] =
-    useState<any | null>(null)
-  const [addConfirmation, setAddConfirmation] =
-    useState('')
-  const [confirmation, setConfirmation] =
-    useState<ConfirmationState | null>(null)
-  const [confirmationValue, setConfirmationValue] =
-    useState('')
+  const dependencies = snapshot?.dependency_summary || {}
 
   const activeMembers = useMemo(
-    () =>
-      members.filter(
-        (member: any) =>
-          member.membership_status === 'active',
-      ),
+    () => members.filter((member: any) => member.membership_status === 'active'),
     [members],
   )
 
-  const activeMemberIds = useMemo(
-    () =>
-      new Set(
-        activeMembers
-          .map((member: any) =>
-            String(member.client?.id || ''),
-          )
-          .filter(Boolean),
-      ),
+  const activeMemberClientIds = useMemo(
+    () => new Set(activeMembers.map((member: any) => String(member.client?.id || '')).filter(Boolean)),
     [activeMembers],
   )
 
   const eligibleClients = useMemo(
-    () =>
-      list(clients).filter(
-        (client: any) =>
-          client.status === 'active' &&
-          !activeMemberIds.has(
-            String(client.id),
-          ),
-      ),
-    [clients, activeMemberIds],
+    () => list(clients).filter((client: any) =>
+      client.status === 'active' && !activeMemberClientIds.has(String(client.id))),
+    [clients, activeMemberClientIds],
   )
 
-  const editable =
-    ['draft', 'open'].includes(
-      String(pauta?.lifecycle_status || ''),
-    )
+  const [tab, setTab] = useState<'overview' | 'clients' | 'history'>('overview')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+  const [selectedDemandIds, setSelectedDemandIds] = useState<string[]>([])
+  const [selectedNewClientIds, setSelectedNewClientIds] = useState<string[]>([])
+  const [newTargetDates, setNewTargetDates] = useState<Record<string, string>>({})
+  const [memberTargetDates, setMemberTargetDates] = useState<Record<string, string>>({})
+  const [confirmation, setConfirmation] = useState('')
+  const [demandOpen, setDemandOpen] = useState(false)
+  const [demandClientIds, setDemandClientIds] = useState<string[]>([])
+  const [serviceByClient, setServiceByClient] = useState<Record<string, string>>({})
+  const [selectedTargets, setSelectedTargets] = useState<Record<string, { columnId: string; required: boolean }>>({})
 
-  const blockingPreview =
-    list(preview?.clients).some(
-      (client: any) =>
-        [
-          'LEGACY_CARD_AVAILABLE',
-          'MULTIPLE_LEGACY_CARDS',
-          'INACTIVE_CLIENT',
-          'ALREADY_IN_PAUTA',
-        ].includes(
-          String(client.classification || ''),
-        ),
-    )
-
-  useEffect(() => {
-    if (!open) return
-
-    setTab('overview')
-    setError('')
-    setNotice('')
-    setSelectedClientIds([])
-    setPreview(null)
-    setAddConfirmation('')
-    setConfirmation(null)
-    setConfirmationValue('')
-  }, [open, pauta?.id])
-
-  useEffect(() => {
-    if (!open) return
-
-    const previousOverflow =
-      document.body.style.overflow
-
-    document.body.style.overflow = 'hidden'
-
-    function keydown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !loading) {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', keydown)
-
-    return () => {
-      document.body.style.overflow =
-        previousOverflow
-      window.removeEventListener(
-        'keydown',
-        keydown,
-      )
-    }
-  }, [open, loading, onClose])
+  const editable = ['draft', 'open'].includes(String(pauta?.lifecycle_status || ''))
 
   if (!open || !pauta) return null
 
-  function reloadCurrent() {
+  function reload() {
     window.location.reload()
   }
 
-  async function saveSettings(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault()
+  function beginAction() {
     setLoading(true)
     setError('')
     setNotice('')
-
-    const result =
-      await updatePautaSettingsAction(
-        pauta.id,
-        new FormData(event.currentTarget),
-      )
-
-    if ('error' in result) {
-      setError(
-        result.error ||
-          'Não foi possível atualizar a Pauta.',
-      )
-      setLoading(false)
-      return
-    }
-
-    setNotice('Configurações atualizadas.')
-    reloadCurrent()
   }
 
-  function toggleClient(clientId: string) {
-    setSelectedClientIds((current) =>
-      current.includes(clientId)
-        ? current.filter((id) => id !== clientId)
-        : [...current, clientId],
-    )
-    setPreview(null)
-    setAddConfirmation('')
-  }
-
-  async function previewClients() {
-    setLoading(true)
-    setError('')
-    setNotice('')
-
-    const result =
-      await previewPautaClientAdditionsAction(
-        pauta.id,
-        selectedClientIds,
-      )
-
-    if ('error' in result) {
-      setError(
-        result.error ||
-          'Não foi possível analisar os clientes.',
-      )
-      setLoading(false)
-      return
-    }
-
-    setPreview(result.data)
+  function failAction(message: string) {
+    setError(message)
     setLoading(false)
   }
 
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    beginAction()
+    const result = await updatePautaSettingsAction(pauta.id, new FormData(event.currentTarget))
+    if ('error' in result) return failAction(result.error || 'Não foi possível atualizar a Pauta.')
+    setNotice('Configurações atualizadas.')
+    reload()
+  }
+
+  async function saveTargetDate(member: any) {
+    const target = memberTargetDates[member.member_id] || dateValue(member.target_date || member.main_work_item?.final_deadline)
+    beginAction()
+    const result = await updatePautaMemberTargetDateAction(member.member_id, target)
+    if ('error' in result) return failAction(result.error || 'Não foi possível alterar a data-meta.')
+    reload()
+  }
+
   async function addClients() {
-    setLoading(true)
-    setError('')
-    setNotice('')
-
-    const result =
-      await addClientsToPautaAction(
-        pauta.id,
-        selectedClientIds,
-        addConfirmation,
-      )
-
-    if ('error' in result) {
-      setError(
-        result.error ||
-          'Não foi possível adicionar os clientes.',
-      )
-      setLoading(false)
-      return
-    }
-
-    setNotice('Clientes adicionados à Pauta.')
-    reloadCurrent()
+    const rows = selectedNewClientIds.map((clientId) => ({
+      clientId,
+      targetDate: newTargetDates[clientId] || dateValue(pauta.scheduled_until_date),
+    }))
+    beginAction()
+    const result = await addClientsToPautaV8Action(pauta.id, rows, confirmation)
+    if ('error' in result) return failAction(result.error || 'Não foi possível adicionar os clientes.')
+    reload()
   }
 
-  function askConfirmation(
-    next: ConfirmationState,
-  ) {
-    setConfirmation(next)
-    setConfirmationValue('')
-    setError('')
+  async function removeClients() {
+    const clientIds = activeMembers
+      .filter((member: any) => selectedMemberIds.includes(String(member.member_id)))
+      .map((member: any) => String(member.client?.id || ''))
+      .filter(Boolean)
+    beginAction()
+    const result = await removePautaClientsBatchAction(pauta.id, clientIds, confirmation)
+    if ('error' in result) return failAction(result.error || 'Não foi possível retirar os clientes.')
+    reload()
   }
 
-  async function executeConfirmation() {
-    if (!confirmation) return
+  async function removeDemands() {
+    beginAction()
+    const result = await removePautaDemandsBatchAction(pauta.id, selectedDemandIds, confirmation)
+    if ('error' in result) return failAction(result.error || 'Não foi possível retirar as demandas.')
+    reload()
+  }
 
-    setLoading(true)
-    setError('')
-    setNotice('')
+  async function createDemands(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const responsibleId = String(form.get('responsible_id') || '')
+    const internalDeadline = String(form.get('internal_deadline') || '')
+    const finalDeadline = String(form.get('final_deadline') || '')
+    const priority = String(form.get('priority') || 'normal')
+    const driveLink = String(form.get('drive_link') || '')
+    const notes = String(form.get('notes') || '')
+    const cardTag = String(form.get('card_tag') || '')
+    const cardTagColor = String(form.get('card_tag_color') || 'slate')
 
-    let result: any
+    const rows = demandClientIds.map((clientId) => ({
+      clientId,
+      clientServiceId: serviceByClient[clientId] || '',
+      responsibleId,
+      internalDeadline,
+      finalDeadline,
+      priority,
+      driveLink,
+      notes,
+      cardTag,
+      cardTagColor,
+    }))
 
-    if (confirmation.kind === 'remove-client') {
-      result = await removePautaClientAction(
-        pauta.id,
-        String(confirmation.clientId || ''),
-        confirmationValue,
-      )
-    } else if (confirmation.kind === 'detach-demand') {
-      result = await detachPautaDemandAction(
-        pauta.id,
-        String(confirmation.workItemId || ''),
-        confirmationValue,
-      )
-    } else {
-      result = await changePautaLifecycleAction(
-        pauta.id,
-        confirmation.lifecycleAction || 'close',
-        confirmationValue,
-      )
-    }
+    const targets = Object.entries(selectedTargets)
+      .filter(([, config]) => config.columnId)
+      .map(([boardId, config]) => ({
+        boardId,
+        boardColumnId: config.columnId,
+        isRequired: config.required,
+      }))
 
-    if ('error' in result) {
-      setError(
-        result.error ||
-          'Não foi possível concluir a ação.',
-      )
-      setLoading(false)
-      return
-    }
+    beginAction()
+    const result = await createAndDistributePautaDemandsAction({
+      pautaId: pauta.id,
+      rows,
+      targets,
+      confirmation,
+    })
+    if ('error' in result) return failAction(result.error || 'Não foi possível criar e distribuir as demandas.')
+    reload()
+  }
 
-    reloadCurrent()
+  function toggleAll(current: string[], all: string[], setter: any) {
+    setter(current.length === all.length ? [] : all)
   }
 
   return (
-    <div
-      className="pauta-management-overlay"
-      onMouseDown={(event) => {
-        if (
-          event.target === event.currentTarget &&
-          !loading
-        ) {
-          onClose()
-        }
-      }}
-    >
-      <section
-        className="pauta-management-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pauta-management-title"
-      >
+    <div className="pauta-management-overlay" onMouseDown={(event) => {
+      if (event.target === event.currentTarget && !loading) onClose()
+    }}>
+      <section className="pauta-management-panel pauta-v8-panel" role="dialog" aria-modal="true">
         <header className="pauta-management-header">
           <div>
-            <span>Gestão segura da Pauta</span>
-            <h2 id="pauta-management-title">
-              {pauta.name}
-            </h2>
-            <p>
-              {formatDate(pauta.reference_month)} ·{' '}
-              {activeMembers.length} cliente(s) ativo(s)
-            </p>
+            <span>Gestão da Pauta</span>
+            <h2>{pauta.name}</h2>
+            <p>{formatDate(pauta.reference_month)} · {activeMembers.length} cliente(s)</p>
           </div>
-
           <div className="pauta-management-header-actions">
-            <span
-              className="badge bmut"
-              data-lifecycle={pauta.lifecycle_status}
-            >
-              {statusLabel(pauta.lifecycle_status)}
-            </span>
-
-            <button
-              className="mclose"
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-            >
-              <i className="ti ti-x" />
-            </button>
+            <span className="badge bmut">{statusLabel(pauta.lifecycle_status)}</span>
+            <button className="mclose" type="button" onClick={onClose}><i className="ti ti-x" /></button>
           </div>
         </header>
 
         <nav className="pauta-management-tabs">
-          <button
-            type="button"
-            data-active={tab === 'overview'}
-            onClick={() => setTab('overview')}
-          >
-            Visão geral
-          </button>
-          <button
-            type="button"
-            data-active={tab === 'clients'}
-            onClick={() => setTab('clients')}
-          >
-            Clientes e demandas
-          </button>
-          <button
-            type="button"
-            data-active={tab === 'history'}
-            onClick={() => setTab('history')}
-          >
-            Histórico
-          </button>
+          <button type="button" data-active={tab === 'overview'} onClick={() => setTab('overview')}>Visão geral</button>
+          <button type="button" data-active={tab === 'clients'} onClick={() => setTab('clients')}>Clientes e demandas</button>
+          <button type="button" data-active={tab === 'history'} onClick={() => setTab('history')}>Histórico</button>
         </nav>
 
         <div className="pauta-management-body">
-          {error && (
-            <div className="notice notice-err">
-              <i className="ti ti-alert-circle" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {notice && (
-            <div className="notice notice-ok">
-              <i className="ti ti-circle-check" />
-              <span>{notice}</span>
-            </div>
-          )}
-
-          {!canManage && (
-            <div className="notice notice-warn">
-              <i className="ti ti-lock" />
-              <span>
-                Acesso operacional: consulta liberada. Alterações estruturais exigem Acesso Total.
-              </span>
-            </div>
-          )}
+          {error && <div className="notice notice-err"><span>{error}</span></div>}
+          {notice && <div className="notice notice-ok"><span>{notice}</span></div>}
+          {!canManage && <div className="notice notice-warn"><span>Consulta liberada. Alterações estruturais exigem Acesso Total.</span></div>}
 
           {tab === 'overview' && (
             <div className="pauta-management-grid">
-              <form
-                className="pauta-management-card"
-                onSubmit={saveSettings}
-              >
-                <div className="pauta-management-card-head">
-                  <div>
-                    <span>Configurações</span>
-                    <strong>Referência e metas</strong>
-                  </div>
-                  <i className="ti ti-adjustments" />
-                </div>
-
-                <label className="fg">
-                  <span className="fl">Nome</span>
-                  <input
-                    className="fi"
-                    name="name"
-                    defaultValue={pauta.name || ''}
-                    minLength={3}
-                    maxLength={120}
-                    required
-                    disabled={!canManage || loading}
-                  />
-                </label>
-
+              <form className="pauta-management-card" onSubmit={saveSettings}>
+                <div className="pauta-management-card-head"><div><span>Configurações</span><strong>Referência e metas</strong></div></div>
+                <label className="fg"><span className="fl">Nome</span><input className="fi" name="name" defaultValue={pauta.name || ''} required disabled={!canManage || !editable} /></label>
                 <div className="frow">
-                  <label className="fg">
-                    <span className="fl">Magic Number</span>
-                    <input
-                      className="fi"
-                      type="date"
-                      name="magic_number_date"
-                      defaultValue={dateValue(
-                        pauta.magic_number_date,
-                      )}
-                      required
-                      disabled={!canManage || loading}
-                    />
-                  </label>
-
-                  <label className="fg">
-                    <span className="fl">Programado até</span>
-                    <input
-                      className="fi"
-                      type="date"
-                      name="scheduled_until_date"
-                      defaultValue={dateValue(
-                        pauta.scheduled_until_date,
-                      )}
-                      required
-                      disabled={!canManage || loading}
-                    />
-                  </label>
+                  <label className="fg"><span className="fl">Magic Number</span><input className="fi" type="date" name="magic_number_date" defaultValue={dateValue(pauta.magic_number_date)} required disabled={!canManage || !editable} /></label>
+                  <label className="fg"><span className="fl">Programado até</span><input className="fi" type="date" name="scheduled_until_date" defaultValue={dateValue(pauta.scheduled_until_date)} required disabled={!canManage || !editable} /></label>
                 </div>
-
-                {canManage && editable && (
-                  <button
-                    className="bpri"
-                    disabled={loading}
-                  >
-                    Salvar configurações
-                  </button>
-                )}
+                {canManage && editable && <button className="bpri" disabled={loading}>Salvar configurações</button>}
               </form>
 
               <article className="pauta-management-card">
-                <div className="pauta-management-card-head">
-                  <div>
-                    <span>Dependências</span>
-                    <strong>Segurança operacional</strong>
-                  </div>
-                  <i className="ti ti-shield-check" />
-                </div>
-
+                <div className="pauta-management-card-head"><div><span>Progresso</span><strong>Operação multiquadro</strong></div></div>
                 <div className="pauta-management-stats">
-                  <div>
-                    <strong>{Number(dependencies.active_members || 0)}</strong>
-                    <span>participações</span>
-                  </div>
-                  <div>
-                    <strong>{Number(dependencies.main_cards || 0) + Number(dependencies.extra_demands || 0)}</strong>
-                    <span>demandas</span>
-                  </div>
-                  <div>
-                    <strong>{Number(dependencies.calendar_events || 0)}</strong>
-                    <span>agendas</span>
-                  </div>
-                  <div>
-                    <strong>{legacyCandidates.length}</strong>
-                    <span>legados candidatos</span>
-                  </div>
-                </div>
-
-                <div className="notice notice-warn pauta-legacy-readonly">
-                  <i className="ti ti-history" />
-                  <span>
-                    Os cards legados estão apenas identificados. A adoção continua bloqueada até revisão do mapping explícito.
-                  </span>
+                  <div><strong>{Number(dependencies.active_members || activeMembers.length)}</strong><span>clientes</span></div>
+                  <div><strong>{demands.length}</strong><span>demandas</span></div>
+                  <div><strong>{Number(dependencies.active_assignments || 0)}</strong><span>distribuições</span></div>
+                  <div><strong>{Number(dependencies.pending_required_assignments || 0)}</strong><span>pendentes</span></div>
                 </div>
               </article>
 
               <article className="pauta-management-card pauta-lifecycle-card">
-                <div className="pauta-management-card-head">
-                  <div>
-                    <span>Ciclo de vida</span>
-                    <strong>Ações estruturais</strong>
-                  </div>
-                  <i className="ti ti-route" />
-                </div>
-
+                <div className="pauta-management-card-head"><div><span>Ciclo de vida</span><strong>Concluir, reabrir ou arquivar</strong></div></div>
                 <div className="pauta-lifecycle-actions">
-                  {canManage && pauta.lifecycle_status === 'open' && (
-                    <button
-                      className="bpri"
-                      type="button"
-                      onClick={() => askConfirmation({
-                        kind: 'lifecycle',
-                        title: 'Concluir Pauta',
-                        description: 'O banco validará clientes, programação e dependências antes de concluir.',
-                        phrase: 'CONCLUIR PAUTA',
-                        lifecycleAction: 'close',
-                      })}
-                    >
-                      Concluir Pauta
-                    </button>
-                  )}
-
-                  {canManage && pauta.lifecycle_status === 'closed' && (
-                    <button
-                      className="bpri"
-                      type="button"
-                      onClick={() => askConfirmation({
-                        kind: 'lifecycle',
-                        title: 'Reabrir Pauta',
-                        description: 'A Pauta voltará ao estado aberto para novas operações.',
-                        phrase: 'REABRIR PAUTA',
-                        lifecycleAction: 'reopen',
-                      })}
-                    >
-                      Reabrir Pauta
-                    </button>
-                  )}
-
-                  {canManage && pauta.lifecycle_status !== 'archived' && (
-                    <button
-                      className="bsec"
-                      type="button"
-                      onClick={() => askConfirmation({
-                        kind: 'lifecycle',
-                        title: 'Arquivar Pauta',
-                        description: 'A Pauta sairá da operação ativa, preservando todo o histórico.',
-                        phrase: 'ARQUIVAR PAUTA',
-                        lifecycleAction: 'archive',
-                      })}
-                    >
-                      Arquivar
-                    </button>
-                  )}
+                  {canManage && pauta.lifecycle_status === 'open' && <button className="bpri" type="button" onClick={async () => {
+                    const phrase = prompt('Digite CONCLUIR PAUTA') || ''
+                    beginAction()
+                    const result = await changePautaLifecycleAction(pauta.id, 'close', phrase)
+                    if ('error' in result) return failAction(result.error || 'Não foi possível concluir.')
+                    reload()
+                  }}>Concluir Pauta</button>}
+                  {canManage && ['closed', 'archived'].includes(pauta.lifecycle_status) && <button className="bpri" type="button" onClick={async () => {
+                    const phrase = prompt('Digite REABRIR PAUTA') || ''
+                    beginAction()
+                    const result = await changePautaLifecycleAction(pauta.id, 'reopen', phrase)
+                    if ('error' in result) return failAction(result.error || 'Não foi possível reabrir.')
+                    reload()
+                  }}>Reabrir Pauta</button>}
+                  {canManage && pauta.lifecycle_status !== 'archived' && <button className="bsec" type="button" onClick={async () => {
+                    const phrase = prompt('Digite ARQUIVAR PAUTA') || ''
+                    beginAction()
+                    const result = await changePautaLifecycleAction(pauta.id, 'archive', phrase)
+                    if ('error' in result) return failAction(result.error || 'Não foi possível arquivar.')
+                    reload()
+                  }}>Arquivar</button>}
                 </div>
               </article>
             </div>
           )}
 
           {tab === 'clients' && (
-            <div className="pauta-management-client-layout">
+            <div className="pauta-v8-clients-layout">
               <section className="pauta-management-card">
-                <div className="pauta-management-card-head">
-                  <div>
-                    <span>Participantes</span>
-                    <strong>{activeMembers.length} cliente(s)</strong>
-                  </div>
-                  <i className="ti ti-users" />
+                <div className="pauta-v8-section-head">
+                  <div><span>Clientes</span><strong>{activeMembers.length} participante(s)</strong></div>
+                  {canManage && editable && <div className="pauta-v8-actions">
+                    <button className="bsec" type="button" onClick={() => toggleAll(selectedMemberIds, activeMembers.map((m: any) => String(m.member_id)), setSelectedMemberIds)}>Selecionar todos</button>
+                    <button className="bsec danger-button" type="button" disabled={!selectedMemberIds.length || loading} onClick={removeClients}>Remover selecionados</button>
+                  </div>}
                 </div>
 
-                <div className="pauta-member-list">
+                {canManage && selectedMemberIds.length > 0 && <label className="fg pauta-v8-confirm"><span className="fl">Digite RETIRAR CLIENTES</span><input className="fi" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>}
+
+                <div className="pauta-v8-table">
                   {activeMembers.map((member: any) => (
-                    <article
-                      className="pauta-member-row"
-                      key={member.member_id}
-                    >
-                      <div>
-                        <strong>
-                          {member.client?.name || 'Cliente'}
-                        </strong>
-                        <span>
-                          {statusLabel(
-                            member.main_work_item?.status,
-                          )} · final{' '}
-                          {formatDate(
-                            member.main_work_item?.final_deadline,
-                          )}
-                        </span>
-                      </div>
-
-                      {canManage && editable && (
-                        <button
-                          className="bsec danger-button"
-                          type="button"
-                          onClick={() => askConfirmation({
-                            kind: 'remove-client',
-                            title: 'Retirar cliente da Pauta',
-                            description: 'As demandas serão preservadas fora da Pauta. O histórico não será apagado.',
-                            phrase: 'RETIRAR CLIENTE',
-                            clientId: member.client?.id,
-                          })}
-                        >
-                          Retirar
-                        </button>
-                      )}
+                    <article className="pauta-v8-row" key={member.member_id}>
+                      <input type="checkbox" checked={selectedMemberIds.includes(String(member.member_id))} onChange={() => setSelectedMemberIds((current) => current.includes(String(member.member_id)) ? current.filter((id) => id !== String(member.member_id)) : [...current, String(member.member_id)])} />
+                      <div className="pauta-v8-grow"><strong>{member.client?.name || 'Cliente'}</strong><span>{statusLabel(member.main_work_item?.status)} · Magic Number {formatDate(member.main_work_item?.internal_deadline)}</span></div>
+                      <input className="fi pauta-v8-date" type="date" value={memberTargetDates[member.member_id] ?? dateValue(member.target_date || member.main_work_item?.final_deadline)} onChange={(event) => setMemberTargetDates((current) => ({ ...current, [member.member_id]: event.target.value }))} disabled={!canManage || !editable} />
+                      {canManage && editable && <button className="bsec" type="button" onClick={() => saveTargetDate(member)}>Salvar data</button>}
                     </article>
                   ))}
-
-                  {activeMembers.length === 0 && (
-                    <div className="empty">
-                      Nenhum cliente ativo nesta Pauta.
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section className="pauta-management-card">
-                <div className="pauta-management-card-head">
-                  <div>
-                    <span>Demandas adicionais</span>
-                    <strong>{extraDemands.length} demanda(s)</strong>
-                  </div>
-                  <i className="ti ti-list-details" />
-                </div>
-
-                <div className="pauta-member-list">
-                  {extraDemands.map((item: any) => (
-                    <article
-                      className="pauta-member-row"
-                      key={item.id}
-                    >
-                      <div>
-                        <strong>{item.title}</strong>
-                        <span>
-                          {statusLabel(item.status)} · final{' '}
-                          {formatDate(item.final_deadline)}
-                        </span>
-                      </div>
-
-                      {canManage && editable && (
-                        <button
-                          className="bsec danger-button"
-                          type="button"
-                          onClick={() => askConfirmation({
-                            kind: 'detach-demand',
-                            title: 'Retirar demanda da Pauta',
-                            description: 'A demanda será preservada como Extra e deixará de pertencer à Pauta.',
-                            phrase: 'RETIRAR DEMANDA',
-                            workItemId: item.id,
-                          })}
-                        >
-                          Retirar
-                        </button>
-                      )}
-                    </article>
-                  ))}
-
-                  {extraDemands.length === 0 && (
-                    <div className="empty">
-                      Nenhuma demanda adicional.
-                    </div>
-                  )}
                 </div>
               </section>
 
               {canManage && editable && (
-                <section className="pauta-management-card pauta-add-clients-card">
-                  <div className="pauta-management-card-head">
-                    <div>
-                      <span>Completar a mesma Pauta</span>
-                      <strong>Adicionar clientes faltantes</strong>
-                    </div>
-                    <i className="ti ti-user-plus" />
-                  </div>
-
-                  <div className="pauta-add-client-list">
+                <section className="pauta-management-card">
+                  <div className="pauta-v8-section-head"><div><span>Completar Pauta</span><strong>Adicionar clientes faltantes</strong></div><button className="bsec" type="button" onClick={() => toggleAll(selectedNewClientIds, eligibleClients.map((c: any) => String(c.id)), setSelectedNewClientIds)}>Selecionar todos</button></div>
+                  <div className="pauta-v8-table">
                     {eligibleClients.map((client: any) => (
-                      <label key={client.id}>
-                        <input
-                          type="checkbox"
-                          checked={selectedClientIds.includes(
-                            String(client.id),
-                          )}
-                          onChange={() =>
-                            toggleClient(String(client.id))
-                          }
-                        />
-                        <span>{client.name}</span>
-                      </label>
+                      <article className="pauta-v8-row" key={client.id}>
+                        <input type="checkbox" checked={selectedNewClientIds.includes(String(client.id))} onChange={() => setSelectedNewClientIds((current) => current.includes(String(client.id)) ? current.filter((id) => id !== String(client.id)) : [...current, String(client.id)])} />
+                        <div className="pauta-v8-grow"><strong>{client.name}</strong><span>Data sugerida: Programado até</span></div>
+                        <input className="fi pauta-v8-date" type="date" value={newTargetDates[client.id] || dateValue(pauta.scheduled_until_date)} onChange={(event) => setNewTargetDates((current) => ({ ...current, [client.id]: event.target.value }))} />
+                      </article>
                     ))}
+                    {!eligibleClients.length && <div className="empty">Todos os clientes ativos já participam.</div>}
+                  </div>
+                  {selectedNewClientIds.length > 0 && <><label className="fg"><span className="fl">Digite ADICIONAR CLIENTES</span><input className="fi" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label><button className="bpri" type="button" disabled={loading} onClick={addClients}>Adicionar à Pauta</button></>}
+                </section>
+              )}
 
-                    {eligibleClients.length === 0 && (
-                      <div className="empty">
-                        Todos os clientes ativos já participam da Pauta.
-                      </div>
-                    )}
+              <section className="pauta-management-card">
+                <div className="pauta-v8-section-head">
+                  <div><span>Demandas adicionais</span><strong>{demands.length} demanda(s)</strong></div>
+                  {canManage && editable && <div className="pauta-v8-actions"><button className="bpri" type="button" onClick={() => setDemandOpen((current) => !current)}>Adicionar demanda</button><button className="bsec" type="button" onClick={() => toggleAll(selectedDemandIds, demands.map((d: any) => String(d.id)), setSelectedDemandIds)}>Selecionar todos</button><button className="bsec danger-button" type="button" disabled={!selectedDemandIds.length} onClick={removeDemands}>Remover</button></div>}
+                </div>
+
+                {selectedDemandIds.length > 0 && <label className="fg pauta-v8-confirm"><span className="fl">Digite RETIRAR DEMANDAS</span><input className="fi" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>}
+
+                <div className="pauta-v8-table">
+                  {demands.map((item: any) => {
+                    const assignments = list(item.assignments)
+                    const complete = assignments.filter((assignment: any) => ['done', 'delivered', 'approved'].includes(String(assignment.operational_status))).length
+                    return <article className="pauta-v8-row" key={item.id}>
+                      <input type="checkbox" checked={selectedDemandIds.includes(String(item.id))} onChange={() => setSelectedDemandIds((current) => current.includes(String(item.id)) ? current.filter((id) => id !== String(item.id)) : [...current, String(item.id)])} />
+                      <div className="pauta-v8-grow"><strong>{item.title}</strong><span>{item.client_name || 'Cliente'} · {complete}/{assignments.length} Quadros concluídos</span><div className="pauta-v8-assignment-chips">{assignments.map((assignment: any) => <span key={assignment.id}>{assignment.board_name}: {assignment.board_column_name}</span>)}</div></div>
+                      <span className="badge bmut">{statusLabel(item.status)}</span>
+                    </article>
+                  })}
+                  {!demands.length && <div className="empty">Nenhuma demanda adicional.</div>}
+                </div>
+              </section>
+
+              {demandOpen && canManage && editable && (
+                <form className="pauta-management-card pauta-v8-create" onSubmit={createDemands}>
+                  <div className="pauta-v8-section-head"><div><span>Nova demanda</span><strong>Criar uma demanda canônica por cliente</strong></div><button className="mclose" type="button" onClick={() => setDemandOpen(false)}><i className="ti ti-x" /></button></div>
+                  <div className="notice notice-warn"><span>A demanda será criada uma vez e distribuída aos Quadros selecionados, sem duplicação.</span></div>
+
+                  <div className="pauta-v8-create-grid">
+                    <section>
+                      <div className="pauta-v8-subhead"><strong>1. Clientes</strong><button className="bsec" type="button" onClick={() => toggleAll(demandClientIds, activeMembers.map((m: any) => String(m.client?.id || '')).filter(Boolean), setDemandClientIds)}>Selecionar todos</button></div>
+                      {activeMembers.map((member: any) => {
+                        const clientId = String(member.client?.id || '')
+                        const services = list(clientServices).filter((service: any) => service.client_id === clientId && service.status === 'active')
+                        return <div className="pauta-v8-client-service" key={member.member_id}><label><input type="checkbox" checked={demandClientIds.includes(clientId)} onChange={() => setDemandClientIds((current) => current.includes(clientId) ? current.filter((id) => id !== clientId) : [...current, clientId])} /> {member.client?.name}</label>{demandClientIds.includes(clientId) && <select className="fi" value={serviceByClient[clientId] || ''} onChange={(event) => setServiceByClient((current) => ({ ...current, [clientId]: event.target.value }))} required><option value="">Selecione o serviço</option>{services.map((service: any) => <option key={service.id} value={service.id}>{service.service?.name || 'Serviço'}</option>)}</select>}</div>
+                      })}
+                    </section>
+
+                    <section>
+                      <div className="pauta-v8-subhead"><strong>2. Quadros de destino</strong></div>
+                      {list(distributionBoards).map((board: any) => {
+                        const config = selectedTargets[board.id]
+                        const columns = list(distributionColumns).filter((column: any) => column.board_id === board.id)
+                        return <div className="pauta-v8-target" key={board.id}><label><input type="checkbox" checked={Boolean(config)} onChange={(event) => setSelectedTargets((current) => { const next = { ...current }; if (event.target.checked) next[board.id] = { columnId: String(columns[0]?.id || ''), required: true }; else delete next[board.id]; return next })} /> {board.name}</label>{config && <><select className="fi" value={config.columnId} onChange={(event) => setSelectedTargets((current) => ({ ...current, [board.id]: { ...current[board.id], columnId: event.target.value } }))} required>{columns.map((column: any) => <option key={column.id} value={column.id}>{column.name}</option>)}</select><label className="pauta-v8-required"><input type="checkbox" checked={config.required} onChange={(event) => setSelectedTargets((current) => ({ ...current, [board.id]: { ...current[board.id], required: event.target.checked } }))} /> Obrigatório</label></>}</div>
+                      })}
+                    </section>
                   </div>
 
-                  <button
-                    className="bsec"
-                    type="button"
-                    disabled={
-                      loading ||
-                      selectedClientIds.length === 0
-                    }
-                    onClick={previewClients}
-                  >
-                    Analisar seleção
-                  </button>
-
-                  {preview && (
-                    <div className="pauta-add-preview">
-                      {list(preview.clients).map((client: any) => (
-                        <div
-                          key={client.client_id}
-                          data-classification={client.classification}
-                        >
-                          <strong>{client.client_name}</strong>
-                          <span>
-                            {classificationLabel(
-                              client.classification,
-                            )}
-                          </span>
-                        </div>
-                      ))}
-
-                      {blockingPreview ? (
-                        <div className="notice notice-warn">
-                          <i className="ti ti-alert-triangle" />
-                          <span>
-                            Há cards legados ou clientes bloqueados. Eles não serão duplicados; revise a adoção posteriormente.
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <label className="fg">
-                            <span className="fl">
-                              Digite ADICIONAR CLIENTES
-                            </span>
-                            <input
-                              className="fi"
-                              value={addConfirmation}
-                              onChange={(event) =>
-                                setAddConfirmation(
-                                  event.target.value,
-                                )
-                              }
-                              autoComplete="off"
-                            />
-                          </label>
-
-                          <button
-                            className="bpri"
-                            type="button"
-                            disabled={
-                              loading ||
-                              addConfirmation !==
-                                'ADICIONAR CLIENTES'
-                            }
-                            onClick={addClients}
-                          >
-                            Adicionar à Pauta
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </section>
+                  <div className="frow"><label className="fg"><span className="fl">Início</span><input className="fi" type="date" name="internal_deadline" defaultValue={dateValue(pauta.magic_number_date)} required /></label><label className="fg"><span className="fl">Final</span><input className="fi" type="date" name="final_deadline" defaultValue={dateValue(pauta.scheduled_until_date)} required /></label></div>
+                  <div className="frow"><label className="fg"><span className="fl">Responsável</span><select className="fi" name="responsible_id" required><option value="">Selecione</option>{list(profiles).map((profile: any) => <option key={profile.id} value={profile.id}>{profile.full_name}</option>)}</select></label><label className="fg"><span className="fl">Prioridade</span><select className="fi" name="priority" defaultValue="normal"><option value="low">Baixa</option><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></label></div>
+                  <div className="frow"><label className="fg"><span className="fl">Tag</span><input className="fi" name="card_tag" maxLength={16} /></label><label className="fg"><span className="fl">Cor</span><select className="fi" name="card_tag_color" defaultValue="slate"><option value="slate">Cinza</option><option value="blue">Azul</option><option value="purple">Roxo</option><option value="yellow">Amarelo</option><option value="red">Vermelho</option><option value="green">Verde</option></select></label></div>
+                  <label className="fg"><span className="fl">Link do Drive</span><input className="fi" type="url" name="drive_link" /></label>
+                  <label className="fg"><span className="fl">Observação</span><textarea className="fi" name="notes" rows={3} /></label>
+                  <label className="fg"><span className="fl">Digite CRIAR E DISTRIBUIR</span><input className="fi" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
+                  <button className="bpri" disabled={loading || !demandClientIds.length || !Object.keys(selectedTargets).length}>Criar e distribuir</button>
+                </form>
               )}
             </div>
           )}
 
           {tab === 'history' && (
             <section className="pauta-management-card">
-              <div className="pauta-management-card-head">
-                <div>
-                  <span>Auditoria</span>
-                  <strong>{events.length} evento(s)</strong>
-                </div>
-                <i className="ti ti-history" />
-              </div>
-
-              <div className="pauta-event-list">
-                {events.map((event: any) => (
-                  <article key={event.id}>
-                    <i className="ti ti-point-filled" />
-                    <div>
-                      <strong>{eventLabel(event.action)}</strong>
-                      <span>{formatDateTime(event.created_at)}</span>
-                    </div>
-                  </article>
-                ))}
-
-                {events.length === 0 && (
-                  <div className="empty">
-                    Nenhum evento registrado.
-                  </div>
-                )}
+              <div className="pauta-v8-section-head"><div><span>Auditoria</span><strong>{events.length} evento(s)</strong></div></div>
+              <div className="pauta-event-list pauta-v8-history">
+                {events.map((event: any) => <article key={event.id}><i className="ti ti-point-filled" /><div><strong>{eventLabel(event.action)}</strong><span>{formatDateTime(event.created_at)} · {event.actor?.display_name || event.actor?.full_name || 'Sistema'}</span>{jsonSummary(event.old_values) && <small>Antes: {jsonSummary(event.old_values)}</small>}{jsonSummary(event.new_values) && <small>Depois: {jsonSummary(event.new_values)}</small>}</div></article>)}
+                {!events.length && <div className="empty">Nenhum evento registrado.</div>}
               </div>
             </section>
           )}
         </div>
       </section>
-
-      {confirmation && (
-        <div className="pauta-confirm-overlay">
-          <section className="pauta-confirm-box">
-            <div className="modal-head">
-              <div>
-                <div className="modal-title">
-                  {confirmation.title}
-                </div>
-                <div className="modal-sub">
-                  {confirmation.description}
-                </div>
-              </div>
-              <button
-                className="mclose"
-                type="button"
-                disabled={loading}
-                onClick={() => setConfirmation(null)}
-              >
-                <i className="ti ti-x" />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <label className="fg">
-                <span className="fl">
-                  Digite {confirmation.phrase}
-                </span>
-                <input
-                  className="fi"
-                  value={confirmationValue}
-                  onChange={(event) =>
-                    setConfirmationValue(
-                      event.target.value,
-                    )
-                  }
-                  autoComplete="off"
-                />
-              </label>
-            </div>
-
-            <div className="modal-foot">
-              <button
-                className="bsec"
-                type="button"
-                disabled={loading}
-                onClick={() => setConfirmation(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="bpri"
-                type="button"
-                disabled={
-                  loading ||
-                  confirmationValue !==
-                    confirmation.phrase
-                }
-                onClick={executeConfirmation}
-              >
-                {loading ? 'Processando...' : 'Confirmar'}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   )
 }

@@ -26,6 +26,7 @@ import {
   deleteBoardColumnAction,
   deleteWorkItemAction,
   moveBoardCardAction,
+  moveWorkItemBoardAssignmentAction,
   reorderBoardColumnsAction,
   updateBoardAction,
   updateBoardColumnAction,
@@ -384,6 +385,8 @@ export default function BoardWorkspace({
   activePautaKey = 'legacy',
   activePauta = null,
   pautaManagement = null,
+  distributionBoards = [],
+  distributionColumns = [],
   initialItemId = '',
   columns = [],
   demands = [],
@@ -967,11 +970,18 @@ export default function BoardWorkspace({
       ),
     )
 
-    const result =
-      await moveBoardCardAction(
-        cardId,
-        columnId,
-      )
+    const movingItem =
+      items.find((item: any) => item.id === cardId)
+
+    const result = movingItem?.assignment_id
+      ? await moveWorkItemBoardAssignmentAction(
+          movingItem.assignment_id,
+          columnId,
+        )
+      : await moveBoardCardAction(
+          cardId,
+          columnId,
+        )
 
     if ('error' in result) {
       setItems(previous)
@@ -1397,36 +1407,38 @@ export default function BoardWorkspace({
       </div>
 
       <div className="board-a14-toolbar">
-        <div className="board-a14-selector">
-          <span>Quadro ativo</span>
+        {!isPautaWorkspace && (
+          <div className="board-a14-selector">
+            <span>Quadro ativo</span>
 
-          <select
-            className="fi compact"
-            value={activeBoardId}
-            onChange={(event) => {
-              window.location.href =
-                workspaceBasePath + '?board=' +
-                event.target.value
-            }}
-          >
-            {!boards.length && (
-              <option value="">
-                Nenhum Quadro cadastrado
-              </option>
-            )}
-
-            {boards.map(
-              (board: any) => (
-                <option
-                  key={board.id}
-                  value={board.id}
-                >
-                  {board.name}
+            <select
+              className="fi compact"
+              value={activeBoardId}
+              onChange={(event) => {
+                window.location.href =
+                  workspaceBasePath + '?board=' +
+                  event.target.value
+              }}
+            >
+              {!boards.length && (
+                <option value="">
+                  Nenhum Quadro cadastrado
                 </option>
-              ),
-            )}
-          </select>
-        </div>
+              )}
+
+              {boards.map(
+                (board: any) => (
+                  <option
+                    key={board.id}
+                    value={board.id}
+                  >
+                    {board.name}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+        )}
 
         {isPautaWorkspace && (
           <div className="board-pauta-selector">
@@ -1520,7 +1532,7 @@ export default function BoardWorkspace({
           )}
         </select>
 
-        {canManage && (
+        {canManage && !isPautaWorkspace && (
           <button
             className="board-a14-icon"
             type="button"
@@ -1535,6 +1547,7 @@ export default function BoardWorkspace({
         )}
 
         {canManage &&
+          !isPautaWorkspace &&
           activeBoard && (
             <details className="board-a14-menu">
               <summary
@@ -1607,9 +1620,11 @@ export default function BoardWorkspace({
           }}
         >
           <div className="board-pauta-heading-copy">
-            <strong>
-              {activeBoard.name}
-            </strong>
+            {!isPautaWorkspace && (
+              <strong>
+                {activeBoard.name}
+              </strong>
+            )}
 
             <span>
               {boardColumns.length}
@@ -1726,14 +1741,16 @@ export default function BoardWorkspace({
                 </button>
                 )}
 
-                <button
-                  className="bsec"
-                  type="button"
-                  onClick={createColumn}
-                >
-                  <i className="ti ti-column-insert-right" />
-                  Nova coluna
-                </button>
+                {!isPautaWorkspace && (
+                  <button
+                    className="bsec"
+                    type="button"
+                    onClick={createColumn}
+                  >
+                    <i className="ti ti-column-insert-right" />
+                    Nova coluna
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -1885,7 +1902,8 @@ export default function BoardWorkspace({
                       </option>
                     </select>
 
-                    {!readOnlyPautaView &&
+                    {!isPautaWorkspace &&
+                      !readOnlyPautaView &&
                       (legacyPautaView || activePautaEditable) && (
                       <button
                         className="board-a14-column-icon"
@@ -2733,7 +2751,10 @@ export default function BoardWorkspace({
           }
           snapshot={pautaManagement}
           clients={clients}
-          boardId={activeBoardId}
+          profiles={profiles}
+          clientServices={clientServices}
+          distributionBoards={distributionBoards}
+          distributionColumns={distributionColumns}
           canManage={canManage}
         />
       )}

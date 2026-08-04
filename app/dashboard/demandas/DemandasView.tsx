@@ -276,19 +276,26 @@ function isExtraDemand(
 function demandOriginHref(
   item: any,
 ) {
-  if (
-    item?.pauta_id &&
-    item?.board_id
-  ) {
+  const assignments = Array.isArray(item?.assignments)
+    ? item.assignments.filter((assignment: any) => assignment?.assignment_status !== 'removed')
+    : []
+
+  if (assignments.length > 0) {
+    const assignment = assignments[0]
+    return (
+      '/dashboard/quadro?board=' +
+      encodeRouteValue(assignment.board_id) +
+      '&item=' +
+      encodeRouteValue(item.id)
+    )
+  }
+
+  if (item?.pauta_id && item?.board_id) {
     return (
       '/dashboard/pautas?board=' +
-      encodeRouteValue(
-        item.board_id,
-      ) +
+      encodeRouteValue(item.board_id) +
       '&pauta=' +
-      encodeRouteValue(
-        item.pauta_id,
-      ) +
+      encodeRouteValue(item.pauta_id) +
       '&item=' +
       encodeRouteValue(item.id)
     )
@@ -297,17 +304,13 @@ function demandOriginHref(
   if (item?.board_id) {
     return (
       '/dashboard/quadro?board=' +
-      encodeRouteValue(
-        item.board_id,
-      ) +
+      encodeRouteValue(item.board_id) +
       '&item=' +
       encodeRouteValue(item.id)
     )
   }
 
-  if (
-    isProjectDemand(item)
-  ) {
+  if (isProjectDemand(item)) {
     return (
       '/dashboard/projetos?project=' +
       encodeRouteValue(item.id) +
@@ -316,10 +319,7 @@ function demandOriginHref(
     )
   }
 
-  return (
-    '/dashboard/demandas/' +
-    encodeRouteValue(item?.id)
-  )
+  return '/dashboard/demandas/' + encodeRouteValue(item?.id)
 }
 
 function behaviorStatusClass(
@@ -397,50 +397,43 @@ function operationalStatusClass(
 function demandContextStatus(
   item: any,
 ) {
+  const assignments = Array.isArray(item?.assignments)
+    ? item.assignments.filter((assignment: any) => assignment?.assignment_status !== 'removed')
+    : []
+
+  if (assignments.length > 0) {
+    const completed = assignments.filter((assignment: any) =>
+      ['done', 'delivered', 'approved'].includes(String(assignment.operational_status)),
+    ).length
+    const first = assignments[0]
+
+    return {
+      label: assignments.length > 1
+        ? completed + '/' + assignments.length + ' Quadros'
+        : (first.board?.name || 'Quadro') + ' · ' + (first.board_column?.name || 'Sem coluna'),
+      className: operationalStatusClass(item.status),
+      color: first.board_column?.color || first.board?.color || null,
+    }
+  }
+
   if (item?.board_id) {
     return {
-      label:
-        item.board_column?.name ||
-        'Sem coluna',
-      className:
-        operationalStatusClass(
-          item.board_column
-            ?.operational_status,
-        ),
-      color:
-        item.board_column?.color ||
-        null,
+      label: item.board_column?.name || 'Sem coluna',
+      className: operationalStatusClass(item.board_column?.operational_status),
+      color: item.board_column?.color || null,
     }
   }
 
-  if (
-    isProjectDemand(item)
-  ) {
+  if (isProjectDemand(item)) {
     return {
-      label:
-        item.project_status?.name ||
-        'Planejado',
-      className:
-        behaviorStatusClass(
-          item.project_status
-            ?.behavior,
-        ),
-      color:
-        item.project_status?.color ||
-        null,
+      label: item.project_status?.name || 'Planejado',
+      className: behaviorStatusClass(item.project_status?.behavior),
+      color: item.project_status?.color || null,
     }
   }
 
-  const config =
-    STATUS[item?.status] ||
-    STATUS.not_started
-
-  return {
-    label: config.label,
-    className:
-      config.className,
-    color: null,
-  }
+  const config = STATUS[item?.status] || STATUS.not_started
+  return { label: config.label, className: config.className, color: null }
 }
 
 // AMPY-V17-A23.1.2.1B-EXTRA-CANONICO
