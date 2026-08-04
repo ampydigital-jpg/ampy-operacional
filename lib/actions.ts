@@ -5146,47 +5146,12 @@ export async function changePautaLifecycleAction(
 }
 
 export async function deleteEmptyPautaAction(
-  pautaId: string,
-  confirmation: string,
+  _pautaId: string,
+  _confirmation: string,
 ) {
-  if (!(await v17A12bHasTotalAccess())) {
-    return forbidden(
-      'Somente usuários com Acesso Total podem excluir Pautas vazias.',
-    )
-  }
-
-  if (String(confirmation || '').trim() !==
-      'EXCLUIR PAUTA') {
-    return {
-      error:
-        'Digite exatamente EXCLUIR PAUTA para continuar.',
-    }
-  }
-
-  const { supabase } = await getCurrentProfile()
-  const id = String(pautaId || '').trim()
-
-  if (!id) {
-    return { error: 'Pauta inválida.' }
-  }
-
-  const { data, error } = await supabase.rpc(
-    'delete_empty_pauta',
-    {
-      p_pauta_id: id,
-      p_confirmation: 'EXCLUIR PAUTA',
-    },
-  )
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  revalidatePautaManagementPaths(null)
-
   return {
-    success: true,
-    data: pautaRpcPayload(data),
+    error:
+      'Pautas não podem ser excluídas. Arquive a Pauta para retirá-la da operação ativa.',
   }
 }
 

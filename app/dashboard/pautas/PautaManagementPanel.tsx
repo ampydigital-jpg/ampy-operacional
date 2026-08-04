@@ -11,7 +11,6 @@ import {
 import {
   addClientsToPautaAction,
   changePautaLifecycleAction,
-  deleteEmptyPautaAction,
   detachPautaDemandAction,
   previewPautaClientAdditionsAction,
   removePautaClientAction,
@@ -23,7 +22,6 @@ type ConfirmationState = {
     | 'remove-client'
     | 'detach-demand'
     | 'lifecycle'
-    | 'delete'
   title: string
   description: string
   phrase: string
@@ -143,7 +141,6 @@ export default function PautaManagementPanel({
   onClose,
   snapshot,
   clients = [],
-  boardId = '',
   canManage = false,
 }: any) {
   const pauta = snapshot?.pauta || null
@@ -383,15 +380,10 @@ export default function PautaManagementPanel({
         String(confirmation.workItemId || ''),
         confirmationValue,
       )
-    } else if (confirmation.kind === 'lifecycle') {
+    } else {
       result = await changePautaLifecycleAction(
         pauta.id,
         confirmation.lifecycleAction || 'close',
-        confirmationValue,
-      )
-    } else {
-      result = await deleteEmptyPautaAction(
-        pauta.id,
         confirmationValue,
       )
     }
@@ -402,13 +394,6 @@ export default function PautaManagementPanel({
           'Não foi possível concluir a ação.',
       )
       setLoading(false)
-      return
-    }
-
-    if (confirmation.kind === 'delete') {
-      window.location.href =
-        '/dashboard/pautas?board=' +
-        encodeURIComponent(boardId)
       return
     }
 
@@ -670,27 +655,6 @@ export default function PautaManagementPanel({
                       })}
                     >
                       Arquivar
-                    </button>
-                  )}
-
-                  {canManage && (
-                    <button
-                      className="bsec danger-button"
-                      type="button"
-                      disabled={dependencies.can_delete !== true}
-                      title={
-                        dependencies.can_delete === true
-                          ? 'Excluir Pauta vazia'
-                          : 'A Pauta possui dependências e não pode ser excluída'
-                      }
-                      onClick={() => askConfirmation({
-                        kind: 'delete',
-                        title: 'Excluir Pauta vazia',
-                        description: 'A exclusão só será aceita se não houver clientes, demandas, agendas ou histórico impeditivo.',
-                        phrase: 'EXCLUIR PAUTA',
-                      })}
-                    >
-                      Excluir Pauta vazia
                     </button>
                   )}
                 </div>
