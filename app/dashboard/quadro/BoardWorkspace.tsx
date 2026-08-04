@@ -22,12 +22,14 @@ import {
   createBoardAction,
   createBoardColumnAction,
   createPautaDemandAction,
+  changePautaLifecycleAction,
   deleteBoardAction,
   deleteBoardColumnAction,
   deleteWorkItemAction,
   moveBoardCardAction,
   moveWorkItemBoardAssignmentAction,
   setWorkItemBoardAssignmentCompletionAction,
+  setWorkItemCompletionAction,
   reorderBoardColumnsAction,
   updateBoardAction,
   updateBoardColumnAction,
@@ -386,6 +388,7 @@ export default function BoardWorkspace({
   activePautaKey = 'legacy',
   activePauta = null,
   pautaManagement = null,
+  showArchived = false,
   distributionBoards = [],
   distributionColumns = [],
   initialItemId = '',
@@ -718,14 +721,47 @@ export default function BoardWorkspace({
         )
       : []
 
+  // V9.1 — CONCLUSÃO NO CARD E ARQUIVO DE PAUTA
   function cardsInColumn(
     columnId: string,
   ) {
     const list =
       filtered.filter(
-        (item: any) =>
-          item.board_column_id ===
-          columnId,
+        (item: any) => {
+          const assignmentCompleted =
+            Boolean(
+              item.assignment_completed_at,
+            ) ||
+            [
+              'done',
+              'delivered',
+              'approved',
+            ].includes(
+              String(
+                item.assignment_operational_status ||
+                '',
+              ),
+            )
+
+          const demandCompleted =
+            [
+              'done',
+              'delivered',
+              'approved',
+            ].includes(
+              String(
+                item.status ||
+                '',
+              ),
+            )
+
+          return (
+            item.board_column_id ===
+              columnId &&
+            !assignmentCompleted &&
+            !demandCompleted
+          )
+        },
       )
 
     const mode =
@@ -992,44 +1028,110 @@ export default function BoardWorkspace({
     setDragCardId(null)
   }
 
-  // V9 — CARDS SETORIAIS E CONCLUSÃO
-  async function toggleAssignmentCompletion(item: any) {
-    if (!item?.assignment_id) return
+  // V9.1 — CONCLUSÃO NO CARD E ARQUIVO DE PAUTA
+  async function markCardCompleted(
+    item: any,
+  ) {
+    if (!item?.id) return
 
-    const completed = Boolean(item.assignment_completed_at) ||
-      ['done', 'delivered', 'approved'].includes(String(item.assignment_operational_status || item.status || ''))
-
-    const confirmed = window.confirm(
-      completed
-        ? 'Reabrir esta etapa neste Quadro?'
-        : 'Concluir esta etapa neste Quadro?',
-    )
+    const confirmed =
+      window.confirm(
+        'Marcar este card como concluído?\n\n' +
+          'Ele sairá do Quadro e continuará disponível em Demandas > Concluídas.',
+      )
 
     if (!confirmed) return
-
-    const note = window.prompt(
-      completed
-        ? 'Observação da reabertura (opcional):'
-        : 'Observação da conclusão (opcional):',
-      '',
-    ) || ''
 
     setLoading(true)
     setError('')
 
-    const result = await setWorkItemBoardAssignmentCompletionAction(
-      item.assignment_id,
-      !completed,
-      note,
-    )
+    const result =
+      item.assignment_id
+        ? await setWorkItemBoardAssignmentCompletionAction(
+            item.assignment_id,
+            true,
+            '',
+          )
+        : await setWorkItemCompletionAction(
+            item.id,
+            true,
+            true,
+            '',
+          )
 
     if ('error' in result) {
-      setError(result.error || 'Não foi possível alterar a conclusão.')
+      setError(
+        result.error ||
+          'Não foi possível concluir o card.',
+      )
       setLoading(false)
       return
     }
 
-    window.location.reload()
+    setItems((current) =>
+      current.filter(
+        (currentItem: any) =>
+          currentItem.id !== item.id,
+      ),
+    )
+
+    setLoading(false)
+  }
+
+  async function changeActivePautaLifecycle() {
+    if (
+      !activePauta ||
+      !canManage
+    ) {
+      return
+    }
+
+    const archived =
+      activePauta.lifecycle_status ===
+      'archived'
+
+    const phrase =
+      window.prompt(
+        archived
+          ? 'Digite REABRIR PAUTA'
+          : 'Digite ARQUIVAR PAUTA',
+      ) || ''
+
+    if (!phrase) return
+
+    setLoading(true)
+    setError('')
+
+    const result =
+      await changePautaLifecycleAction(
+        activePauta.id,
+        archived
+          ? 'reopen'
+          : 'archive',
+        phrase,
+      )
+
+    if ('error' in result) {
+      setError(
+        result.error ||
+          'Não foi possível alterar a Pauta.',
+      )
+      setLoading(false)
+      return
+    }
+
+    window.location.href =
+      workspaceBasePath +
+      '?board=' +
+      activeBoardId +
+      (
+        archived
+          ? '&pauta=' +
+            encodeURIComponent(
+              activePauta.id,
+            )
+          : ''
+      )
   }
 
   async function submitBoard(
@@ -1483,7 +1585,11 @@ export default function BoardWorkspace({
 
         {isPautaWorkspace && (
           <div className="board-pauta-selector">
-            <span>Pauta ativa</span>
+            <span>
+              {showArchived
+                ? 'Pautas arquivadas'
+                : 'Pauta ativa'}
+            </span>
 
             <select
               className="fi compact"
@@ -1498,6 +1604,11 @@ export default function BoardWorkspace({
                   '&pauta=' +
                   encodeURIComponent(
                     next,
+                  ) +
+                  (
+                    showArchived
+                      ? '&archived=1'
+                      : ''
                   )
               }}
             >
@@ -1512,15 +1623,58 @@ export default function BoardWorkspace({
                 ),
               )}
 
-              <option value="legacy">
-                Sem Pauta / Legado
-              </option>
+              {showArchived &&
+                pautas.length === 0 && (
+                <option value="legacy">
+                  Nenhuma Pauta arquivada
+                </option>
+              )}
 
-              <option value="all">
-                Todas as Pautas
-              </option>
+              {!showArchived && (
+                <>
+                  <option value="legacy">
+                    Sem Pauta / Legado
+                  </option>
+
+                  <option value="all">
+                    Todas as Pautas
+                  </option>
+                </>
+              )}
             </select>
           </div>
+        )}
+
+        {canManage &&
+          isPautaWorkspace && (
+          <Link
+            className={
+              showArchived
+                ? 'bpri'
+                : 'bsec'
+            }
+            href={
+              showArchived
+                ? workspaceBasePath +
+                  '?board=' +
+                  activeBoardId
+                : workspaceBasePath +
+                  '?board=' +
+                  activeBoardId +
+                  '&archived=1'
+            }
+          >
+            <i
+              className={
+                showArchived
+                  ? 'ti ti-arrow-back-up'
+                  : 'ti ti-archive'
+              }
+            />
+            {showArchived
+              ? 'Voltar às ativas'
+              : 'Ver arquivadas'}
+          </Link>
         )}
 
         <select
@@ -1732,6 +1886,37 @@ export default function BoardWorkspace({
           </div>
 
           <div className="board-pauta-heading-actions">
+            {canManage &&
+              isPautaWorkspace &&
+              activePauta && (
+              <button
+                className={
+                  activePauta.lifecycle_status ===
+                  'archived'
+                    ? 'bpri'
+                    : 'bsec'
+                }
+                type="button"
+                onClick={() =>
+                  void changeActivePautaLifecycle()
+                }
+                disabled={loading}
+              >
+                <i
+                  className={
+                    activePauta.lifecycle_status ===
+                    'archived'
+                      ? 'ti ti-refresh'
+                      : 'ti ti-archive'
+                  }
+                />
+                {activePauta.lifecycle_status ===
+                'archived'
+                  ? 'Reabrir Pauta'
+                  : 'Arquivar Pauta'}
+              </button>
+            )}
+
             {isPautaWorkspace && activePauta && pautaManagement && (
               <button
                 className="bsec pauta-management-open"
@@ -1767,7 +1952,8 @@ export default function BoardWorkspace({
 
             {canManage && (
               <>
-                {isPautaWorkspace && (
+                {isPautaWorkspace &&
+                  !showArchived && (
                 <button
                   className="bpri board-pauta-open-button"
                   type="button"
@@ -2089,32 +2275,23 @@ export default function BoardWorkspace({
                             >
                               <h3>{item.title}</h3>
                               <div className="board-v9-simple-actions">
-                                <span className="board-v9-simple-state">
-                                  {assignmentCompleted ? 'Concluído' : 'Em aberto'}
-                                </span>
                                 {!readOnlyPautaView && (
                                   <button
                                     type="button"
-                                    className={assignmentCompleted ? 'bsec' : 'bpri'}
+                                    className="bpri"
                                     onClick={(event) => {
                                       event.stopPropagation()
-                                      void toggleAssignmentCompletion(item)
+                                      void markCardCompleted(
+                                        item,
+                                      )
                                     }}
                                     disabled={loading}
                                   >
-                                    <i className={assignmentCompleted ? 'ti ti-refresh' : 'ti ti-circle-check'} />
-                                    {assignmentCompleted ? 'Reabrir' : 'Concluir'}
+                                    <i className="ti ti-circle-check" />
+                                    Marcar como concluído
                                   </button>
                                 )}
                               </div>
-                              {item.assignment_completed_at && (
-                                <small>
-                                  {new Date(item.assignment_completed_at).toLocaleString('pt-BR')}
-                                  {item.assignment_completed_by?.display_name || item.assignment_completed_by?.full_name
-                                    ? ' · ' + (item.assignment_completed_by?.display_name || item.assignment_completed_by?.full_name)
-                                    : ''}
-                                </small>
-                              )}
                             </article>
                           )
                         }
@@ -2354,22 +2531,22 @@ export default function BoardWorkspace({
                               </span>
                             </div>
 
-                            {item.assignment_id && !readOnlyPautaView && (
+                            {!isPautaWorkspace &&
+                              !readOnlyPautaView &&
+                              !item.is_pauta_card && (
                               <button
                                 type="button"
-                                className={
-                                  assignmentCompleted
-                                    ? 'bsec board-v9-complete-button'
-                                    : 'bpri board-v9-complete-button'
-                                }
+                                className="bpri board-v9-complete-button"
                                 onClick={(event) => {
                                   event.stopPropagation()
-                                  void toggleAssignmentCompletion(item)
+                                  void markCardCompleted(
+                                    item,
+                                  )
                                 }}
                                 disabled={loading}
                               >
-                                <i className={assignmentCompleted ? 'ti ti-refresh' : 'ti ti-circle-check'} />
-                                {assignmentCompleted ? 'Reabrir neste Quadro' : 'Concluir neste Quadro'}
+                                <i className="ti ti-circle-check" />
+                                Marcar como concluído
                               </button>
                             )}
                           </article>

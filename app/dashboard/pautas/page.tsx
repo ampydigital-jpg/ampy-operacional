@@ -22,9 +22,13 @@ async function hasTotalAccess() {
   return byEmail.data?.is_active !== false && byEmail.data?.access_type === 'total'
 }
 
-export default async function PautasPage({ searchParams }: { searchParams: { board?: string; pauta?: string; item?: string } }) {
+export default async function PautasPage({ searchParams }: { searchParams: { board?: string; pauta?: string; item?: string; archived?: string } }) {
   noStore()
   const supabase = createClient()
+
+  // V9.1 — PAUTAS ATIVAS E ARQUIVADAS
+  const showArchived =
+    searchParams.archived === '1'
 
   const [boardsResult, customBoardsResult, clientsResult, profilesResult, clientServicesResult, servicesResult] = await Promise.all([
     supabase.from('boards').select('id,name,description,color,status,board_kind,created_at,updated_at').eq('status','active').eq('board_kind','pauta').order('created_at'),
@@ -49,7 +53,26 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
   let scheduleRequirementsResult: any = { data: [], error: null }
 
   if (activeBoardId) {
-    pautasResult = await supabase.from('pautas').select('id,board_id,name,reference_month,magic_number_date,scheduled_until_date,lifecycle_status,opened_at,closed_at,archived_at,created_at,updated_at').eq('board_id',activeBoardId).order('reference_month',{ascending:false})
+    let pautaQuery = supabase
+      .from('pautas')
+      .select('id,board_id,name,reference_month,magic_number_date,scheduled_until_date,lifecycle_status,opened_at,closed_at,archived_at,created_at,updated_at')
+      .eq('board_id', activeBoardId)
+
+    pautaQuery = showArchived
+      ? pautaQuery.eq(
+          'lifecycle_status',
+          'archived',
+        )
+      : pautaQuery.neq(
+          'lifecycle_status',
+          'archived',
+        )
+
+    pautasResult = await pautaQuery
+      .order(
+        'reference_month',
+        { ascending: false },
+      )
     columnsResult = await supabase.from('board_columns').select('id,board_id,name,color,operational_status,automation_role,position,created_at,updated_at').eq('board_id',activeBoardId).order('position')
   }
 
@@ -141,6 +164,7 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     activePautaKey={activePautaKey}
     activePauta={activePauta}
     pautaManagement={pautaManagementResult.data || null}
+    showArchived={showArchived}
     distributionBoards={distributionBoards}
     distributionColumns={distributionColumnsResult.data || []}
     initialItemId={String(searchParams.item || '')}
