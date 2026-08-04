@@ -731,28 +731,11 @@ export default function BoardWorkspace({
           const assignmentCompleted =
             Boolean(
               item.assignment_completed_at,
-            ) ||
-            [
-              'done',
-              'delivered',
-              'approved',
-            ].includes(
-              String(
-                item.assignment_operational_status ||
-                '',
-              ),
             )
 
           const demandCompleted =
-            [
-              'done',
-              'delivered',
-              'approved',
-            ].includes(
-              String(
-                item.status ||
-                '',
-              ),
+            Boolean(
+              item.completed_at,
             )
 
           return (
@@ -1000,8 +983,20 @@ export default function BoardWorkspace({
               board_column_id:
                 columnId,
               status:
-                targetColumn
-                  .operational_status,
+                [
+                  'done',
+                  'delivered',
+                  'approved',
+                ].includes(
+                  String(
+                    targetColumn
+                      .operational_status ||
+                    '',
+                  ),
+                )
+                  ? item.status
+                  : targetColumn
+                      .operational_status,
             }
           : item,
       ),
@@ -1695,8 +1690,7 @@ export default function BoardWorkspace({
           )}
         </select>
 
-        {canManage &&
-          isPautaWorkspace && (
+        {isPautaWorkspace && (
           <details className="board-a14-menu">
             <summary
               className="board-a14-icon"
@@ -1734,7 +1728,8 @@ export default function BoardWorkspace({
                   : 'Ver Pautas arquivadas'}
               </button>
 
-              {activePauta && (
+              {canManage &&
+                activePauta && (
                 <button
                   className={
                     activePauta.lifecycle_status ===
@@ -2259,9 +2254,8 @@ export default function BoardWorkspace({
                           item.assignment_metadata?.display_mode === 'simple'
 
                         const assignmentCompleted =
-                          Boolean(item.assignment_completed_at) ||
-                          ['done', 'delivered', 'approved'].includes(
-                            String(item.assignment_operational_status || ''),
+                          Boolean(
+                            item.assignment_completed_at,
                           )
 
                         if (simpleSectorCard) {
@@ -2518,42 +2512,66 @@ export default function BoardWorkspace({
                             )}
 
                             <div className="board-a15-card-responsible">
-                              <i className="ti ti-user" />
-                              <span>
-                                {item.responsible?.display_name ||
-                  item.responsible?.full_name ||
-                  'Sem responsável'}
-                {item.card_tag ? (
-                  <span
-                    className={
-                      'board-a23-card-tag tag-' +
-                      String(
-                        item.card_tag_color ||
-                        'slate',
-                      )
-                    }
-                    title={item.card_tag}
-                  >
-                    {item.card_tag}
-                  </span>
-                ) : null}
-                              </span>
-                            </div>
+                              <div className="board-v9-card-responsible-copy">
+                                <i className="ti ti-user" />
 
-                            {!readOnlyPautaView && (
-                              <button
-                                className="bsec"
-                                type="button"
-                                title="Editar demanda"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  openEditDemand(item)
-                                }}
-                              >
-                                <i className="ti ti-edit" />
-                                Editar demanda
-                              </button>
-                            )}
+                                <span>
+                                  {item.responsible?.display_name ||
+                                    item.responsible?.full_name ||
+                                    'Sem responsável'}
+
+                                  {item.card_tag ? (
+                                    <span
+                                      className={
+                                        'board-a23-card-tag tag-' +
+                                        String(
+                                          item.card_tag_color ||
+                                          'slate',
+                                        )
+                                      }
+                                      title={item.card_tag}
+                                    >
+                                      {item.card_tag}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </div>
+
+                              {!readOnlyPautaView && (
+                                <div className="board-v9-card-actions">
+                                  <button
+                                    className="board-v9-edit-inline"
+                                    type="button"
+                                    title="Editar demanda"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      openEditDemand(
+                                        item,
+                                      )
+                                    }}
+                                  >
+                                    <i className="ti ti-edit" />
+                                    Editar
+                                  </button>
+
+                                  <button
+                                    className="board-v9-complete-inline"
+                                    type="button"
+                                    title="Marcar como concluído"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      void markCardCompleted(
+                                        item,
+                                      )
+                                    }}
+                                    disabled={loading}
+                                  >
+                                    <i className="ti ti-circle-check" />
+                                    Concluir
+                                  </button>
+                                </div>
+                              )}
+                            </div>
 
                           </article>
                         )

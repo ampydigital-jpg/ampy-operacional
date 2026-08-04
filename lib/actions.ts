@@ -3747,36 +3747,69 @@ export async function updateFeedBoardItemPlanningAction(itemId: string, formData
 // =========================================================
 
 async function v17A12bHasTotalAccess() {
-  const { user } = await getCurrentProfile()
-
-  if (!user) return false
-
-  const admin = createAdminClient()
-
-  const byProfile = await admin
-    .from('team_members')
-    .select('access_type,is_active')
-    .eq('profile_id', user.id)
-    .maybeSingle()
+  const {
+    supabase,
+    user,
+    profile,
+  } =
+    await getCurrentProfile()
 
   if (
-    byProfile.data?.is_active !== false &&
-    byProfile.data?.access_type === 'total'
+    !user ||
+    !profile ||
+    profile.is_active === false
+  ) {
+    return false
+  }
+
+  if (
+    isAdmin(
+      profile.role,
+    )
   ) {
     return true
   }
 
-  if (!user.email) return false
+  const byProfile =
+    await supabase
+      .from('team_members')
+      .select(
+        'access_type,is_active',
+      )
+      .eq(
+        'profile_id',
+        user.id,
+      )
+      .maybeSingle()
 
-  const byEmail = await admin
-    .from('team_members')
-    .select('access_type,is_active')
-    .ilike('email', user.email)
-    .maybeSingle()
+  if (
+    byProfile.data?.is_active !== false &&
+    byProfile.data?.access_type ===
+      'total'
+  ) {
+    return true
+  }
+
+  if (!user.email) {
+    return false
+  }
+
+  const byEmail =
+    await supabase
+      .from('team_members')
+      .select(
+        'access_type,is_active',
+      )
+      .ilike(
+        'email',
+        user.email,
+      )
+      .maybeSingle()
 
   return (
     byEmail.data?.is_active !== false &&
-    byEmail.data?.access_type === 'total'
+    byEmail.data?.access_type ===
+      'total'
   )
 }
 
@@ -6474,211 +6507,366 @@ export async function createBoardColumnDemandAction(
   return { success: true, id: data.id }
 }
 
+
 export async function updateBoardColumnDemandAction(
   id: string,
   formData: FormData,
 ) {
-  const permission = await canOperateWorkItem(id)
+  const permission =
+    await canOperateWorkItem(id)
 
-  if ('error' in permission) return permission
+  if ('error' in permission) {
+    return permission
+  }
 
-  const { supabase, user, profile } = permission
+  const {
+    supabase,
+    user,
+    profile,
+  } = permission
 
-  const { data: existing, error: existingError } =
+  const {
+    data: existing,
+    error: existingError,
+  } =
     await supabase
       .from('work_items')
       .select(
-        'id,title,status,board_id,board_column_id,responsible_id',
+        'id,title,status,board_id,board_column_id,responsible_id,completed_at,completed_by,closed_at',
       )
       .eq('id', id)
       .single()
 
-  if (existingError || !existing) {
-    return { error: 'Demanda não encontrada.' }
+  if (
+    existingError ||
+    !existing
+  ) {
+    return {
+      error:
+        'Demanda não encontrada.',
+    }
   }
 
-  const title = value(formData, 'title')
+  const title =
+    value(formData, 'title')
 
-  if (!title) return { error: 'Informe o título.' }
+  if (!title) {
+    return {
+      error:
+        'Informe o título.',
+    }
+  }
 
-  const columnValidation = await v17A14GetColumn(
-    supabase,
-    nullable(formData, 'board_column_id'),
-  )
+  const columnValidation =
+    await v17A14GetColumn(
+      supabase,
+      nullable(
+        formData,
+        'board_column_id',
+      ),
+    )
 
   if ('error' in columnValidation) {
     return columnValidation
   }
 
-  const clientId = nullable(formData, 'client_id')
-  const clientServiceId = nullable(
-    formData,
-    'client_service_id',
-  )
+  const clientId =
+    nullable(
+      formData,
+      'client_id',
+    )
 
-  const linkValidation = await validateWorkItemLinks(
-    supabase,
-    clientId,
-    clientServiceId,
-  )
+  const clientServiceId =
+    nullable(
+      formData,
+      'client_service_id',
+    )
+
+  const linkValidation =
+    await validateWorkItemLinks(
+      supabase,
+      clientId,
+      clientServiceId,
+    )
 
   if ('error' in linkValidation) {
     return linkValidation
   }
 
-  const { column } = columnValidation
+  const { column } =
+    columnValidation
 
-  const update: Record<string, unknown> = {
-    title,
-    description: nullable(formData, 'description'),
-    client_id: clientId,
-    client_service_id: clientServiceId,
-    type:
-      nullable(formData, 'type') ||
-      (clientId ? 'Planejamento' : 'Interno'),
-    origin:
-      value(formData, 'origin') ||
-      (clientId ? 'planned' : 'internal'),
-    destino: 'quadro',
-    board_id: column.board_id,
-    board_column_id: column.id,
-    status: column.operational_status,
-    priority: value(formData, 'priority') || 'normal',
-    internal_deadline: nullable(
-      formData,
-      'internal_deadline',
-    ),
-    final_deadline: nullable(formData, 'final_deadline'),
-    drive_link: nullable(formData, 'drive_link'),
-    notes: nullable(formData, 'notes'),
-    blocked_reason: nullable(
-      formData,
-      'blocked_reason',
-    ),
-    closed_at: ['done', 'delivered', 'approved'].includes(
-      column.operational_status,
+  const completionLike =
+    [
+      'done',
+      'delivered',
+      'approved',
+    ].includes(
+      String(
+        column.operational_status ||
+        '',
+      ),
     )
-      ? new Date().toISOString()
-      : null,
-    completed_at: ['done', 'delivered', 'approved'].includes(
-      column.operational_status,
+
+  const nextStatus =
+    completionLike
+      ? existing.status
+      : column.operational_status ||
+        existing.status
+
+  const update:
+    Record<string, unknown> = {
+      title,
+      description:
+        nullable(
+          formData,
+          'description',
+        ),
+      client_id:
+        clientId,
+      client_service_id:
+        clientServiceId,
+      type:
+        nullable(
+          formData,
+          'type',
+        ) ||
+        (
+          clientId
+            ? 'Planejamento'
+            : 'Interno'
+        ),
+      origin:
+        value(
+          formData,
+          'origin',
+        ) ||
+        (
+          clientId
+            ? 'planned'
+            : 'internal'
+        ),
+      destino:
+        'quadro',
+      board_id:
+        column.board_id,
+      board_column_id:
+        column.id,
+      status:
+        nextStatus,
+      priority:
+        value(
+          formData,
+          'priority',
+        ) ||
+        'normal',
+      internal_deadline:
+        nullable(
+          formData,
+          'internal_deadline',
+        ),
+      final_deadline:
+        nullable(
+          formData,
+          'final_deadline',
+        ),
+      drive_link:
+        nullable(
+          formData,
+          'drive_link',
+        ),
+      notes:
+        nullable(
+          formData,
+          'notes',
+        ),
+      blocked_reason:
+        nullable(
+          formData,
+          'blocked_reason',
+        ),
+
+      completed_at:
+        existing.completed_at,
+
+      completed_by:
+        existing.completed_by,
+
+      closed_at:
+        existing.closed_at,
+    }
+
+  if (
+    isManager(
+      profile.role,
     )
-      ? new Date().toISOString()
-      : null,
-    completed_by: ['done', 'delivered', 'approved'].includes(
-      column.operational_status,
-    )
-      ? user.id
-      : null,
+  ) {
+    update.responsible_id =
+      nullable(
+        formData,
+        'responsible_id',
+      )
   }
 
-  if (isManager(profile.role)) {
-    update.responsible_id = nullable(
-      formData,
-      'responsible_id',
-    )
+  const { error } =
+    await supabase
+      .from('work_items')
+      .update(update)
+      .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
   }
-
-  const { error } = await supabase
-    .from('work_items')
-    .update(update)
-    .eq('id', id)
-
-  if (error) return { error: error.message }
 
   await addHistory(
     id,
     user.id,
     'board_column',
-    existing.board_column_id || null,
+    existing.board_column_id ||
+      null,
     column.id,
   )
 
-  if (existing.status !== column.operational_status) {
+  if (
+    existing.status !==
+    nextStatus
+  ) {
     await addHistory(
       id,
       user.id,
       'status',
       existing.status,
-      column.operational_status,
+      nextStatus,
     )
   }
 
   revalidateOperationalPaths()
-  revalidatePath(`/dashboard/demandas/${id}`)
+  revalidatePath(
+    `/dashboard/demandas/${id}`,
+  )
 
-  return { success: true }
+  return {
+    success: true,
+  }
 }
+
 
 export async function moveBoardCardAction(
   id: string,
   columnId: string,
 ) {
-  const permission = await canOperateWorkItem(id)
+  const permission =
+    await canOperateWorkItem(id)
 
-  if ('error' in permission) return permission
+  if ('error' in permission) {
+    return permission
+  }
 
-  const { supabase, user, item } = permission
-
-  const columnValidation = await v17A14GetColumn(
+  const {
     supabase,
-    columnId,
-  )
+    user,
+    item,
+  } = permission
+
+  const columnValidation =
+    await v17A14GetColumn(
+      supabase,
+      columnId,
+    )
 
   if ('error' in columnValidation) {
     return columnValidation
   }
 
-  const { column } = columnValidation
+  const { column } =
+    columnValidation
 
-  const { error } = await supabase
-    .from('work_items')
-    .update({
-      destino: 'quadro',
-      board_id: column.board_id,
-      board_column_id: column.id,
-      status: column.operational_status,
-      closed_at: ['done', 'delivered', 'approved'].includes(
-        column.operational_status,
-      )
-        ? new Date().toISOString()
-        : null,
-      completed_at: ['done', 'delivered', 'approved'].includes(
-        column.operational_status,
-      )
-        ? new Date().toISOString()
-        : null,
-      completed_by: ['done', 'delivered', 'approved'].includes(
-        column.operational_status,
-      )
-        ? user.id
-        : null,
-    })
-    .eq('id', id)
+  const completionLike =
+    [
+      'done',
+      'delivered',
+      'approved',
+    ].includes(
+      String(
+        column.operational_status ||
+        '',
+      ),
+    )
 
-  if (error) return { error: error.message }
+  const nextStatus =
+    completionLike
+      ? item.status
+      : column.operational_status ||
+        item.status
+
+  const { error } =
+    await supabase
+      .from('work_items')
+      .update({
+        destino:
+          'quadro',
+
+        board_id:
+          column.board_id,
+
+        board_column_id:
+          column.id,
+
+        status:
+          nextStatus,
+
+        updated_at:
+          new Date()
+            .toISOString(),
+      })
+      .eq('id', id)
+
+  if (error) {
+    return {
+      error: error.message,
+    }
+  }
 
   await addHistory(
     id,
     user.id,
     'board_column',
-    null,
+    item.board_column_id ||
+      null,
     column.id,
   )
 
-  if (item.status !== column.operational_status) {
+  if (
+    item.status !==
+    nextStatus
+  ) {
     await addHistory(
       id,
       user.id,
       'status',
       item.status,
-      column.operational_status,
+      nextStatus,
     )
   }
 
   revalidateOperationalPaths()
+  revalidatePath(
+    `/dashboard/demandas/${id}`,
+  )
 
-  return { success: true }
+  return {
+    success: true,
+    board_column_id:
+      column.id,
+    status:
+      nextStatus,
+    completed:
+      Boolean(
+        item.completed_at,
+      ),
+  }
 }
 
 /* =========================================================
@@ -6927,9 +7115,21 @@ async function validateBoardPeriodDemand(
       description: null,
       type: 'Demanda do Quadro',
       status:
-        columnResult.data
-          .operational_status ||
-        'not_started',
+        [
+          'done',
+          'delivered',
+          'approved',
+        ].includes(
+          String(
+            columnResult.data
+              .operational_status ||
+            '',
+          ),
+        )
+          ? 'not_started'
+          : columnResult.data
+              .operational_status ||
+            'not_started',
       priority,
       destino: 'quadro',
       board_id: boardId,

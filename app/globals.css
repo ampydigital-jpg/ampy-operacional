@@ -14691,3 +14691,93 @@ small {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* === V9.1.3 — MENU E EDIÇÃO VISÍVEIS === */
+
+.board-a15-card-responsible {
+  justify-content: space-between !important;
+  min-width: 0 !important;
+}
+
+.board-v9-card-responsible-copy {
+  display: flex !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.board-v9-card-responsible-copy > span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.board-v9-edit-inline {
+  display: inline-flex !important;
+  min-width: max-content !important;
+  height: 25px !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 0 8px !important;
+  border: 1px solid #b2ddff !important;
+  border-radius: 7px !important;
+  background: #eff8ff !important;
+  color: #175cd3 !important;
+  font-family: inherit !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+.board-v9-edit-inline:hover {
+  border-color: #84caff !important;
+  background: #d1e9ff !important;
+}
+
+/* === /V9.1.3 === */
+
+
+/* === V9.1.4-R3 — CONCLUSÃO EXPLÍCITA === */
+
+.board-v9-card-actions {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.board-v9-complete-inline {
+  display: inline-flex !important;
+  min-width: max-content !important;
+  height: 25px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 0 8px !important;
+  border: 1px solid #a6f4c5 !important;
+  border-radius: 7px !important;
+  background: #ecfdf3 !important;
+  color: #027a48 !important;
+  font-family: inherit !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+.board-v9-complete-inline:hover {
+  border-color: #6ce9a6 !important;
+  background: #d1fadf !important;
+}
+
+.board-v9-complete-inline:disabled {
+  cursor: wait !important;
+  opacity: 0.55 !important;
+}
+
+/* === /V9.1.4-R3 === */

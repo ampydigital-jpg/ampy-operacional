@@ -1,6 +1,5 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import BoardWorkspace from '../quadro/BoardWorkspace'
 
 export const dynamic = 'force-dynamic'
@@ -10,61 +9,72 @@ function mapById(items: any[]) {
   return new Map((Array.isArray(items) ? items : []).filter(Boolean).map((item) => [item.id, item]))
 }
 
-async function hasTotalAccess() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
-
-  const admin = createAdminClient()
-
-  const profileResult = await admin
-    .from('profiles')
-    .select('role,is_active,email')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (
-    profileResult.data?.is_active !== false &&
-    profileResult.data?.role === 'admin'
-  ) {
-    return true
-  }
-
-  const byProfile = await admin
-    .from('team_members')
-    .select('access_type,is_active')
-    .eq('profile_id', user.id)
-    .maybeSingle()
-
-  if (
-    byProfile.data?.is_active !== false &&
-    byProfile.data?.access_type === 'total'
-  ) {
-    return true
-  }
-
-  const email =
-    user.email ||
-    profileResult.data?.email ||
-    ''
-
-  if (!email) return false
-
-  const byEmail = await admin
-    .from('team_members')
-    .select('access_type,is_active')
-    .ilike('email', email)
-    .maybeSingle()
-
-  return (
-    byEmail.data?.is_active !== false &&
-    byEmail.data?.access_type === 'total'
-  )
-}
-
 export default async function PautasPage({ searchParams }: { searchParams: { board?: string; pauta?: string; item?: string; archived?: string } }) {
   noStore()
   const supabase = createClient()
+
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth.getUser()
+
+  let canManage = false
+
+  if (user) {
+    const [
+      currentProfileResult,
+      currentTeamResult,
+    ] =
+      await Promise.all([
+        supabase
+          .from('profiles')
+          .select(
+            'id,role,is_active,email',
+          )
+          .eq(
+            'id',
+            user.id,
+          )
+          .maybeSingle(),
+
+        supabase
+          .from('team_members')
+          .select(
+            'access_type,is_active',
+          )
+          .eq(
+            'profile_id',
+            user.id,
+          )
+          .maybeSingle(),
+      ])
+
+    const profile =
+      currentProfileResult.data
+
+    const team =
+      currentTeamResult.data
+
+    canManage =
+      profile?.is_active !== false &&
+      (
+        [
+          'admin',
+          'director',
+        ].includes(
+          String(
+            profile?.role || '',
+          ),
+        ) ||
+        (
+          team?.is_active !== false &&
+          team?.access_type ===
+            'total'
+        )
+      )
+  }
 
   // V9.1 — PAUTAS ATIVAS E ARQUIVADAS
   const showArchived =
@@ -221,7 +231,7 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     clients={clients}
     profiles={profiles}
     clientServices={clientServices}
-    canManage={await hasTotalAccess()}
+    canManage={canManage}
     loadErrors={loadErrors}
     workspaceMode="pautas"
   />
