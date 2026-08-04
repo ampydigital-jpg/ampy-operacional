@@ -1078,6 +1078,11 @@ export default function BoardWorkspace({
       !activePauta ||
       !canManage
     ) {
+      const message =
+        'A Pauta ativa não está disponível para esta ação.'
+
+      setError(message)
+      window.alert(message)
       return
     }
 
@@ -1085,14 +1090,30 @@ export default function BoardWorkspace({
       activePauta.lifecycle_status ===
       'archived'
 
-    const phrase =
-      window.prompt(
+    const confirmed =
+      window.confirm(
         archived
-          ? 'Digite REABRIR PAUTA'
-          : 'Digite ARQUIVAR PAUTA',
-      ) || ''
+          ? (
+              'Reabrir a Pauta "' +
+              String(
+                activePauta.name ||
+                'selecionada',
+              ) +
+              '"? Ela voltará para a lista de Pautas ativas.'
+            )
+          : (
+              'Arquivar a Pauta "' +
+              String(
+                activePauta.name ||
+                'selecionada',
+              ) +
+              '"? Ela sairá da lista ativa, mas poderá ser reaberta depois. Nenhum card ou histórico será apagado.'
+            ),
+      )
 
-    if (!phrase) return
+    if (!confirmed) {
+      return
+    }
 
     setLoading(true)
     setError('')
@@ -1103,14 +1124,18 @@ export default function BoardWorkspace({
         archived
           ? 'reopen'
           : 'archive',
-        phrase,
+        archived
+          ? 'REABRIR PAUTA'
+          : 'ARQUIVAR PAUTA',
       )
 
     if ('error' in result) {
-      setError(
+      const message =
         result.error ||
-          'Não foi possível alterar a Pauta.',
-      )
+        'Não foi possível alterar a Pauta.'
+
+      setError(message)
+      window.alert(message)
       setLoading(false)
       return
     }
@@ -1693,7 +1718,7 @@ export default function BoardWorkspace({
         {isPautaWorkspace && (
           <details className="board-a14-menu">
             <summary
-              className="board-a14-icon"
+              className="board-a14-icon board-v9-pauta-menu-trigger"
               title="Opções da Pauta"
               aria-label="Opções da Pauta"
             >
@@ -2281,7 +2306,7 @@ export default function BoardWorkspace({
                                 {!readOnlyPautaView && (
                                   <button
                                     type="button"
-                                    className="bpri"
+                                    className="work-item-complete-action board-v9-simple-complete"
                                     onClick={(event) => {
                                       event.stopPropagation()
                                       void markCardCompleted(
@@ -2291,7 +2316,7 @@ export default function BoardWorkspace({
                                     disabled={loading}
                                   >
                                     <i className="ti ti-circle-check" />
-                                    Marcar como concluído
+                                    Marcar como Concluído
                                   </button>
                                 )}
                               </div>
@@ -2536,42 +2561,42 @@ export default function BoardWorkspace({
                                   ) : null}
                                 </span>
                               </div>
-
-                              {!readOnlyPautaView && (
-                                <div className="board-v9-card-actions">
-                                  <button
-                                    className="board-v9-edit-inline"
-                                    type="button"
-                                    title="Editar demanda"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      openEditDemand(
-                                        item,
-                                      )
-                                    }}
-                                  >
-                                    <i className="ti ti-edit" />
-                                    Editar
-                                  </button>
-
-                                  <button
-                                    className="board-v9-complete-inline"
-                                    type="button"
-                                    title="Marcar como concluído"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      void markCardCompleted(
-                                        item,
-                                      )
-                                    }}
-                                    disabled={loading}
-                                  >
-                                    <i className="ti ti-circle-check" />
-                                    Concluir
-                                  </button>
-                                </div>
-                              )}
                             </div>
+
+                            {!readOnlyPautaView && (
+                              <div className="board-v9-card-actions">
+                                <button
+                                  className="board-v9-edit-inline"
+                                  type="button"
+                                  title="Editar demanda"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    openEditDemand(
+                                      item,
+                                    )
+                                  }}
+                                >
+                                  <i className="ti ti-edit" />
+                                  Editar
+                                </button>
+
+                                <button
+                                  className="work-item-complete-action board-v9-complete-inline"
+                                  type="button"
+                                  title="Marcar como Concluído"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    void markCardCompleted(
+                                      item,
+                                    )
+                                  }}
+                                  disabled={loading}
+                                >
+                                  <i className="ti ti-circle-check" />
+                                  Marcar como Concluído
+                                </button>
+                              </div>
+                            )}
 
                           </article>
                         )
@@ -3019,7 +3044,7 @@ export default function BoardWorkspace({
                 {editing &&
                   !editing.is_pauta_card && (
                   <button
-                    className="bpri"
+                    className="work-item-complete-action"
                     type="button"
                     onClick={() =>
                       void markCardCompleted(
@@ -3029,7 +3054,7 @@ export default function BoardWorkspace({
                     disabled={loading}
                   >
                     <i className="ti ti-circle-check" />
-                    Marcar como concluído
+                    Marcar como Concluído
                   </button>
                 )}
 

@@ -981,7 +981,10 @@ export default function DemandasView({
 
   // V9 — DEMANDAS CONCLUSÃO OPERACIONAL
   async function toggleDemandCompletion(item: any) {
-    const completed = ['done', 'delivered', 'approved'].includes(String(item?.status || ''))
+    const completed =
+      Boolean(
+        item?.completed_at,
+      )
     const assignments = Array.isArray(item?.assignments)
       ? item.assignments.filter((assignment: any) => assignment?.assignment_status === 'active')
       : []
@@ -1646,24 +1649,42 @@ export default function DemandasView({
                           <div className="demandas-v9-row-actions">
                             <button
                               className={
-                                ['done', 'delivered', 'approved'].includes(String(item.status))
-                                  ? 'icon-btn demandas-v9-reopen'
-                                  : 'icon-btn demandas-v9-complete'
+                                Boolean(
+                                  item.completed_at,
+                                )
+                                  ? 'work-item-reopen-action demandas-v9-complete-action'
+                                  : 'work-item-complete-action demandas-v9-complete-action'
                               }
                               type="button"
                               title={
-                                ['done', 'delivered', 'approved'].includes(String(item.status))
+                                Boolean(
+                                  item.completed_at,
+                                )
                                   ? 'Reabrir demanda'
-                                  : 'Concluir demanda'
+                                  : 'Marcar como Concluído'
                               }
-                              onClick={() => toggleDemandCompletion(item)}
+                              onClick={() =>
+                                toggleDemandCompletion(
+                                  item,
+                                )
+                              }
                               disabled={loading}
                             >
-                              <i className={
-                                ['done', 'delivered', 'approved'].includes(String(item.status))
-                                  ? 'ti ti-refresh'
-                                  : 'ti ti-circle-check'
-                              } />
+                              <i
+                                className={
+                                  Boolean(
+                                    item.completed_at,
+                                  )
+                                    ? 'ti ti-refresh'
+                                    : 'ti ti-circle-check'
+                                }
+                              />
+
+                              {Boolean(
+                                item.completed_at,
+                              )
+                                ? 'Reabrir demanda'
+                                : 'Marcar como Concluído'}
                             </button>
 
                             <button
