@@ -2,44 +2,47 @@ import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from '../DashboardCharts'
 import { addDateKeyDays, dateKeyInAmpyTimezone } from '@/lib/date'
-import { countBy, formatDateLong, isDone, isLate, isOpen, loadOperationData, statusName, summarizeEvents, summarizeItems, typeName } from '../dashboard-data'
+import {
+  assignmentCompletionDateKey,
+  countBy,
+  completionDateKey,
+  eventCompletionDateKey,
+  formatDateLong,
+  isLate,
+  isOpen,
+  loadOperationData,
+  statusName,
+  summarizeEvents,
+  summarizeItems,
+} from '../dashboard-data'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-const closed = ['archived', 'cancelled']
 
 export default async function DiaPage() {
   noStore()
   const supabase = createClient()
   const todayKey = dateKeyInAmpyTimezone()
   const tomorrowKey = addDateKeyDays(todayKey, 1)
-
   const source = await loadOperationData(supabase, { eventStartKey: todayKey, eventEndKey: tomorrowKey })
-  const demands = source.demands.filter((item: any) => !closed.includes(String(item.status)))
+  const demands = source.demands.filter((item: any) =>
+    !item.is_pauta_card && !['archived', 'cancelled'].includes(String(item.status)),
+  )
   const events = source.events
   const open = demands.filter(isOpen)
-
   const dueToday = open.filter((item: any) => item.final_deadline === todayKey)
   const late = open.filter((item: any) => isLate(item, todayKey))
-  const urgent = open.filter((item: any) => item.priority === 'urgent' || item.priority === 'high')
-  const doneToday = demands.filter((item: any) => isDone(item) && String(item.closed_at || item.updated_at || '').slice(0, 10) === todayKey)
-
+  const urgent = open.filter((item: any) => ['urgent', 'high'].includes(String(item.priority)))
+  const doneToday = demands.filter((item: any) => completionDateKey(item) === todayKey)
+  const eventsDoneToday = events.filter((event: any) => eventCompletionDateKey(event) === todayKey)
+  const assignmentsDoneToday = source.assignments.filter((assignment: any) => assignmentCompletionDateKey(assignment) === todayKey)
   const statusData = countBy([...dueToday, ...late, ...urgent], (item: any) => statusName(item.status)).slice(0, 6)
-  const sectorData = countBy(dueToday.length ? dueToday : open, (item: any) => typeName(item.type)).slice(0, 6)
+  const sectorData = countBy(
+    assignmentsDoneToday.length ? assignmentsDoneToday : source.assignments,
+    (assignment: any) => assignment.board?.name || 'Quadro sem nome',
+  ).slice(0, 6)
   const criticalQueue = [...late, ...urgent, ...dueToday]
     .filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index)
-    .sort((a: any, b: any) => {
-      const pa = a.priority === 'urgent' ? 0 : a.priority === 'high' ? 1 : 2
-      const pb = b.priority === 'urgent' ? 0 : b.priority === 'high' ? 1 : 2
-      return pa - pb || String(
-  a.final_deadline || '',
-).localeCompare(
-  String(
-    b.final_deadline || '',
-  ),
-)
-    })
 
   return (
     <DashboardCharts
@@ -47,25 +50,25 @@ export default async function DiaPage() {
       eyebrow="Dashboard diário"
       title="Dia"
       periodLabel={formatDateLong(todayKey)}
-      description="Leitura visual do dia: demandas, agenda, atrasos, prioridades e entregas."
+      description="Demandas, etapas setoriais e agendas com conclusão registrada no dia real."
       metrics={[
-        { label: 'Demandas do dia', value: dueToday.length, hint: 'prazo interno/final', tone: 'blue', icon: 'ti-calendar-check' },
-        { label: 'Agendas', value: events.length, hint: 'agendas do dia', tone: 'blue', icon: 'ti-calendar-event' },
+        { label: 'Demandas do dia', value: dueToday.length, hint: 'prazo final hoje', tone: 'blue', icon: 'ti-calendar-check' },
+        { label: 'Agendas do dia', value: events.length, hint: `${eventsDoneToday.length} concluída(s)`, tone: eventsDoneToday.length ? 'green' : 'blue', icon: 'ti-calendar-event' },
         { label: 'Atrasos', value: late.length, hint: 'ainda abertos', tone: 'red', icon: 'ti-alert-triangle' },
-        { label: 'Prioridade', value: urgent.length, hint: 'alta ou urgente', tone: 'yellow', icon: 'ti-flag' },
-        { label: 'Entregue hoje', value: doneToday.length, hint: 'concluídas no dia', tone: 'green', icon: 'ti-circle-check' },
+        { label: 'Etapas concluídas', value: assignmentsDoneToday.length, hint: 'nos Quadros hoje', tone: 'green', icon: 'ti-layout-kanban' },
+        { label: 'Demandas concluídas', value: doneToday.length, hint: 'conclusão real hoje', tone: 'green', icon: 'ti-circle-check' },
       ]}
-      donut={{ title: 'Status do dia', description: 'Composição de demandas do dia, atrasos e prioridades.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: dueToday.length + late.length + urgent.length, centerLabel: 'itens' }}
-      secondaryDonut={{ title: 'Carga por setor', description: 'Distribuição visual por tipo de atividade.', data: sectorData, nameKey: 'name', valueKey: 'value', centerValue: sectorData.reduce((sum, item) => sum + item.value, 0), centerLabel: 'demandas' }}
+      donut={{ title: 'Status do dia', description: 'Demandas de hoje, atrasos e prioridades.', data: statusData, nameKey: 'name', valueKey: 'value', centerValue: dueToday.length + late.length + urgent.length, centerLabel: 'itens' }}
+      secondaryDonut={{ title: 'Execução por setor', description: 'Etapas concluídas hoje ou carga ativa por Quadro.', data: sectorData, nameKey: 'name', valueKey: 'value', centerValue: sectorData.reduce((sum, item) => sum + item.value, 0), centerLabel: 'etapas' }}
       featured={[
-        { title: 'Fila crítica', subtitle: 'Atrasos, prioridades e entregas que precisam de atenção.', items: summarizeItems(criticalQueue, 6) },
-        { title: 'Agenda do dia', subtitle: 'Recorte da agenda com horário e vínculo operacional.', items: summarizeEvents(events, 6) },
+        { title: 'Fila crítica', subtitle: 'Atrasos, prioridades e demandas do dia.', items: summarizeItems(criticalQueue, 6) },
+        { title: 'Agenda do dia', subtitle: `${eventsDoneToday.length}/${events.length} concluída(s)`, items: summarizeEvents(events, 6) },
       ]}
       summaries={[
-        { title: 'Demandas do dia', subtitle: 'Demandas com prazo final para hoje.', items: summarizeItems(dueToday, 6) },
+        { title: 'Demandas do dia', subtitle: 'Prazo final para hoje.', items: summarizeItems(dueToday, 6) },
         { title: 'Atrasadas', subtitle: 'Demandas abertas fora do prazo.', items: summarizeItems(late, 6) },
-        { title: 'Prioridades', subtitle: 'Itens marcados como alta ou urgente.', items: summarizeItems(urgent, 6) },
-        { title: 'Entregues hoje', subtitle: 'Concluídas ou entregues no dia.', items: summarizeItems(doneToday, 6) },
+        { title: 'Concluídas hoje', subtitle: 'Registradas com data e responsável.', items: summarizeItems(doneToday, 6) },
+        { title: 'Agendas concluídas', subtitle: 'Realizadas hoje.', items: summarizeEvents(eventsDoneToday, 6) },
       ]}
     />
   )

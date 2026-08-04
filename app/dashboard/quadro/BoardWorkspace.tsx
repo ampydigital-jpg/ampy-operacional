@@ -27,6 +27,7 @@ import {
   deleteWorkItemAction,
   moveBoardCardAction,
   moveWorkItemBoardAssignmentAction,
+  setWorkItemBoardAssignmentCompletionAction,
   reorderBoardColumnsAction,
   updateBoardAction,
   updateBoardColumnAction,
@@ -989,6 +990,46 @@ export default function BoardWorkspace({
     }
 
     setDragCardId(null)
+  }
+
+  // V9 — CARDS SETORIAIS E CONCLUSÃO
+  async function toggleAssignmentCompletion(item: any) {
+    if (!item?.assignment_id) return
+
+    const completed = Boolean(item.assignment_completed_at) ||
+      ['done', 'delivered', 'approved'].includes(String(item.assignment_operational_status || item.status || ''))
+
+    const confirmed = window.confirm(
+      completed
+        ? 'Reabrir esta etapa neste Quadro?'
+        : 'Concluir esta etapa neste Quadro?',
+    )
+
+    if (!confirmed) return
+
+    const note = window.prompt(
+      completed
+        ? 'Observação da reabertura (opcional):'
+        : 'Observação da conclusão (opcional):',
+      '',
+    ) || ''
+
+    setLoading(true)
+    setError('')
+
+    const result = await setWorkItemBoardAssignmentCompletionAction(
+      item.assignment_id,
+      !completed,
+      note,
+    )
+
+    if ('error' in result) {
+      setError(result.error || 'Não foi possível alterar a conclusão.')
+      setLoading(false)
+      return
+    }
+
+    window.location.reload()
   }
 
   async function submitBoard(
@@ -2018,6 +2059,66 @@ export default function BoardWorkspace({
                               'capture',
                           ) || null
 
+                        const simpleSectorCard =
+                          item.assignment_id &&
+                          item.assignment_metadata?.display_mode === 'simple'
+
+                        const assignmentCompleted =
+                          Boolean(item.assignment_completed_at) ||
+                          ['done', 'delivered', 'approved'].includes(
+                            String(item.assignment_operational_status || ''),
+                          )
+
+                        if (simpleSectorCard) {
+                          return (
+                            <article
+                              key={item.id}
+                              className="board-v9-simple-card"
+                              id={'work-item-' + item.id}
+                              data-completed={assignmentCompleted ? 'true' : 'false'}
+                              draggable={!readOnlyPautaView}
+                              onDragStart={(event) => {
+                                if (readOnlyPautaView) {
+                                  event.preventDefault()
+                                  return
+                                }
+                                event.stopPropagation()
+                                setDragCardId(item.id)
+                              }}
+                              onDragEnd={() => setDragCardId(null)}
+                            >
+                              <h3>{item.title}</h3>
+                              <div className="board-v9-simple-actions">
+                                <span className="board-v9-simple-state">
+                                  {assignmentCompleted ? 'Concluído' : 'Em aberto'}
+                                </span>
+                                {!readOnlyPautaView && (
+                                  <button
+                                    type="button"
+                                    className={assignmentCompleted ? 'bsec' : 'bpri'}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      void toggleAssignmentCompletion(item)
+                                    }}
+                                    disabled={loading}
+                                  >
+                                    <i className={assignmentCompleted ? 'ti ti-refresh' : 'ti ti-circle-check'} />
+                                    {assignmentCompleted ? 'Reabrir' : 'Concluir'}
+                                  </button>
+                                )}
+                              </div>
+                              {item.assignment_completed_at && (
+                                <small>
+                                  {new Date(item.assignment_completed_at).toLocaleString('pt-BR')}
+                                  {item.assignment_completed_by?.display_name || item.assignment_completed_by?.full_name
+                                    ? ' · ' + (item.assignment_completed_by?.display_name || item.assignment_completed_by?.full_name)
+                                    : ''}
+                                </small>
+                              )}
+                            </article>
+                          )
+                        }
+
                         return (
                           <article
                             key={item.id}
@@ -2252,6 +2353,25 @@ export default function BoardWorkspace({
                 ) : null}
                               </span>
                             </div>
+
+                            {item.assignment_id && !readOnlyPautaView && (
+                              <button
+                                type="button"
+                                className={
+                                  assignmentCompleted
+                                    ? 'bsec board-v9-complete-button'
+                                    : 'bpri board-v9-complete-button'
+                                }
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void toggleAssignmentCompletion(item)
+                                }}
+                                disabled={loading}
+                              >
+                                <i className={assignmentCompleted ? 'ti ti-refresh' : 'ti ti-circle-check'} />
+                                {assignmentCompleted ? 'Reabrir neste Quadro' : 'Concluir neste Quadro'}
+                              </button>
+                            )}
                           </article>
                         )
                       },

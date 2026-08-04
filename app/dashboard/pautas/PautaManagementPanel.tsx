@@ -10,6 +10,7 @@ import {
   addClientsToPautaV8Action,
   changePautaLifecycleAction,
   createAndDistributePautaDemandsAction,
+  distributeExistingPautaDemandsAction,
   removePautaClientsBatchAction,
   removePautaDemandsBatchAction,
   updatePautaMemberTargetDateAction,
@@ -136,6 +137,8 @@ export default function PautaManagementPanel({
   const [demandClientIds, setDemandClientIds] = useState<string[]>([])
   const [serviceByClient, setServiceByClient] = useState<Record<string, string>>({})
   const [selectedTargets, setSelectedTargets] = useState<Record<string, { columnId: string; required: boolean }>>({})
+  const [existingDistributionOpen, setExistingDistributionOpen] = useState(false)
+  const [existingTargets, setExistingTargets] = useState<Record<string, { columnId: string; required: boolean }>>({})
 
   const editable = ['draft', 'open'].includes(String(pauta?.lifecycle_status || ''))
 
@@ -199,6 +202,36 @@ export default function PautaManagementPanel({
     beginAction()
     const result = await removePautaDemandsBatchAction(pauta.id, selectedDemandIds, confirmation)
     if ('error' in result) return failAction(result.error || 'Não foi possível retirar as demandas.')
+    reload()
+  }
+
+  async function distributeExistingDemands(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const targets = Object.entries(existingTargets)
+      .filter(([, config]) => config.columnId)
+      .map(([boardId, config]) => ({
+        boardId,
+        boardColumnId: config.columnId,
+        isRequired: config.required,
+      }))
+
+    beginAction()
+
+    const result = await distributeExistingPautaDemandsAction({
+      pautaId: pauta.id,
+      workItemIds: selectedDemandIds,
+      targets,
+      confirmation,
+    })
+
+    if ('error' in result) {
+      return failAction(
+        result.error ||
+          'Não foi possível enviar as demandas aos Quadros.',
+      )
+    }
+
     reload()
   }
 
@@ -374,7 +407,7 @@ export default function PautaManagementPanel({
               <section className="pauta-management-card">
                 <div className="pauta-v8-section-head">
                   <div><span>Demandas adicionais</span><strong>{demands.length} demanda(s)</strong></div>
-                  {canManage && editable && <div className="pauta-v8-actions"><button className="bpri" type="button" onClick={() => setDemandOpen((current) => !current)}>Adicionar demanda</button><button className="bsec" type="button" onClick={() => toggleAll(selectedDemandIds, demands.map((d: any) => String(d.id)), setSelectedDemandIds)}>Selecionar todos</button><button className="bsec danger-button" type="button" disabled={!selectedDemandIds.length} onClick={removeDemands}>Remover</button></div>}
+                  {canManage && editable && <div className="pauta-v8-actions"><button className="bpri" type="button" onClick={() => setDemandOpen((current) => !current)}>Adicionar demanda</button><button className="bsec" type="button" onClick={() => toggleAll(selectedDemandIds, demands.map((d: any) => String(d.id)), setSelectedDemandIds)}>Selecionar todos</button><button className="bsec" type="button" disabled={!selectedDemandIds.length || loading} onClick={() => setExistingDistributionOpen((current) => !current)}>Subir nos Quadros</button><button className="bsec danger-button" type="button" disabled={!selectedDemandIds.length} onClick={removeDemands}>Remover</button></div>}
                 </div>
 
                 {selectedDemandIds.length > 0 && <label className="fg pauta-v8-confirm"><span className="fl">Digite RETIRAR DEMANDAS</span><input className="fi" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>}
@@ -391,6 +424,95 @@ export default function PautaManagementPanel({
                   })}
                   {!demands.length && <div className="empty">Nenhuma demanda adicional.</div>}
                 </div>
+
+                {existingDistributionOpen && selectedDemandIds.length > 0 && canManage && editable && (
+                  <form className="pauta-v9-distribute-existing" onSubmit={distributeExistingDemands}>
+                    <div className="pauta-v8-subhead">
+                      <strong>Subir {selectedDemandIds.length} demanda(s) nos Quadros</strong>
+                      <button className="mclose" type="button" onClick={() => setExistingDistributionOpen(false)}><i className="ti ti-x" /></button>
+                    </div>
+
+                    <div className="notice notice-info">
+                      <span>Será criado apenas um card simples com o nome da demanda em cada Quadro selecionado. A demanda original continua única.</span>
+                    </div>
+
+                    <div className="pauta-v9-target-grid">
+                      {list(distributionBoards).map((board: any) => {
+                        const config = existingTargets[board.id]
+                        const columns = list(distributionColumns).filter((column: any) => column.board_id === board.id)
+
+                        return (
+                          <div className="pauta-v8-target" key={board.id}>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(config)}
+                                onChange={(event) => setExistingTargets((current) => {
+                                  const next = { ...current }
+                                  if (event.target.checked) {
+                                    next[board.id] = {
+                                      columnId: String(columns[0]?.id || ''),
+                                      required: true,
+                                    }
+                                  } else {
+                                    delete next[board.id]
+                                  }
+                                  return next
+                                })}
+                              />
+                              {board.name}
+                            </label>
+
+                            {config && (
+                              <>
+                                <select
+                                  className="fi"
+                                  value={config.columnId}
+                                  onChange={(event) => setExistingTargets((current) => ({
+                                    ...current,
+                                    [board.id]: {
+                                      ...current[board.id],
+                                      columnId: event.target.value,
+                                    },
+                                  }))}
+                                  required
+                                >
+                                  {columns.map((column: any) => (
+                                    <option key={column.id} value={column.id}>{column.name}</option>
+                                  ))}
+                                </select>
+
+                                <label className="pauta-v8-required">
+                                  <input
+                                    type="checkbox"
+                                    checked={config.required}
+                                    onChange={(event) => setExistingTargets((current) => ({
+                                      ...current,
+                                      [board.id]: {
+                                        ...current[board.id],
+                                        required: event.target.checked,
+                                      },
+                                    }))}
+                                  />
+                                  Obrigatório
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <label className="fg">
+                      <span className="fl">Digite DISTRIBUIR DEMANDAS</span>
+                      <input className="fi" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+                    </label>
+
+                    <button className="bpri" disabled={loading || !Object.keys(existingTargets).length}>
+                      Subir cards simples
+                    </button>
+                  </form>
+                )}
               </section>
 
               {demandOpen && canManage && editable && (

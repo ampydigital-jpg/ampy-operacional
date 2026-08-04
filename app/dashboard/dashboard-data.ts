@@ -28,6 +28,7 @@ export const typeLabels: Record<string, string> = {
   social: 'Social Media',
   audiovisual: 'Audiovisual',
   internal: 'Interno',
+  Operação: 'Operação',
 }
 
 export function ymd(date: Date) {
@@ -61,7 +62,9 @@ export function endOfMonth(date: Date) {
 }
 
 export function formatDateLong(key: string) {
-  return dateFromKey(key).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return dateFromKey(key).toLocaleDateString('pt-BR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
 }
 
 export function formatDateShort(key: string) {
@@ -75,16 +78,21 @@ export function formatMonth(date: Date) {
 export function getDemandDate(item: any) {
   return item.final_deadline || null
 }
+
 export function getDemandDates(item: any) {
-  return [item.final_deadline]
-    .filter(Boolean) as string[]
+  return [item.final_deadline].filter(Boolean) as string[]
 }
+
+export function completionDateKey(item: any) {
+  return String(item?.completed_at || item?.closed_at || '').slice(0, 10) || null
+}
+
 export function isDone(item: any) {
-  return DONE_STATUSES.includes(String(item.status || ''))
+  return DONE_STATUSES.includes(String(item?.status || '')) || Boolean(item?.completed_at)
 }
 
 export function isOpen(item: any) {
-  return !CLOSED_STATUSES.includes(String(item.status || ''))
+  return !CLOSED_STATUSES.includes(String(item?.status || '')) && !item?.completed_at
 }
 
 export function isLate(item: any, todayKey: string) {
@@ -96,17 +104,34 @@ export function isInDateRange(key: string | null | undefined, startKey: string, 
   return Boolean(key && key >= startKey && key < endKey)
 }
 
-export function demandTouchesRange(
-  item: any,
-  startKey: string,
-  endKey: string,
-) {
-  return isInDateRange(
-    item.final_deadline,
-    startKey,
-    endKey,
-  )
+export function demandTouchesRange(item: any, startKey: string, endKey: string) {
+  return isInDateRange(item.final_deadline, startKey, endKey)
 }
+
+export function completedInRange(item: any, startKey: string, endKey: string) {
+  return isInDateRange(completionDateKey(item), startKey, endKey)
+}
+
+export function eventDateKey(event: any) {
+  return String(event?.starts_at || '').slice(0, 10)
+}
+
+export function eventCompletionDateKey(event: any) {
+  return String(event?.completed_at || '').slice(0, 10) || null
+}
+
+export function isEventDone(event: any) {
+  return event?.completion_status === 'completed' && Boolean(event?.completed_at)
+}
+
+export function assignmentCompletionDateKey(assignment: any) {
+  return String(assignment?.completed_at || '').slice(0, 10) || null
+}
+
+export function assignmentIsDone(assignment: any) {
+  return Boolean(assignment?.completed_at) || DONE_STATUSES.includes(String(assignment?.operational_status || ''))
+}
+
 export function typeName(type?: string | null) {
   return typeLabels[String(type || '')] || String(type || 'Operação')
 }
@@ -119,10 +144,9 @@ export function priorityWeight(priority?: string | null) {
   return ({ urgent: 4, high: 3, normal: 2, low: 1 } as Record<string, number>)[String(priority || 'normal')] || 2
 }
 
-
 export function toneForStatus(status?: string | null) {
   const value = String(status || '')
-  if (DONE_STATUSES.includes(value) || value === 'approved') return 'green'
+  if (DONE_STATUSES.includes(value)) return 'green'
   if (value === 'blocked') return 'red'
   if (['not_started', 'waiting', 'awaiting_approval', 'scheduled'].includes(value)) return 'yellow'
   if (['in_progress', 'in_review'].includes(value)) return 'blue'
@@ -131,6 +155,7 @@ export function toneForStatus(status?: string | null) {
 
 export function toneForDemand(item: any) {
   if (!item) return 'blue'
+  if (isDone(item)) return 'green'
   if (item.status === 'blocked') return 'red'
   if (['urgent', 'high'].includes(String(item.priority))) return 'yellow'
   return toneForStatus(item.status)
@@ -142,64 +167,41 @@ export function countBy<T>(items: T[], getter: (item: T) => string) {
     const key = getter(item) || 'Sem classificação'
     map.set(key, (map.get(key) || 0) + 1)
   })
-  return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+  return Array.from(map.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
 }
 
 export function rangeDays(start: Date, total: number) {
   return Array.from({ length: total }, (_, index) => addDays(start, index))
 }
 
-export function eventDateKey(event: any) {
-  return String(event.starts_at || '').slice(0, 10)
-}
-
 export function localHour(value?: string | null) {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+  return date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
 }
 
-export function summarizeItems(
-  items: any[],
-  limit = 5,
-) {
-  return items
-    .slice(0, limit)
-    .map((item) => ({
-      label:
-        item.title ||
-        'Sem título',
-
-      value:
-        item.final_deadline
-          ? formatDateShort(
-              item.final_deadline,
-            )
-          : 'sem prazo final',
-
-      meta:
-        (
-          item.client?.name ||
-          'Interno Ampy'
-        ) +
-        ' · ' +
-        (
-          item.responsible
-            ?.full_name ||
-          'sem responsável'
-        ),
-
-      tone:
-        toneForDemand(item),
-    }))
+export function summarizeItems(items: any[], limit = 5) {
+  return items.slice(0, limit).map((item) => ({
+    label: item.title || 'Sem título',
+    value: item.final_deadline ? formatDateShort(item.final_deadline) : 'sem prazo final',
+    meta: `${item.client?.name || 'Interno Ampy'} · ${item.responsible?.display_name || item.responsible?.full_name || 'sem responsável'}`,
+    tone: toneForDemand(item),
+  }))
 }
+
 export function summarizeEvents(events: any[], limit = 5) {
   return events.slice(0, limit).map((event) => ({
     label: event.title || 'Agenda sem título',
-    value: event.all_day ? 'dia inteiro' : localHour(event.starts_at) || 'sem hora',
-    meta: `${event.client?.name || event.work_item?.title || 'Interno Ampy'} · ${event.responsible?.full_name || 'sem responsável'}`,
-    tone: event.type === 'delivery' ? 'green' : 'blue',
+    value: isEventDone(event)
+      ? `concluída ${eventCompletionDateKey(event) ? formatDateShort(eventCompletionDateKey(event) as string) : ''}`
+      : event.all_day ? 'dia inteiro' : localHour(event.starts_at) || 'sem hora',
+    meta: `${event.client?.name || event.work_item?.title || 'Interno Ampy'} · ${event.responsible?.display_name || event.responsible?.full_name || 'sem responsável'}`,
+    tone: isEventDone(event) ? 'green' : 'blue',
   }))
 }
 
@@ -207,46 +209,88 @@ export function mapById(items: any[] | null | undefined) {
   return new Map((Array.isArray(items) ? items : []).filter(Boolean).map((item) => [item.id, item]))
 }
 
-export async function loadOperationData(supabase: any, options: { eventStartKey?: string; eventEndKey?: string; demandLimit?: number; eventLimit?: number } = {}) {
+export async function loadOperationData(
+  supabase: any,
+  options: { eventStartKey?: string; eventEndKey?: string; demandLimit?: number; eventLimit?: number } = {},
+) {
   const demandLimit = options.demandLimit || 1800
   const eventLimit = options.eventLimit || 900
 
   let eventsQuery = supabase
     .from('calendar_events')
-    .select('id,title,type,client_id,work_item_id,responsible_id,starts_at,ends_at,all_day,color,created_at,updated_at')
+    .select('id,title,type,client_id,work_item_id,responsible_id,starts_at,ends_at,all_day,color,created_at,updated_at,completion_status,completed_at,completed_by,completion_note')
     .order('starts_at', { ascending: true })
     .limit(eventLimit)
 
   if (options.eventStartKey) eventsQuery = eventsQuery.gte('starts_at', `${options.eventStartKey}T00:00:00-03:00`)
   if (options.eventEndKey) eventsQuery = eventsQuery.lt('starts_at', `${options.eventEndKey}T00:00:00-03:00`)
 
-  const [clientsResult, profilesResult, demandsResult, eventsResult] = await Promise.all([
+  const [
+    clientsResult,
+    profilesResult,
+    demandsResult,
+    eventsResult,
+    assignmentsResult,
+    boardsResult,
+    columnsResult,
+  ] = await Promise.all([
     supabase.from('clients').select('id,name,status,segment,cidade,avatar_initials,avatar_color,avatar_bg').limit(2500),
-    supabase.from('profiles').select('id,full_name,role,is_active,avatar_initials').limit(500),
+    supabase.from('profiles').select('id,full_name,display_name,role,is_active,avatar_initials').limit(500),
     supabase
       .from('work_items')
-      .select('id,title,type,status,priority,destino,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,created_at,updated_at,closed_at')
+      .select('id,title,type,status,priority,destino,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,created_at,updated_at,closed_at,completed_at,completed_by,is_pauta_card,pauta_id')
       .limit(demandLimit),
     eventsQuery,
+    supabase
+      .from('work_item_board_assignments')
+      .select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,assigned_at,completed_at,completed_by,metadata')
+      .eq('assignment_status', 'active')
+      .limit(5000),
+    supabase.from('boards').select('id,name,color,status,board_kind').limit(500),
+    supabase.from('board_columns').select('id,board_id,name,color,operational_status,position').limit(2500),
   ])
 
   const clients = clientsResult.data || []
   const profiles = profilesResult.data || []
   const rawDemands = demandsResult.data || []
   const rawEvents = eventsResult.data || []
+  const rawAssignments = assignmentsResult.data || []
+  const boards = boardsResult.data || []
+  const columns = columnsResult.data || []
+
   const clientsById = mapById(clients)
   const profilesById = mapById(profiles)
+  const boardsById = mapById(boards)
+  const columnsById = mapById(columns)
+
+  const assignments = rawAssignments.map((assignment: any) => ({
+    ...assignment,
+    board: boardsById.get(assignment.board_id) || null,
+    board_column: columnsById.get(assignment.board_column_id) || null,
+    completed_by_profile: assignment.completed_by ? profilesById.get(assignment.completed_by) || null : null,
+  }))
+
+  const assignmentsByWorkItem = assignments.reduce((map: Map<string, any[]>, assignment: any) => {
+    const current = map.get(assignment.work_item_id) || []
+    current.push(assignment)
+    map.set(assignment.work_item_id, current)
+    return map
+  }, new Map<string, any[]>())
 
   const demands = rawDemands.map((item: any) => ({
     ...item,
     client: item.client_id ? clientsById.get(item.client_id) || null : null,
     responsible: item.responsible_id ? profilesById.get(item.responsible_id) || null : null,
+    completed_by_profile: item.completed_by ? profilesById.get(item.completed_by) || null : null,
+    assignments: assignmentsByWorkItem.get(item.id) || [],
   }))
+
   const demandsById = mapById(demands)
   const events = rawEvents.map((event: any) => ({
     ...event,
     client: event.client_id ? clientsById.get(event.client_id) || null : null,
     responsible: event.responsible_id ? profilesById.get(event.responsible_id) || null : null,
+    completed_by_profile: event.completed_by ? profilesById.get(event.completed_by) || null : null,
     work_item: event.work_item_id ? demandsById.get(event.work_item_id) || null : null,
   }))
 
@@ -255,6 +299,9 @@ export async function loadOperationData(supabase: any, options: { eventStartKey?
     profilesResult.error ? `Equipe: ${profilesResult.error.message}` : null,
     demandsResult.error ? `Demandas: ${demandsResult.error.message}` : null,
     eventsResult.error ? `Agenda: ${eventsResult.error.message}` : null,
+    assignmentsResult.error ? `Distribuições: ${assignmentsResult.error.message}` : null,
+    boardsResult.error ? `Quadros: ${boardsResult.error.message}` : null,
+    columnsResult.error ? `Colunas: ${columnsResult.error.message}` : null,
   ].filter(Boolean) as string[]
 
   return {
@@ -263,6 +310,9 @@ export async function loadOperationData(supabase: any, options: { eventStartKey?
     profiles,
     demands,
     events,
+    assignments,
+    boards,
+    columns,
     loadErrors,
   }
 }

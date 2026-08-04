@@ -7,11 +7,11 @@ type TeamIdentityMember = {
   is_active?: boolean | null
 }
 
-function memberName(member: TeamIdentityMember) {
+function memberName(member?: TeamIdentityMember | null) {
   return (
-    String(member.display_name || '').trim() ||
-    String(member.full_name || '').trim() ||
-    'Integrante'
+    String(member?.display_name || '').trim() ||
+    String(member?.full_name || '').trim() ||
+    'Não atribuído'
   )
 }
 
@@ -23,7 +23,7 @@ function initials(name: string) {
       .slice(0, 2)
       .map((part) => part[0])
       .join('')
-      .toUpperCase() || 'AM'
+      .toUpperCase() || 'NA'
   )
 }
 
@@ -32,7 +32,7 @@ export function TeamMemberAvatar({
   size = 'md',
   className = '',
 }: {
-  member: TeamIdentityMember
+  member?: TeamIdentityMember | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }) {
@@ -49,7 +49,7 @@ export function TeamMemberAvatar({
       aria-label={name}
       title={name}
     >
-      {member.avatar_url ? (
+      {member?.avatar_url ? (
         <img src={member.avatar_url} alt={name} />
       ) : (
         <span>{initials(name)}</span>
@@ -65,15 +65,15 @@ export default function TeamMemberIdentity({
   showInactive = true,
   className = '',
 }: {
-  member: TeamIdentityMember
+  member?: TeamIdentityMember | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   showMeta?: boolean
   showInactive?: boolean
   className?: string
 }) {
   const name = memberName(member)
-  const fullName = String(member.full_name || '').trim()
-  const displayName = String(member.display_name || '').trim()
+  const fullName = String(member?.full_name || '').trim()
+  const displayName = String(member?.display_name || '').trim()
   const differentName =
     Boolean(displayName && fullName) && displayName !== fullName
 
@@ -81,6 +81,7 @@ export default function TeamMemberIdentity({
     <span
       className={
         'team-member-identity' +
+        (!member ? ' is-unassigned' : '') +
         (className ? ' ' + className : '')
       }
     >
@@ -93,12 +94,12 @@ export default function TeamMemberIdentity({
           <small>
             {differentName
               ? fullName
-              : member.job_title || 'Equipe Ampy'}
+              : member?.job_title || (member ? 'Equipe Ampy' : 'Defina um responsável')}
           </small>
         ) : null}
       </span>
 
-      {showInactive && member.is_active === false ? (
+      {showInactive && member?.is_active === false ? (
         <span className="team-member-inactive-tag">Inativo</span>
       ) : null}
     </span>

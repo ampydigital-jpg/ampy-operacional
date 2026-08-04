@@ -27,8 +27,8 @@ export default async function DemandasPage({ searchParams }: { searchParams: { n
     pautasResult,
     pautaCardsResult,
   ] = await Promise.all([
-    supabase.from('work_items').select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at,card_tag,card_tag_color').not('status','in','(archived,cancelled)').order('updated_at',{ascending:false}).limit(500),
-    supabase.from('work_item_board_assignments').select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,position,assigned_at,completed_at').eq('assignment_status','active').order('assigned_at'),
+    supabase.from('work_items').select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at,completed_at,completed_by,card_tag,card_tag_color').not('status','in','(archived,cancelled)').order('updated_at',{ascending:false}).limit(500),
+    supabase.from('work_item_board_assignments').select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,position,assigned_at,completed_at,completed_by,metadata').eq('assignment_status','active').order('assigned_at'),
     supabase.from('clients').select('id,name,segment,status').eq('status','active').order('name'),
     supabase.from('profiles').select('id,full_name,display_name,avatar_url,role,is_active').order('full_name'),
     supabase.from('client_services').select('id,client_id,service_catalog_id,status').eq('status','active'),
@@ -68,6 +68,7 @@ export default async function DemandasPage({ searchParams }: { searchParams: { n
       ...assignment,
       board: boardsById.get(assignment.board_id) || null,
       board_column: columnsById.get(assignment.board_column_id) || null,
+      completed_by_profile: assignment.completed_by ? profilesById.get(assignment.completed_by) || null : null,
     })
     assignmentsByWorkItem.set(assignment.work_item_id,current)
   }
@@ -97,6 +98,7 @@ export default async function DemandasPage({ searchParams }: { searchParams: { n
       board: item.board_id ? boardsById.get(item.board_id) || null : primaryAssignment?.board || null,
       board_column: item.board_column_id ? columnsById.get(item.board_column_id) || null : primaryAssignment?.board_column || null,
       pauta: item.pauta_id ? pautasById.get(item.pauta_id) || null : null,
+      completion_responsible: item.completed_by ? profilesById.get(item.completed_by) || null : null,
     }
   })
 

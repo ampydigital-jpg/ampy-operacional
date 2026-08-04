@@ -5459,6 +5459,147 @@ export async function moveWorkItemBoardAssignmentAction(
 
 
 // =========================================================
+// V9 — OPERAÇÃO COMPLETA, CONCLUSÕES E DASHBOARDS
+// =========================================================
+
+export async function distributeExistingPautaDemandsAction(
+  input: {
+    pautaId: string
+    workItemIds: string[]
+    targets: V8PautaTarget[]
+    confirmation: string
+  },
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem distribuir demandas existentes.',
+    )
+  }
+
+  const pautaId = String(input?.pautaId || '').trim()
+  const workItemIds = v8UniqueIds(input?.workItemIds, 200)
+  const confirmation = String(input?.confirmation || '').trim()
+  const targets = (Array.isArray(input?.targets) ? input.targets : [])
+    .map((target) => ({
+      board_id: String(target?.boardId || '').trim(),
+      board_column_id: String(target?.boardColumnId || '').trim(),
+      is_required: target?.isRequired !== false,
+    }))
+    .filter((target) => target.board_id && target.board_column_id)
+    .slice(0, 30)
+
+  if (!pautaId || workItemIds.length === 0 || targets.length === 0) {
+    return {
+      error: 'Selecione demandas e pelo menos um Quadro de destino.',
+    }
+  }
+
+  if (confirmation !== 'DISTRIBUIR DEMANDAS') {
+    return { error: 'Digite exatamente DISTRIBUIR DEMANDAS.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'distribute_existing_pauta_demands',
+    {
+      p_pauta_id: pautaId,
+      p_work_item_ids: workItemIds,
+      p_targets: targets,
+      p_confirmation: 'DISTRIBUIR DEMANDAS',
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidatePautaManagementPaths(pautaId)
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function setWorkItemBoardAssignmentCompletionAction(
+  assignmentId: string,
+  completed: boolean,
+  note = '',
+) {
+  const id = String(assignmentId || '').trim()
+
+  if (!id) {
+    return { error: 'Distribuição inválida.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'set_work_item_board_assignment_completion',
+    {
+      p_assignment_id: id,
+      p_completed: Boolean(completed),
+      p_note: String(note || '').trim() || null,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function setWorkItemCompletionAction(
+  workItemId: string,
+  completed: boolean,
+  completeAssignments = true,
+  note = '',
+) {
+  const id = String(workItemId || '').trim()
+
+  if (!id) {
+    return { error: 'Demanda inválida.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'set_work_item_completion',
+    {
+      p_work_item_id: id,
+      p_completed: Boolean(completed),
+      p_complete_assignments: Boolean(completeAssignments),
+      p_note: String(note || '').trim() || null,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+  revalidatePath(`/dashboard/demandas/${id}`)
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+export async function setCalendarEventCompletionAction(
+  eventId: string,
+  completed: boolean,
+  note = '',
+) {
+  const id = String(eventId || '').trim()
+
+  if (!id) {
+    return { error: 'Agenda inválida.' }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const { data, error } = await supabase.rpc(
+    'set_calendar_event_completion',
+    {
+      p_event_id: id,
+      p_completed: Boolean(completed),
+      p_note: String(note || '').trim() || null,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  revalidateOperationalPaths()
+  return { success: true, data: pautaRpcPayload(data) }
+}
+
+// =========================================================
 // AMPY-V17-A25.3A3B — PREPARAÇÃO E GERAÇÃO DE CICLOS
 // =========================================================
 

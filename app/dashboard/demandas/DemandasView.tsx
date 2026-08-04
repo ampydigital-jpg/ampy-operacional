@@ -16,6 +16,7 @@ import TeamMemberIdentity from '@/components/ui/TeamMemberIdentity'
 import {
   createDemandFromDemandasAction,
   deleteWorkItemAction,
+  setWorkItemCompletionAction,
   updateWorkItemStatusAction,
 } from '@/lib/actions'
 
@@ -319,7 +320,7 @@ function demandOriginHref(
     )
   }
 
-  return '/dashboard/demandas/' + encodeRouteValue(item?.id)
+  return '/dashboard/demandas#demanda-' + encodeRouteValue(item?.id)
 }
 
 function behaviorStatusClass(
@@ -978,6 +979,47 @@ export default function DemandasView({
     )
   }
 
+  // V9 — DEMANDAS CONCLUSÃO OPERACIONAL
+  async function toggleDemandCompletion(item: any) {
+    const completed = ['done', 'delivered', 'approved'].includes(String(item?.status || ''))
+    const assignments = Array.isArray(item?.assignments)
+      ? item.assignments.filter((assignment: any) => assignment?.assignment_status === 'active')
+      : []
+
+    const confirmed = window.confirm(
+      completed
+        ? 'Reabrir esta demanda e as etapas vinculadas aos Quadros?'
+        : assignments.length > 0
+          ? 'Concluir esta demanda e todas as etapas vinculadas aos Quadros?'
+          : 'Concluir esta demanda?',
+    )
+
+    if (!confirmed) return
+
+    const note = window.prompt(
+      completed
+        ? 'Observação da reabertura (opcional):'
+        : 'Observação da conclusão (opcional):',
+      '',
+    ) || ''
+
+    setLoading(true)
+    const result = await setWorkItemCompletionAction(
+      item.id,
+      !completed,
+      true,
+      note,
+    )
+
+    if ('error' in result) {
+      alert(result.error)
+      setLoading(false)
+      return
+    }
+
+    window.location.reload()
+  }
+
   async function quickStatus(
     id: string,
     next: string,
@@ -1498,6 +1540,14 @@ export default function DemandasView({
 
                       <td>
                         <TeamMemberIdentity member={item.responsible} />
+                        {item.completed_at && (
+                          <small className="demandas-v9-completion-meta">
+                            Concluída em {fmtDate(item.completed_at)}
+                            {item.completion_responsible?.display_name || item.completion_responsible?.full_name
+                              ? ' · ' + (item.completion_responsible?.display_name || item.completion_responsible?.full_name)
+                              : ''}
+                          </small>
+                        )}
                       </td>
 
                       <td>
@@ -1593,16 +1643,39 @@ export default function DemandasView({
                             Pauta
                           </span>
                         ) : (
-                          <button
-                            className="icon-btn danger"
-                            type="button"
-                            title="Arquivar"
-                            onClick={() =>
-                              archive(item.id)
-                            }
-                          >
-                            <i className="ti ti-archive" />
-                          </button>
+                          <div className="demandas-v9-row-actions">
+                            <button
+                              className={
+                                ['done', 'delivered', 'approved'].includes(String(item.status))
+                                  ? 'icon-btn demandas-v9-reopen'
+                                  : 'icon-btn demandas-v9-complete'
+                              }
+                              type="button"
+                              title={
+                                ['done', 'delivered', 'approved'].includes(String(item.status))
+                                  ? 'Reabrir demanda'
+                                  : 'Concluir demanda'
+                              }
+                              onClick={() => toggleDemandCompletion(item)}
+                              disabled={loading}
+                            >
+                              <i className={
+                                ['done', 'delivered', 'approved'].includes(String(item.status))
+                                  ? 'ti ti-refresh'
+                                  : 'ti ti-circle-check'
+                              } />
+                            </button>
+
+                            <button
+                              className="icon-btn danger"
+                              type="button"
+                              title="Arquivar"
+                              onClick={() => archive(item.id)}
+                              disabled={loading}
+                            >
+                              <i className="ti ti-archive" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

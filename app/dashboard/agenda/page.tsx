@@ -1,3 +1,4 @@
+// V9 — AGENDA COM CONCLUSÃO
 
 import {
   unstable_noStore as noStore,
@@ -232,7 +233,7 @@ export default async function AgendaPage({
     supabase
       .from('calendar_events')
       .select(
-        'id,title,custom_name,type,client_id,work_item_id,pauta_id,responsible_id,starts_at,ends_at,all_day,color,recurrence_rule,series_id,series_sequence,recurrence_until,auto_recurrence,location,notes,confirmed,drive_link,created_by,created_at,updated_at',
+        'id,title,custom_name,type,client_id,work_item_id,pauta_id,responsible_id,starts_at,ends_at,all_day,color,recurrence_rule,series_id,series_sequence,recurrence_until,auto_recurrence,location,notes,confirmed,drive_link,created_by,created_at,updated_at,completion_status,completed_at,completed_by,completion_note',
       )
       .gte(
         'starts_at',
@@ -262,11 +263,7 @@ export default async function AgendaPage({
     supabase
       .from('profiles')
       .select(
-        'id,full_name,avatar_initials,role,is_active',
-      )
-      .eq(
-        'is_active',
-        true,
+        'id,full_name,display_name,avatar_initials,role,is_active',
       )
       .order(
         'full_name',
@@ -275,7 +272,7 @@ export default async function AgendaPage({
     supabase
       .from('work_items')
       .select(
-        'id,title,client_id,responsible_id,status,destino,board_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline',
+        'id,title,client_id,responsible_id,status,destino,board_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline,completed_at,completed_by',
       )
       .not(
         'status',
@@ -307,6 +304,9 @@ export default async function AgendaPage({
 
   const profiles =
     profilesResult.data || []
+
+  const activeProfiles =
+    profiles.filter((profile: any) => profile?.is_active !== false)
 
   const demands =
     demandsResult.data || []
@@ -362,6 +362,11 @@ export default async function AgendaPage({
             ? profilesById.get(
                 event.responsible_id,
               ) || null
+            : null,
+
+        completed_by_profile:
+          event.completed_by
+            ? profilesById.get(event.completed_by) || null
             : null,
 
         work_item:
@@ -433,7 +438,7 @@ export default async function AgendaPage({
     <AgendaView
       events={events}
       clients={clients}
-      profiles={profiles}
+      profiles={activeProfiles}
       demands={demands}
       pautas={pautas}
       activePautaKey={

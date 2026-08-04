@@ -22,6 +22,7 @@ import {
   deleteCalendarEventAction,
   moveCalendarEventAction,
   resizeCalendarEventAction,
+  setCalendarEventCompletionAction,
   toggleCalendarEventConfirmationAction,
   updateCalendarEventAction,
 } from '@/lib/actions'
@@ -1273,6 +1274,45 @@ export default function AgendaView({
     finishAgendaFlow()
   }
 
+  // V9 — CONCLUSÃO DE AGENDA
+  async function toggleCompletion() {
+    if (!editing) return
+
+    const completed = editing.completion_status === 'completed'
+    const confirmed = window.confirm(
+      completed
+        ? 'Reabrir esta agenda?'
+        : 'Marcar esta agenda como concluída?',
+    )
+
+    if (!confirmed) return
+
+    const note = window.prompt(
+      completed
+        ? 'Observação da reabertura (opcional):'
+        : 'Observação da conclusão (opcional):',
+      editing.completion_note || '',
+    ) || ''
+
+    setLoading(true)
+    setError('')
+
+    const result = await setCalendarEventCompletionAction(
+      editing.id,
+      !completed,
+      note,
+    )
+
+    if ('error' in result) {
+      setError(result.error || 'Não foi possível alterar a conclusão da agenda.')
+      setLoading(false)
+      return
+    }
+
+    setLoading(false)
+    finishAgendaFlow()
+  }
+
   async function move(
     eventId: string,
     date: string,
@@ -1789,20 +1829,28 @@ export default function AgendaView({
       event.type,
     )
 
+    const eventCompleted = event.completion_status === 'completed'
+
     const backgroundColor =
-      event.confirmed
-        ? typeColor
-        : UNCONFIRMED_COLOR
+      eventCompleted
+        ? '#DCFCE7'
+        : event.confirmed
+          ? typeColor
+          : UNCONFIRMED_COLOR
 
     const foregroundColor =
-      event.confirmed
-        ? typeTextColor
-        : UNCONFIRMED_TEXT_COLOR
+      eventCompleted
+        ? '#166534'
+        : event.confirmed
+          ? typeTextColor
+          : UNCONFIRMED_TEXT_COLOR
 
     const accentColor =
-      event.confirmed
-        ? typeColor
-        : '#EF4444'
+      eventCompleted
+        ? '#16A34A'
+        : event.confirmed
+          ? typeColor
+          : '#EF4444'
 
     const className =
       (
@@ -1814,7 +1862,8 @@ export default function AgendaView({
         event.confirmed
           ? ' is-confirmed'
           : ' is-pending'
-      )
+      ) +
+      (eventCompleted ? ' is-completed' : '')
 
     return (
       <button
@@ -1905,9 +1954,11 @@ export default function AgendaView({
           label +
           ' · ' +
           (
-            event.confirmed
-              ? 'Confirmada'
-              : 'Aguardando confirmação'
+            eventCompleted
+              ? 'Concluída'
+              : event.confirmed
+                ? 'Confirmada'
+                : 'Aguardando confirmação'
           )
         }
       >
@@ -1921,6 +1972,7 @@ export default function AgendaView({
 
         <span className="agenda-event-title">
           {event.title}
+          {eventCompleted && <i className="ti ti-circle-check agenda-v9-done-icon" />}
         </span>
 
         {!compact && (
@@ -2078,7 +2130,7 @@ export default function AgendaView({
             )
           )
         : (
-            '/dashboard/demandas/' +
+            '/dashboard/demandas#demanda-' +
             deadline.work_item_id
           )
 
@@ -2455,7 +2507,7 @@ export default function AgendaView({
                           )
                         )
                       : (
-                          '/dashboard/demandas/' +
+                          '/dashboard/demandas#demanda-' +
                           deadline.work_item_id
                         )
 
@@ -3368,6 +3420,31 @@ export default function AgendaView({
                   />
                 </div>
 
+                {editing?.completion_status === 'completed' && (
+                  <div className="notice notice-ok agenda-v9-completion-info">
+                    <i className="ti ti-circle-check" />
+                    <span>
+                      Concluída em {editing.completed_at
+                        ? new Date(editing.completed_at).toLocaleString('pt-BR')
+                        : 'data não registrada'}
+                      {editing.completed_by_profile?.display_name || editing.completed_by_profile?.full_name
+                        ? ' por ' + (editing.completed_by_profile?.display_name || editing.completed_by_profile?.full_name)
+                        : ''}
+                      {editing.completion_note ? ' · ' + editing.completion_note : ''}
+                    </span>
+                  </div>
+                )}
+
+                {editing?.work_item_id && (
+                  <Link
+                    className="bsec agenda-v9-demand-link"
+                    href={'/dashboard/demandas#demanda-' + editing.work_item_id}
+                  >
+                    <i className="ti ti-list-check" />
+                    Abrir demanda vinculada
+                  </Link>
+                )}
+
                 {error && (
                   <div className="notice notice-err">
                     <i className="ti ti-alert-circle" />
@@ -3380,6 +3457,28 @@ export default function AgendaView({
               </div>
 
               <div className="modal-foot agenda-a19-modal-foot">
+                {editing && (
+                  <button
+                    type="button"
+                    className={
+                      editing.completion_status === 'completed'
+                        ? 'bsec agenda-v9-reopen-button'
+                        : 'bpri agenda-v9-complete-button'
+                    }
+                    onClick={toggleCompletion}
+                    disabled={loading}
+                  >
+                    <i className={
+                      editing.completion_status === 'completed'
+                        ? 'ti ti-refresh'
+                        : 'ti ti-circle-check'
+                    } />
+                    {editing.completion_status === 'completed'
+                      ? 'Reabrir agenda'
+                      : 'Concluir agenda'}
+                  </button>
+                )}
+
                 {editing && (
                   <button
                     type="button"

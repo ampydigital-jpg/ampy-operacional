@@ -37,7 +37,7 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
   const [boardsResult, clientsResult, profilesResult, clientServicesResult, servicesResult] = await Promise.all([
     supabase.from('boards').select('id,name,description,color,status,board_kind,created_at,updated_at').eq('status','active').eq('board_kind','custom').order('created_at'),
     supabase.from('clients').select('id,name,avatar_initials,avatar_color,avatar_bg,status,responsible_id,drive_folder_url').eq('status','active').order('name'),
-    supabase.from('profiles').select('id,full_name,avatar_initials,role,is_active,display_name,avatar_url').eq('is_active',true).order('full_name'),
+    supabase.from('profiles').select('id,full_name,avatar_initials,role,is_active,display_name,avatar_url').order('full_name'),
     supabase.from('client_services').select('id,client_id,service_catalog_id,status,requires_alignment_meeting,requires_capture,default_capture_type').eq('status','active'),
     supabase.from('service_catalog').select('id,name,is_active').eq('is_active',true),
   ])
@@ -45,6 +45,7 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
   const boards = boardsResult.data || []
   const clients = clientsResult.data || []
   const profiles = profilesResult.data || []
+  const activeProfiles = profiles.filter((profile: any) => profile?.is_active !== false)
   const services = servicesResult.data || []
   const activeBoardId = boards.some((board: any) => board.id === searchParams.board) ? String(searchParams.board) : String(boards[0]?.id || '')
 
@@ -56,7 +57,7 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
 
   if (activeBoardId) {
     columnsResult = await supabase.from('board_columns').select('id,board_id,name,color,operational_status,automation_role,position,created_at,updated_at').eq('board_id',activeBoardId).order('position')
-    assignmentsResult = await supabase.from('work_item_board_assignments').select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,position,assigned_at,completed_at').eq('board_id',activeBoardId).eq('assignment_status','active').order('position')
+    assignmentsResult = await supabase.from('work_item_board_assignments').select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,position,assigned_at,completed_at,completed_by,metadata').eq('board_id',activeBoardId).eq('assignment_status','active').order('position')
   }
 
   const assignmentRows = assignmentsResult.data || []
@@ -93,6 +94,8 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
       assignment_status: assignment.assignment_status,
       assignment_is_required: assignment.is_required,
       assignment_completed_at: assignment.completed_at,
+      assignment_completed_by: assignment.completed_by ? profilesById.get(assignment.completed_by) || null : null,
+      assignment_metadata: assignment.metadata || {},
       global_status: item.status,
       board_id: assignment.board_id,
       board_column_id: assignment.board_column_id,
@@ -131,7 +134,7 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
     columns={columnsResult.data || []}
     demands={demands}
     clients={clients}
-    profiles={profiles}
+    profiles={activeProfiles}
     clientServices={clientServices}
     canManage={await hasTotalAccess()}
     loadErrors={loadErrors}
