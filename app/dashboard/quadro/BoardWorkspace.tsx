@@ -1645,38 +1645,6 @@ export default function BoardWorkspace({
           </div>
         )}
 
-        {canManage &&
-          isPautaWorkspace && (
-          <Link
-            className={
-              showArchived
-                ? 'bpri'
-                : 'bsec'
-            }
-            href={
-              showArchived
-                ? workspaceBasePath +
-                  '?board=' +
-                  activeBoardId
-                : workspaceBasePath +
-                  '?board=' +
-                  activeBoardId +
-                  '&archived=1'
-            }
-          >
-            <i
-              className={
-                showArchived
-                  ? 'ti ti-arrow-back-up'
-                  : 'ti ti-archive'
-              }
-            />
-            {showArchived
-              ? 'Voltar às ativas'
-              : 'Ver arquivadas'}
-          </Link>
-        )}
-
         <select
           className="fi compact"
           value={clientId}
@@ -1726,6 +1694,78 @@ export default function BoardWorkspace({
             ),
           )}
         </select>
+
+        {canManage &&
+          isPautaWorkspace && (
+          <details className="board-a14-menu">
+            <summary
+              className="board-a14-icon"
+              title="Opções da Pauta"
+              aria-label="Opções da Pauta"
+            >
+              <i className="ti ti-dots-vertical" />
+            </summary>
+
+            <div className="board-a14-menu-popover">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href =
+                    showArchived
+                      ? workspaceBasePath +
+                        '?board=' +
+                        activeBoardId
+                      : workspaceBasePath +
+                        '?board=' +
+                        activeBoardId +
+                        '&archived=1'
+                }}
+              >
+                <i
+                  className={
+                    showArchived
+                      ? 'ti ti-arrow-back-up'
+                      : 'ti ti-archive'
+                  }
+                />
+
+                {showArchived
+                  ? 'Voltar às Pautas ativas'
+                  : 'Ver Pautas arquivadas'}
+              </button>
+
+              {activePauta && (
+                <button
+                  className={
+                    activePauta.lifecycle_status ===
+                    'archived'
+                      ? ''
+                      : 'danger-option'
+                  }
+                  type="button"
+                  onClick={() =>
+                    void changeActivePautaLifecycle()
+                  }
+                  disabled={loading}
+                >
+                  <i
+                    className={
+                      activePauta.lifecycle_status ===
+                      'archived'
+                        ? 'ti ti-refresh'
+                        : 'ti ti-archive'
+                    }
+                  />
+
+                  {activePauta.lifecycle_status ===
+                  'archived'
+                    ? 'Reabrir Pauta'
+                    : 'Arquivar Pauta'}
+                </button>
+              )}
+            </div>
+          </details>
+        )}
 
         {canManage && !isPautaWorkspace && (
           <button
@@ -1886,37 +1926,6 @@ export default function BoardWorkspace({
           </div>
 
           <div className="board-pauta-heading-actions">
-            {canManage &&
-              isPautaWorkspace &&
-              activePauta && (
-              <button
-                className={
-                  activePauta.lifecycle_status ===
-                  'archived'
-                    ? 'bpri'
-                    : 'bsec'
-                }
-                type="button"
-                onClick={() =>
-                  void changeActivePautaLifecycle()
-                }
-                disabled={loading}
-              >
-                <i
-                  className={
-                    activePauta.lifecycle_status ===
-                    'archived'
-                      ? 'ti ti-refresh'
-                      : 'ti ti-archive'
-                  }
-                />
-                {activePauta.lifecycle_status ===
-                'archived'
-                  ? 'Reabrir Pauta'
-                  : 'Arquivar Pauta'}
-              </button>
-            )}
-
             {isPautaWorkspace && activePauta && pautaManagement && (
               <button
                 className="bsec pauta-management-open"
@@ -2530,6 +2539,21 @@ export default function BoardWorkspace({
                 ) : null}
                               </span>
                             </div>
+
+                            {!readOnlyPautaView && (
+                              <button
+                                className="bsec"
+                                type="button"
+                                title="Editar demanda"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  openEditDemand(item)
+                                }}
+                              >
+                                <i className="ti ti-edit" />
+                                Editar demanda
+                              </button>
+                            )}
 
                           </article>
                         )
