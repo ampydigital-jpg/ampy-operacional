@@ -508,28 +508,7 @@ export default function DemandasView({
       ? loadErrors.filter(Boolean)
       : []
 
-  const initialFormKind =
-    [
-      'pauta',
-      'quadro',
-      'avulsa',
-    ].includes(
-      String(
-        initialCreateContext
-          ?.kind ||
-        '',
-      ),
-    )
-      ? (
-          String(
-            initialCreateContext
-              ?.kind,
-          ) as
-            | 'pauta'
-            | 'quadro'
-            | 'avulsa'
-        )
-      : 'pauta'
+  const initialFormKind = 'avulsa' as const
 
   const [items, setItems] =
     useState(safeDemands)
@@ -928,7 +907,7 @@ export default function DemandasView({
   ])
 
   function openDemandModal() {
-    setFormKind('pauta')
+    setFormKind('avulsa')
     setFormPauta('')
     setFormClient('')
     setFormBoard('')
@@ -1662,9 +1641,8 @@ export default function DemandasView({
                 </div>
 
                 <div className="modal-sub">
-                  Vincule à Pauta, ao Quadro
-                  personalizado ou registre
-                  um Extra sem contexto.
+                  Registre um Extra sem alterar
+                  a estrutura de Pautas ou Quadros.
                 </div>
               </div>
 
@@ -1681,396 +1659,43 @@ export default function DemandasView({
 
             <form onSubmit={submit}>
               <div className="modal-body">
-                <div className="fg">
-                  <label className="fl">
-                    Tipo de demanda *
-                  </label>
+                <input
+                  type="hidden"
+                  name="demand_kind"
+                  value="avulsa"
+                />
 
-                  <div className="demandas-a16-kind">
-                    <button
-                      type="button"
-                      className={
-                        formKind ===
-                        'pauta'
-                          ? 'active'
-                          : ''
-                      }
-                      onClick={() => {
-                        setFormKind(
-                          'pauta',
-                        )
-                        setFormPauta('')
-                        setFormBoard('')
-                        setFormColumn('')
-                        setFormClient('')
-                        setError('')
-                      }}
-                    >
-                      <i className="ti ti-calendar-stats" />
-                      Pauta
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        formKind ===
-                        'quadro'
-                          ? 'active'
-                          : ''
-                      }
-                      onClick={() => {
-                        setFormKind(
-                          'quadro',
-                        )
-                        setFormPauta('')
-                        setFormBoard('')
-                        setFormColumn('')
-                        setFormClient('')
-                        setError('')
-                      }}
-                    >
-                      <i className="ti ti-layout-kanban" />
-                      Quadro
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        formKind ===
-                        'avulsa'
-                          ? 'active'
-                          : ''
-                      }
-                      onClick={() => {
-                        setFormKind(
-                          'avulsa',
-                        )
-                        setFormPauta('')
-                        setFormBoard('')
-                        setFormColumn('')
-                        setFormClient('')
-                        setError('')
-                      }}
-                    >
-                      <i className="ti ti-bolt" />
-                      Extra
-                    </button>
-                  </div>
-
-                  <input
-                    type="hidden"
-                    name="demand_kind"
-                    value={formKind}
-                  />
+                <div className="notice notice-info">
+                  <i className="ti ti-info-circle" />
+                  <span>
+                    Demandas cria somente Extras. Demandas de Pauta e de Quadro devem nascer no contexto operacional correto.
+                  </span>
                 </div>
 
-                {formKind ===
-                'pauta' ? (
-                  <>
-                    <div className="frow">
-                      <div className="fg">
-                        <label className="fl">
-                          Pauta *
-                        </label>
+                <div className="fg">
+                  <label className="fl">
+                    Título *
+                  </label>
 
-                        <select
-                          className="fi"
-                          name="pauta_id"
-                          required
-                          value={formPauta}
-                          onChange={(
-                            event,
-                          ) => {
-                            setFormPauta(
-                              event.target
-                                .value,
-                            )
-                            setFormColumn('')
-                            setFormClient('')
-                          }}
-                        >
-                          <option
-                            value=""
-                            disabled
-                          >
-                            Selecione a Pauta
-                          </option>
-
-                          {safePautas
-                            .filter(
-                              (
-                                pauta: any,
-                              ) =>
-                                [
-                                  'open',
-                                  'draft',
-                                ].includes(
-                                  String(
-                                    pauta.lifecycle_status ||
-                                    '',
-                                  ),
-                                ),
-                            )
-                            .map(
-                              (
-                                pauta: any,
-                              ) => (
-                                <option
-                                  key={
-                                    pauta.id
-                                  }
-                                  value={
-                                    pauta.id
-                                  }
-                                >
-                                  {
-                                    pauta.name
-                                  }
-                                </option>
-                              ),
-                            )}
-                        </select>
-                      </div>
-
-                      <div className="fg">
-                        <label className="fl">
-                          Coluna *
-                        </label>
-
-                        <select
-                          className="fi"
-                          name="board_column_id"
-                          required
-                          disabled={
-                            !formPauta
-                          }
-                          value={formColumn}
-                          onChange={(
-                            event,
-                          ) =>
-                            setFormColumn(
-                              event.target
-                                .value,
-                            )
-                          }
-                        >
-                          <option
-                            value=""
-                            disabled
-                          >
-                            {formPauta
-                              ? 'Selecione a coluna'
-                              : 'Selecione a Pauta primeiro'}
-                          </option>
-
-                          {activeColumns.map(
-                            (
-                              column: any,
-                            ) => (
-                              <option
-                                key={
-                                  column.id
-                                }
-                                value={
-                                  column.id
-                                }
-                              >
-                                {
-                                  column.name
-                                }
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="fg">
-                      <label className="fl">
-                        Título da demanda *
-                      </label>
-
-                      <input
-                        className="fi"
-                        name="title"
-                        required
-                        minLength={2}
-                        maxLength={180}
-                        placeholder="Ex.: Ajustar campanha de agosto"
-                      />
-                    </div>
-
-                    {formPauta &&
-                      formClients.length ===
-                        0 && (
-                        <div className="notice notice-warn">
-                          <i className="ti ti-alert-triangle" />
-
-                          <span>
-                            Esta Pauta ainda não possui clientes vinculados. Inclua o cliente pela edição da Pauta antes de criar a demanda.
-                          </span>
-                        </div>
-                      )}
-                  </>
-                ) : formKind ===
-                  'quadro' ? (
-                  <>
-                    <div className="frow">
-                      <div className="fg">
-                        <label className="fl">
-                          Quadro *
-                        </label>
-
-                        <select
-                          className="fi"
-                          name="board_id"
-                          required
-                          value={formBoard}
-                          onChange={(
-                            event,
-                          ) => {
-                            setFormBoard(
-                              event.target
-                                .value,
-                            )
-                            setFormColumn('')
-                          }}
-                        >
-                          <option
-                            value=""
-                            disabled
-                          >
-                            Selecione o Quadro
-                          </option>
-
-                          {safeCustomBoards.map(
-                            (
-                              board: any,
-                            ) => (
-                              <option
-                                key={
-                                  board.id
-                                }
-                                value={
-                                  board.id
-                                }
-                              >
-                                {
-                                  board.name
-                                }
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-
-                      <div className="fg">
-                        <label className="fl">
-                          Coluna *
-                        </label>
-
-                        <select
-                          className="fi"
-                          name="board_column_id"
-                          required
-                          disabled={
-                            !formBoard
-                          }
-                          value={formColumn}
-                          onChange={(
-                            event,
-                          ) =>
-                            setFormColumn(
-                              event.target
-                                .value,
-                            )
-                          }
-                        >
-                          <option
-                            value=""
-                            disabled
-                          >
-                            {formBoard
-                              ? 'Selecione a coluna'
-                              : 'Selecione o Quadro primeiro'}
-                          </option>
-
-                          {activeColumns.map(
-                            (
-                              column: any,
-                            ) => (
-                              <option
-                                key={
-                                  column.id
-                                }
-                                value={
-                                  column.id
-                                }
-                              >
-                                {
-                                  column.name
-                                }
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="demandas-a16-title-preview">
-                      <span>
-                        Título automático
-                      </span>
-
-                      <strong>
-                        {automaticTitle(
-                          selectedClient
-                            ?.name || '',
-                          formStart,
-                          formFinal,
-                        )}
-                      </strong>
-                    </div>
-                  </>
-                ) : (
-                  <div className="fg">
-                    <label className="fl">
-                      Título *
-                    </label>
-
-                    <input
-                      className="fi"
-                      name="title"
-                      required
-                      minLength={2}
-                      maxLength={180}
-                      placeholder="Informe a atividade extra"
-                    />
-                  </div>
-                )}
+                  <input
+                    className="fi"
+                    name="title"
+                    required
+                    minLength={2}
+                    maxLength={180}
+                    placeholder="Informe a atividade extra"
+                  />
+                </div>
 
                 <div className="frow">
                   <div className="fg">
                     <label className="fl">
                       Cliente
-                      {formKind !==
-                      'avulsa'
-                        ? ' *'
-                        : ''}
                     </label>
 
                     <select
                       className="fi"
                       name="client_id"
-                      required={
-                        formKind !==
-                        'avulsa'
-                      }
-                      disabled={
-                        formKind ===
-                          'pauta' &&
-                        !formPauta
-                      }
                       value={formClient}
                       onChange={(event) =>
                         setFormClient(
@@ -2081,20 +1706,8 @@ export default function DemandasView({
                     >
                       <option
                         value=""
-                        disabled={
-                          formKind !==
-                          'avulsa'
-                        }
                       >
-                        {formKind ===
-                        'pauta'
-                          ? formPauta
-                            ? 'Selecione o cliente da Pauta'
-                            : 'Selecione a Pauta primeiro'
-                          : formKind ===
-                              'quadro'
-                            ? 'Selecione o cliente'
-                            : 'Interno Ampy'}
+                        Interno Ampy
                       </option>
 
                       {formClients.map(

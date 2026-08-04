@@ -185,6 +185,21 @@ export default async function PautasPage({
         pauta.id === activePautaKey,
     ) || null
 
+  let pautaManagementResult: any = {
+    data: null,
+    error: null,
+  }
+
+  if (activePauta?.id) {
+    pautaManagementResult =
+      await supabase.rpc(
+        'get_pauta_management_snapshot',
+        {
+          p_pauta_id: activePauta.id,
+        },
+      )
+  }
+
   if (activeBoardId) {
     columnsResult = await supabase
       .from('board_columns')
@@ -313,6 +328,9 @@ export default async function PautasPage({
     pautasResult.error
       ? `Pautas: ${pautasResult.error.message}`
       : null,
+    pautaManagementResult.error
+      ? `Gestão da Pauta: ${pautaManagementResult.error.message}`
+      : null,
     columnsResult.error
       ? `Colunas: ${columnsResult.error.message}`
       : null,
@@ -340,6 +358,9 @@ export default async function PautasPage({
       pautas={pautas}
       activePautaKey={activePautaKey}
       activePauta={activePauta}
+      pautaManagement={
+        pautaManagementResult.data || null
+      }
       initialItemId={String(
         searchParams.item || '',
       )}

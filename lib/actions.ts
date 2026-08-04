@@ -4534,16 +4534,659 @@ export async function openMonthlyPautaAction(
     }
   }
 
+  const success =
+    payload.success === true
+
+  const code =
+    String(
+      payload.code || '',
+    )
+
+  const message =
+    String(
+      payload.message || '',
+    )
+
+  if (!success) {
+    if (code === 'PAUTA_EXISTS') {
+      return {
+        success: false,
+        code,
+        pautaId,
+        pautaName:
+          String(
+            payload.pauta_name || '',
+          ),
+        message:
+          message ||
+          'Já existe uma Pauta para este mês.',
+        existingPautaUnchanged:
+          payload.existing_pauta_unchanged ===
+          true,
+      }
+    }
+
+    return {
+      error:
+        message ||
+        'A Pauta não foi criada.',
+    }
+  }
+
   revalidateOperationalPaths()
 
   return {
     success: true,
+    code:
+      code || 'PAUTA_CREATED',
     pautaId,
     cardsCreated:
       Number(
         payload.cards_created ||
         0,
       ),
+  }
+}
+
+// =========================================================
+// AMPY-V7-A3.4C.2B — GESTÃO DE PAUTAS VIA RPC
+// =========================================================
+
+function pautaRpcPayload(
+  data: unknown,
+) {
+  return data &&
+    typeof data === 'object'
+    ? data as Record<string, any>
+    : {}
+}
+
+function revalidatePautaManagementPaths(
+  _pautaId?: string | null,
+) {
+  revalidateOperationalPaths()
+  revalidatePath('/dashboard/pautas')
+}
+
+export async function updatePautaSettingsAction(
+  pautaId: string,
+  formData: FormData,
+) {
+  const { supabase, user, profile } =
+    await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem alterar a Pauta.',
+    )
+  }
+
+  const id = String(pautaId || '').trim()
+  const name = value(formData, 'name')
+  const magicNumberDate =
+    value(formData, 'magic_number_date')
+  const scheduledUntilDate =
+    value(formData, 'scheduled_until_date')
+
+  if (!id) {
+    return { error: 'Pauta inválida.' }
+  }
+
+  if (name.length < 3 || name.length > 120) {
+    return {
+      error:
+        'O nome da Pauta deve possuir entre 3 e 120 caracteres.',
+    }
+  }
+
+  if (
+    !validPautaDate(magicNumberDate) ||
+    !validPautaDate(scheduledUntilDate)
+  ) {
+    return {
+      error:
+        'Informe datas válidas para Magic Number e Programado até.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'update_pauta_settings',
+    {
+      p_pauta_id: id,
+      p_name: name,
+      p_magic_number_date: magicNumberDate,
+      p_scheduled_until_date: scheduledUntilDate,
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const payload = pautaRpcPayload(data)
+
+  if (payload.success !== true) {
+    return {
+      error:
+        String(payload.message || '') ||
+        'Não foi possível atualizar a Pauta.',
+    }
+  }
+
+  revalidatePautaManagementPaths(id)
+
+  return { success: true, data: payload }
+}
+
+export async function previewPautaClientAdditionsAction(
+  pautaId: string,
+  clientIds: string[],
+) {
+  const { supabase, user, profile } =
+    await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem analisar inclusões na Pauta.',
+    )
+  }
+
+  const id = String(pautaId || '').trim()
+  const selected = Array.from(
+    new Set(
+      (Array.isArray(clientIds) ? clientIds : [])
+        .map((clientId) =>
+          String(clientId || '').trim(),
+        )
+        .filter(Boolean),
+    ),
+  ).slice(0, 300)
+
+  if (!id) {
+    return { error: 'Pauta inválida.' }
+  }
+
+  if (selected.length === 0) {
+    return {
+      error:
+        'Selecione pelo menos um cliente.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'preview_pauta_client_additions',
+    {
+      p_pauta_id: id,
+      p_client_ids: selected,
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return {
+    success: true,
+    data: pautaRpcPayload(data),
+  }
+}
+
+export async function addClientsToPautaAction(
+  pautaId: string,
+  clientIds: string[],
+  confirmation: string,
+) {
+  const { supabase, user, profile } =
+    await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem adicionar clientes à Pauta.',
+    )
+  }
+
+  const id = String(pautaId || '').trim()
+  const selected = Array.from(
+    new Set(
+      (Array.isArray(clientIds) ? clientIds : [])
+        .map((clientId) =>
+          String(clientId || '').trim(),
+        )
+        .filter(Boolean),
+    ),
+  ).slice(0, 300)
+
+  if (!id) {
+    return { error: 'Pauta inválida.' }
+  }
+
+  if (selected.length === 0) {
+    return {
+      error:
+        'Selecione pelo menos um cliente.',
+    }
+  }
+
+  if (String(confirmation || '').trim() !==
+      'ADICIONAR CLIENTES') {
+    return {
+      error:
+        'Digite exatamente ADICIONAR CLIENTES para continuar.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'add_clients_to_pauta',
+    {
+      p_pauta_id: id,
+      p_client_ids: selected,
+      p_confirmation: 'ADICIONAR CLIENTES',
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const payload = pautaRpcPayload(data)
+
+  if (payload.success !== true) {
+    return {
+      error:
+        String(payload.message || '') ||
+        'Não foi possível adicionar os clientes.',
+    }
+  }
+
+  revalidatePautaManagementPaths(id)
+
+  return { success: true, data: payload }
+}
+
+export async function createPautaDemandAction(
+  formData: FormData,
+) {
+  const { supabase, user, profile } =
+    await getCurrentProfile()
+
+  if (!user || !profile) {
+    return {
+      error:
+        'Sessão inválida ou usuário inativo.',
+    }
+  }
+
+  const pautaId = value(formData, 'pauta_id')
+  const clientId = value(formData, 'client_id')
+  const columnId =
+    value(formData, 'board_column_id')
+  const serviceId =
+    value(formData, 'client_service_id')
+  const responsibleId =
+    value(formData, 'responsible_id')
+  const startDate =
+    value(formData, 'internal_deadline')
+  const finalDate =
+    value(formData, 'final_deadline')
+  const priority =
+    value(formData, 'priority') || 'normal'
+
+  if (!pautaId) {
+    return { error: 'Pauta inválida.' }
+  }
+
+  if (!clientId || !columnId) {
+    return {
+      error:
+        'Selecione cliente e coluna.',
+    }
+  }
+
+  if (!serviceId) {
+    return {
+      error:
+        'Selecione um serviço ativo do cliente.',
+    }
+  }
+
+  if (!responsibleId) {
+    return {
+      error:
+        'Selecione o responsável.',
+    }
+  }
+
+  if (
+    !validPautaDate(startDate) ||
+    !validPautaDate(finalDate) ||
+    startDate > finalDate
+  ) {
+    return {
+      error:
+        'Informe um período válido para a demanda.',
+    }
+  }
+
+  const clientResult = await supabase
+    .from('clients')
+    .select('id,name,status')
+    .eq('id', clientId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (clientResult.error || !clientResult.data) {
+    return {
+      error:
+        clientResult.error?.message ||
+        'Cliente não encontrado ou inativo.',
+    }
+  }
+
+  const title = boardPeriodTitle(
+    clientResult.data.name,
+    startDate,
+    finalDate,
+  )
+
+  const { data, error } = await supabase.rpc(
+    'create_pauta_demand',
+    {
+      p_pauta_id: pautaId,
+      p_client_id: clientId,
+      p_board_column_id: columnId,
+      p_title: title,
+      p_client_service_id: serviceId,
+      p_responsible_id: responsibleId,
+      p_priority: priority,
+      p_internal_deadline: startDate,
+      p_final_deadline: finalDate,
+      p_drive_link:
+        nullable(formData, 'drive_link'),
+      p_notes:
+        nullable(formData, 'notes'),
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const payload = pautaRpcPayload(data)
+  const workItemId = String(
+    payload.work_item_id || '',
+  )
+
+  if (payload.success !== true || !workItemId) {
+    return {
+      error:
+        String(payload.message || '') ||
+        'A demanda não retornou um identificador válido.',
+    }
+  }
+
+  const cardTag =
+    value(formData, 'card_tag')
+      .slice(0, 16)
+      .trim()
+
+  const requestedTagColor =
+    value(formData, 'card_tag_color')
+
+  const cardTagColor = [
+    'slate',
+    'blue',
+    'purple',
+    'yellow',
+    'red',
+    'green',
+  ].includes(requestedTagColor)
+    ? requestedTagColor
+    : 'slate'
+
+  let warning = ''
+
+  if (cardTag) {
+    const tagResult = await supabase
+      .from('work_items')
+      .update({
+        card_tag: cardTag,
+        card_tag_color: cardTagColor,
+      })
+      .eq('id', workItemId)
+
+    if (tagResult.error) {
+      warning =
+        'A demanda foi criada, mas a tag não pôde ser salva: ' +
+        tagResult.error.message
+    }
+  }
+
+  revalidatePautaManagementPaths(pautaId)
+
+  return {
+    success: true,
+    id: workItemId,
+    warning,
+  }
+}
+
+export async function detachPautaDemandAction(
+  pautaId: string,
+  workItemId: string,
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem retirar demandas da Pauta.',
+    )
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const id = String(pautaId || '').trim()
+  const itemId = String(workItemId || '').trim()
+
+  if (!id || !itemId) {
+    return { error: 'Pauta ou demanda inválida.' }
+  }
+
+  if (String(confirmation || '').trim() !==
+      'RETIRAR DEMANDA') {
+    return {
+      error:
+        'Digite exatamente RETIRAR DEMANDA para continuar.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'detach_pauta_demand',
+    {
+      p_pauta_id: id,
+      p_work_item_id: itemId,
+      p_confirmation: 'RETIRAR DEMANDA',
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const payload = pautaRpcPayload(data)
+  revalidatePautaManagementPaths(id)
+
+  return { success: true, data: payload }
+}
+
+export async function removePautaClientAction(
+  pautaId: string,
+  clientId: string,
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem retirar clientes da Pauta.',
+    )
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const id = String(pautaId || '').trim()
+  const selectedClientId =
+    String(clientId || '').trim()
+
+  if (!id || !selectedClientId) {
+    return { error: 'Pauta ou cliente inválido.' }
+  }
+
+  if (String(confirmation || '').trim() !==
+      'RETIRAR CLIENTE') {
+    return {
+      error:
+        'Digite exatamente RETIRAR CLIENTE para continuar.',
+    }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'remove_client_from_pauta',
+    {
+      p_pauta_id: id,
+      p_client_id: selectedClientId,
+      p_confirmation: 'RETIRAR CLIENTE',
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const payload = pautaRpcPayload(data)
+  revalidatePautaManagementPaths(id)
+
+  return { success: true, data: payload }
+}
+
+export async function changePautaLifecycleAction(
+  pautaId: string,
+  action: 'close' | 'reopen' | 'archive',
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem alterar o ciclo de vida da Pauta.',
+    )
+  }
+
+  const confirmations = {
+    close: 'CONCLUIR PAUTA',
+    reopen: 'REABRIR PAUTA',
+    archive: 'ARQUIVAR PAUTA',
+  } as const
+
+  if (!Object.prototype.hasOwnProperty.call(
+    confirmations,
+    action,
+  )) {
+    return { error: 'Ação de Pauta inválida.' }
+  }
+
+  const expected = confirmations[action]
+
+  if (String(confirmation || '').trim() !== expected) {
+    return {
+      error:
+        'Digite exatamente ' +
+        expected +
+        ' para continuar.',
+    }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const id = String(pautaId || '').trim()
+
+  if (!id) {
+    return { error: 'Pauta inválida.' }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'change_pauta_lifecycle',
+    {
+      p_pauta_id: id,
+      p_action: action,
+      p_confirmation: expected,
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const payload = pautaRpcPayload(data)
+  revalidatePautaManagementPaths(id)
+
+  return { success: true, data: payload }
+}
+
+export async function deleteEmptyPautaAction(
+  pautaId: string,
+  confirmation: string,
+) {
+  if (!(await v17A12bHasTotalAccess())) {
+    return forbidden(
+      'Somente usuários com Acesso Total podem excluir Pautas vazias.',
+    )
+  }
+
+  if (String(confirmation || '').trim() !==
+      'EXCLUIR PAUTA') {
+    return {
+      error:
+        'Digite exatamente EXCLUIR PAUTA para continuar.',
+    }
+  }
+
+  const { supabase } = await getCurrentProfile()
+  const id = String(pautaId || '').trim()
+
+  if (!id) {
+    return { error: 'Pauta inválida.' }
+  }
+
+  const { data, error } = await supabase.rpc(
+    'delete_empty_pauta',
+    {
+      p_pauta_id: id,
+      p_confirmation: 'EXCLUIR PAUTA',
+    },
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePautaManagementPaths(null)
+
+  return {
+    success: true,
+    data: pautaRpcPayload(data),
   }
 }
 
@@ -6126,13 +6769,13 @@ export async function createDemandFromDemandasAction(
     )
 
   if (
-    demandKind !== 'pauta' &&
-    demandKind !== 'quadro' &&
-    demandKind !== 'avulsa'
+    !['avulsa'].includes(
+      demandKind,
+    )
   ) {
     return {
       error:
-        'Selecione Pauta, Quadro ou Extra.',
+        'A aba Demandas registra somente Extras. Crie demandas de Pauta dentro da Pauta e demandas de Quadro dentro do Quadro.',
     }
   }
 

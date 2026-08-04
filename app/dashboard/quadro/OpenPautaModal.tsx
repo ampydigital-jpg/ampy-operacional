@@ -347,6 +347,11 @@ export default function OpenPautaModal({
   ] = useState('')
 
   const [
+    existingPauta,
+    setExistingPauta,
+  ] = useState<any | null>(null)
+
+  const [
     mounted,
     setMounted,
   ] = useState(false)
@@ -432,6 +437,7 @@ export default function OpenPautaModal({
     setQuery('')
     setConfirmation('')
     setError('')
+    setExistingPauta(null)
     setLoading(false)
   }, [
     open,
@@ -680,6 +686,20 @@ export default function OpenPautaModal({
 
     if (
       result &&
+      'code' in result &&
+      result.code === 'PAUTA_EXISTS' &&
+      'pautaId' in result &&
+      result.pautaId
+    ) {
+      setExistingPauta(result)
+      setLoading(false)
+      return
+    }
+
+    if (
+      result &&
+      'success' in result &&
+      result.success === true &&
       'pautaId' in result &&
       result.pautaId
     ) {
@@ -693,7 +713,7 @@ export default function OpenPautaModal({
     }
 
     setError(
-      'A Pauta foi criada sem retornar um identificador.',
+      'A abertura não retornou um resultado válido.',
     )
     setLoading(false)
   }
@@ -906,6 +926,37 @@ export default function OpenPautaModal({
                 </span>
               </div>
             </div>
+
+            {existingPauta && (
+              <div className="notice notice-warn pauta-launch-error pauta-existing-result">
+                <i className="ti ti-calendar-check" />
+
+                <div>
+                  <strong>
+                    {existingPauta.message ||
+                      'Já existe uma Pauta para este mês.'}
+                  </strong>
+
+                  <span>
+                    Nenhum card ou configuração da Pauta existente foi alterado.
+                  </span>
+                </div>
+
+                <button
+                  className="bpri"
+                  type="button"
+                  onClick={() => {
+                    window.location.href =
+                      '/dashboard/pautas?board=' +
+                      boardId +
+                      '&pauta=' +
+                      existingPauta.pautaId
+                  }}
+                >
+                  Abrir Pauta existente
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="notice notice-err pauta-launch-error">

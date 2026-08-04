@@ -14078,3 +14078,320 @@ small {
       auto;
   }
 }
+
+/* AMPY-V7-A3.4C.2B — GESTÃO DE PAUTAS */
+.pauta-management-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(5px);
+}
+
+.pauta-management-panel {
+  width: min(1040px, 96vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  box-shadow: -24px 0 70px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.pauta-management-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.pauta-management-header > div:first-child > span,
+.pauta-management-card-head span {
+  display: block;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pauta-management-header h2 {
+  margin: 4px 0;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+.pauta-management-header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.pauta-management-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pauta-management-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 28px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.pauta-management-tabs button {
+  padding: 11px 15px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pauta-management-tabs button[data-active='true'] {
+  border-bottom-color: #2563eb;
+  color: #0f172a;
+}
+
+.pauta-management-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 28px 36px;
+}
+
+.pauta-management-grid,
+.pauta-management-client-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.pauta-management-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.pauta-management-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.pauta-management-card-head strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 1rem;
+}
+
+.pauta-management-card-head > i {
+  font-size: 1.4rem;
+  color: #2563eb;
+}
+
+.pauta-management-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pauta-management-stats > div {
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.pauta-management-stats strong,
+.pauta-management-stats span {
+  display: block;
+}
+
+.pauta-management-stats strong {
+  font-size: 1.35rem;
+}
+
+.pauta-management-stats span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.pauta-legacy-readonly {
+  margin-top: 14px;
+}
+
+.pauta-lifecycle-card,
+.pauta-add-clients-card {
+  grid-column: 1 / -1;
+}
+
+.pauta-lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pauta-member-list,
+.pauta-event-list,
+.pauta-add-client-list {
+  display: grid;
+  gap: 9px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.pauta-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 14px;
+  border-radius: 13px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: #fff;
+}
+
+.pauta-member-row strong,
+.pauta-member-row span {
+  display: block;
+}
+
+.pauta-member-row span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.pauta-add-client-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.pauta-add-client-list label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.pauta-add-preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.pauta-add-preview > div:not(.notice) {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pauta-add-preview span {
+  color: #64748b;
+}
+
+.pauta-event-list article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.pauta-event-list article > i {
+  margin-top: 2px;
+  color: #2563eb;
+}
+
+.pauta-event-list strong,
+.pauta-event-list span {
+  display: block;
+}
+
+.pauta-event-list span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.pauta-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.pauta-confirm-box {
+  width: min(520px, 96vw);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.3);
+  overflow: hidden;
+}
+
+.pauta-existing-result {
+  align-items: center;
+}
+
+.pauta-existing-result > div {
+  flex: 1;
+}
+
+.pauta-existing-result strong,
+.pauta-existing-result span {
+  display: block;
+}
+
+.pauta-existing-result span {
+  margin-top: 3px;
+}
+
+@media (max-width: 900px) {
+  .pauta-management-grid,
+  .pauta-management-client-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .pauta-lifecycle-card,
+  .pauta-add-clients-card {
+    grid-column: auto;
+  }
+
+  .pauta-management-header,
+  .pauta-management-body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .pauta-management-tabs {
+    padding-left: 18px;
+    padding-right: 18px;
+    overflow-x: auto;
+  }
+
+  .pauta-add-client-list {
+    grid-template-columns: 1fr;
+  }
+}

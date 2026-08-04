@@ -21,6 +21,7 @@ import {
 import {
   createBoardAction,
   createBoardColumnAction,
+  createPautaDemandAction,
   deleteBoardAction,
   deleteBoardColumnAction,
   deleteWorkItemAction,
@@ -32,6 +33,7 @@ import {
 import { saveBoardPeriodDemandWithTagAction } from '@/lib/work-item-card-tag-actions'
 import CycleAgendaPanel from './CycleAgendaPanel'
 import OpenPautaModal from './OpenPautaModal'
+import PautaManagementPanel from '../pautas/PautaManagementPanel'
 
 const BOARD_COLORS = [
   '#2563EB',
@@ -381,6 +383,7 @@ export default function BoardWorkspace({
   pautas = [],
   activePautaKey = 'legacy',
   activePauta = null,
+  pautaManagement = null,
   initialItemId = '',
   columns = [],
   demands = [],
@@ -486,6 +489,11 @@ export default function BoardWorkspace({
   ] = useState(false)
 
   const [
+    pautaManagementOpen,
+    setPautaManagementOpen,
+  ] = useState(false)
+
+  const [
     cycleAgendaItem,
     setCycleAgendaItem,
   ] = useState<any | null>(
@@ -529,13 +537,70 @@ export default function BoardWorkspace({
 
   useEffect(() => {
     setPautaModalOpen(false)
+    setPautaManagementOpen(false)
   }, [
     activeBoardId,
     activePautaKey,
   ])
 
+  const activePautaEditable =
+    Boolean(activePauta) &&
+    ['draft', 'open'].includes(
+      String(
+        activePauta?.lifecycle_status || '',
+      ),
+    )
+
+  const pautaMemberClientIds =
+    useMemo(
+      () =>
+        new Set(
+          (
+            Array.isArray(
+              pautaManagement?.members,
+            )
+              ? pautaManagement.members
+              : []
+          )
+            .filter(
+              (member: any) =>
+                member.membership_status === 'active',
+            )
+            .map(
+              (member: any) =>
+                String(
+                  member.client?.id || '',
+                ),
+            )
+            .filter(Boolean),
+        ),
+      [pautaManagement],
+    )
+
+  const demandClientOptions =
+    useMemo(
+      () =>
+        isPautaWorkspace &&
+        activePauta &&
+        !legacyPautaView
+          ? clients.filter(
+              (client: any) =>
+                pautaMemberClientIds.has(
+                  String(client.id),
+                ),
+            )
+          : clients,
+      [
+        activePauta,
+        clients,
+        isPautaWorkspace,
+        legacyPautaView,
+        pautaMemberClientIds,
+      ],
+    )
+
   const selectedClient =
-    clients.find(
+    demandClientOptions.find(
       (client: any) =>
         client.id === formClient,
     ) || null
@@ -703,27 +768,32 @@ export default function BoardWorkspace({
   function openCreateDemand(
     columnId: string,
   ) {
-    if (!legacyPautaView) {
-      if (!activePauta) {
-        setError(
-          'Selecione uma Pauta específica antes de criar uma demanda.',
-        )
-        return
-      }
+    if (readOnlyPautaView) {
+      setError(
+        'Selecione uma Pauta específica antes de criar uma demanda.',
+      )
+      return
+    }
 
-      const params =
-        new URLSearchParams({
-          new: '1',
-          context: 'pauta',
-          pauta: activePauta.id,
-          board: activePauta.board_id,
-          column: columnId,
-        })
+    if (
+      isPautaWorkspace &&
+      !legacyPautaView &&
+      !activePauta
+    ) {
+      setError(
+        'Selecione uma Pauta específica antes de criar uma demanda.',
+      )
+      return
+    }
 
-      window.location.href =
-        '/dashboard/demandas?' +
-        params.toString()
-
+    if (
+      isPautaWorkspace &&
+      activePauta &&
+      !activePautaEditable
+    ) {
+      setError(
+        'Esta Pauta está concluída ou arquivada e não pode receber novas demandas.',
+      )
       return
     }
 
@@ -784,14 +854,34 @@ export default function BoardWorkspace({
       selectedColumnId,
     )
 
-    const result =
-      await saveBoardPeriodDemandWithTagAction(
-        demandModal === 'edit' && editing
-          ? 'edit'
-          : 'create',
-        editing?.id || null,
-        formData,
+    const creatingInsidePauta =
+      demandModal === 'create' &&
+      isPautaWorkspace &&
+      Boolean(activePauta) &&
+      !legacyPautaView
+
+    let result: any
+
+    if (creatingInsidePauta) {
+      formData.set(
+        'pauta_id',
+        activePauta.id,
       )
+
+      result =
+        await createPautaDemandAction(
+          formData,
+        )
+    } else {
+      result =
+        await saveBoardPeriodDemandWithTagAction(
+          demandModal === 'edit' && editing
+            ? 'edit'
+            : 'create',
+          editing?.id || null,
+          formData,
+        )
+    }
 
     if ('error' in result) {
       setError(
@@ -800,6 +890,13 @@ export default function BoardWorkspace({
       )
       setLoading(false)
       return
+    }
+
+    if (
+      'warning' in result &&
+      result.warning
+    ) {
+      alert(result.warning)
     }
 
     window.location.reload()
@@ -1579,6 +1676,21 @@ export default function BoardWorkspace({
           </div>
 
           <div className="board-pauta-heading-actions">
+            {isPautaWorkspace && activePauta && pautaManagement && (
+              <button
+                className="bsec pauta-management-open"
+                type="button"
+                onClick={() =>
+                  setPautaManagementOpen(true)
+                }
+              >
+                <i className="ti ti-settings-cog" />
+                {canManage
+                  ? 'Gerenciar Pauta'
+                  : 'Detalhes da Pauta'}
+              </button>
+            )}
+
             {activePauta && (
               <Link
                 className="bsec board-pauta-agenda-link"
@@ -1773,7 +1885,8 @@ export default function BoardWorkspace({
                       </option>
                     </select>
 
-                    {legacyPautaView && (
+                    {!readOnlyPautaView &&
+                      (legacyPautaView || activePautaEditable) && (
                       <button
                         className="board-a14-column-icon"
                         type="button"
@@ -2340,7 +2453,7 @@ export default function BoardWorkspace({
                         Selecione o cliente
                       </option>
 
-                      {clients.map(
+                      {demandClientOptions.map(
                         (client: any) => (
                           <option
                             key={client.id}
@@ -2361,6 +2474,14 @@ export default function BoardWorkspace({
                     <select
                       className="fi"
                       name="client_service_id"
+                      required={
+                        Boolean(
+                          isPautaWorkspace &&
+                          activePauta &&
+                          !legacyPautaView &&
+                          demandModal === 'create',
+                        )
+                      }
                       defaultValue={
                         editing
                           ?.client_service_id ||
@@ -2368,7 +2489,12 @@ export default function BoardWorkspace({
                       }
                     >
                       <option value="">
-                        Sem serviço específico
+                        {isPautaWorkspace &&
+                        activePauta &&
+                        !legacyPautaView &&
+                        demandModal === 'create'
+                          ? 'Selecione o serviço ativo'
+                          : 'Sem serviço específico'}
                       </option>
 
                       {activeServices.map(
@@ -2598,6 +2724,19 @@ export default function BoardWorkspace({
           setCycleAgendaItem(null)
         }
       />
+
+      {isPautaWorkspace && activePauta && pautaManagement && (
+        <PautaManagementPanel
+          open={pautaManagementOpen}
+          onClose={() =>
+            setPautaManagementOpen(false)
+          }
+          snapshot={pautaManagement}
+          clients={clients}
+          boardId={activeBoardId}
+          canManage={canManage}
+        />
+      )}
 
       {isPautaWorkspace && (
         <OpenPautaModal
