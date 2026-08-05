@@ -596,6 +596,12 @@ export default function DemandasView({
   const [error, setError] =
     useState('')
 
+  // AMPY-V9.2B.2 — DETALHE CONTEXTUAL DE DEMANDAS
+  const [
+    selectedDemand,
+    setSelectedDemand,
+  ] = useState<any | null>(null)
+
   const selectedClient =
     safeClients.find(
       (client: any) =>
@@ -971,6 +977,8 @@ export default function DemandasView({
       return
     }
 
+    setSelectedDemand(null)
+
     setItems((current) =>
       current.filter(
         (item: any) =>
@@ -1038,6 +1046,16 @@ export default function DemandasView({
             }
           : item,
       ),
+    )
+
+    setSelectedDemand(
+      (current: any) =>
+        current?.id === id
+          ? {
+              ...current,
+              status: next,
+            }
+          : current,
     )
 
     const result =
@@ -1339,7 +1357,6 @@ export default function DemandasView({
                 <th>Responsável</th>
                 <th>Prioridade</th>
                 <th>Status</th>
-                <th />
               </tr>
             </thead>
 
@@ -1376,18 +1393,47 @@ export default function DemandasView({
                         'demanda-' +
                         item.id
                       }
+                      className="demandas-v92-row"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={
+                        'Abrir demanda ' +
+                        item.title
+                      }
+                      onClick={() =>
+                        setSelectedDemand(
+                          item,
+                        )
+                      }
+                      onKeyDown={(
+                        event,
+                      ) => {
+                        if (
+                          event.target !==
+                          event.currentTarget
+                        ) {
+                          return
+                        }
+
+                        if (
+                          event.key ===
+                            'Enter' ||
+                          event.key ===
+                            ' '
+                        ) {
+                          event.preventDefault()
+                          setSelectedDemand(
+                            item,
+                          )
+                        }
+                      }}
                     >
                       <td>
-                        <Link
+                        <span
                           className="demandas-a16-title"
-                          href={
-                            demandOriginHref(
-                              item,
-                            )
-                          }
                         >
                           {item.title}
-                        </Link>
+                        </span>
 
                         <small>
                           {item.type ||
@@ -1424,6 +1470,9 @@ export default function DemandasView({
                             <div>
                               <Link
                                 className="demandas-a16-context-link"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
                                 href={
                                   '/dashboard/pautas?board=' +
                                   encodeRouteValue(
@@ -1458,6 +1507,9 @@ export default function DemandasView({
                             <div>
                               <Link
                                 className="demandas-a16-context-link"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
                                 href={
                                   '/dashboard/quadro?board=' +
                                   encodeRouteValue(
@@ -1572,42 +1624,16 @@ export default function DemandasView({
 
                       <td>
                         {extraDemand ? (
-                          <select
+                          <span
                             className={
                               'demandas-a16-status ' +
                               statusCfg.className
                             }
-                            value={
-                              item.status
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              quickStatus(
-                                item.id,
-                                event.target
-                                  .value,
-                              )
-                            }
                           >
-                            {Object.entries(
-                              STATUS,
-                            ).map(
-                              ([
-                                key,
-                                config,
-                              ]) => (
-                                <option
-                                  key={key}
-                                  value={key}
-                                >
-                                  {
-                                    config.label
-                                  }
-                                </option>
-                              ),
-                            )}
-                          </select>
+                            {
+                              statusCfg.label
+                            }
+                          </span>
                         ) : (
                           <span
                             className={
@@ -1637,74 +1663,337 @@ export default function DemandasView({
                         )}
                       </td>
 
-                      <td>
-                        {item.is_pauta_card ? (
-                          <span
-                            className="badge bmut"
-                            title="Card mensal gerenciado pela Pauta"
-                          >
-                            Pauta
-                          </span>
-                        ) : (
-                          <div className="demandas-v9-row-actions">
-                            <button
-                              className={
-                                Boolean(
-                                  item.completed_at,
-                                )
-                                  ? 'work-item-reopen-action demandas-v9-complete-action'
-                                  : 'work-item-complete-action demandas-v9-complete-action'
-                              }
-                              type="button"
-                              title={
-                                Boolean(
-                                  item.completed_at,
-                                )
-                                  ? 'Reabrir demanda'
-                                  : 'Marcar como Concluído'
-                              }
-                              onClick={() =>
-                                toggleDemandCompletion(
-                                  item,
-                                )
-                              }
-                              disabled={loading}
-                            >
-                              <i
-                                className={
-                                  Boolean(
-                                    item.completed_at,
-                                  )
-                                    ? 'ti ti-refresh'
-                                    : 'ti ti-circle-check'
-                                }
-                              />
-
-                              {Boolean(
-                                item.completed_at,
-                              )
-                                ? 'Reabrir demanda'
-                                : 'Marcar como Concluído'}
-                            </button>
-
-                            <button
-                              className="icon-btn danger"
-                              type="button"
-                              title="Arquivar"
-                              onClick={() => archive(item.id)}
-                              disabled={loading}
-                            >
-                              <i className="ti ti-archive" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
                     </tr>
                   )
                 },
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selectedDemand && (
+        <div
+          className="modal-ov"
+          onClick={() =>
+            setSelectedDemand(null)
+          }
+        >
+          <div
+            className="modal context-modal-wide demandas-v92-detail-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="modal-head">
+              <div>
+                <div className="modal-title">
+                  {selectedDemand.title}
+                </div>
+
+                <div className="modal-sub">
+                  {demandOriginLabel(
+                    selectedDemand,
+                  )}
+                  {' · '}
+                  {selectedDemand.client
+                    ?.name ||
+                    'Interno Ampy'}
+                </div>
+              </div>
+
+              <button
+                className="mclose"
+                type="button"
+                onClick={() =>
+                  setSelectedDemand(
+                    null,
+                  )
+                }
+              >
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="demandas-v92-detail-grid">
+                <div>
+                  <span>Cliente</span>
+                  <strong>
+                    {selectedDemand
+                      .client?.name ||
+                      'Interno Ampy'}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Serviço</span>
+                  <strong>
+                    {selectedDemand
+                      .client_service
+                      ?.service?.name ||
+                      'Sem serviço'}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Responsável</span>
+                  <TeamMemberIdentity
+                    member={
+                      selectedDemand
+                        .responsible
+                    }
+                  />
+                </div>
+
+                <div>
+                  <span>Prioridade</span>
+                  <strong>
+                    {PRIORITY_LABEL[
+                      selectedDemand
+                        .priority
+                    ] || 'Normal'}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Início</span>
+                  <strong>
+                    {fmtDate(
+                      selectedDemand
+                        .internal_deadline,
+                    )}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Prazo final</span>
+                  <strong>
+                    {fmtDate(
+                      selectedDemand
+                        .final_deadline,
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="demandas-v92-detail-status">
+                <span>Status operacional</span>
+
+                {isExtraDemand(
+                  selectedDemand,
+                ) ? (
+                  <select
+                    className={
+                      'demandas-a16-status ' +
+                      (
+                        STATUS[
+                          selectedDemand
+                            .status
+                        ] ||
+                        STATUS.not_started
+                      ).className
+                    }
+                    value={
+                      selectedDemand.status ||
+                      'not_started'
+                    }
+                    onChange={(event) =>
+                      quickStatus(
+                        selectedDemand.id,
+                        event.target.value,
+                      )
+                    }
+                    disabled={loading}
+                  >
+                    {[
+                      'not_started',
+                      'in_progress',
+                      'waiting',
+                      'blocked',
+                      'in_review',
+                      'awaiting_approval',
+                      'scheduled',
+                      'cancelled',
+                    ].map((key) => (
+                      <option
+                        key={key}
+                        value={key}
+                      >
+                        {
+                          STATUS[key]
+                            .label
+                        }
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span
+                    className={
+                      'demandas-a23-context-status ' +
+                      demandContextStatus(
+                        selectedDemand,
+                      ).className
+                    }
+                    style={
+                      demandContextStatus(
+                        selectedDemand,
+                      ).color
+                        ? {
+                            color:
+                              demandContextStatus(
+                                selectedDemand,
+                              ).color,
+                            borderColor:
+                              demandContextStatus(
+                                selectedDemand,
+                              ).color,
+                          }
+                        : undefined
+                    }
+                  >
+                    {
+                      demandContextStatus(
+                        selectedDemand,
+                      ).label
+                    }
+                  </span>
+                )}
+              </div>
+
+              {selectedDemand.completed_at && (
+                <div className="demandas-v92-completion">
+                  <i className="ti ti-circle-check" />
+
+                  <span>
+                    Concluída em{' '}
+                    {fmtDate(
+                      selectedDemand
+                        .completed_at,
+                    )}
+
+                    {selectedDemand
+                      .completion_responsible
+                      ?.display_name ||
+                    selectedDemand
+                      .completion_responsible
+                      ?.full_name
+                      ? ' · ' +
+                        (
+                          selectedDemand
+                            .completion_responsible
+                            ?.display_name ||
+                          selectedDemand
+                            .completion_responsible
+                            ?.full_name
+                        )
+                      : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-foot demandas-v92-detail-actions">
+              {!isExtraDemand(
+                selectedDemand,
+              ) && (
+                <Link
+                  className="bsec"
+                  href={demandOriginHref(
+                    selectedDemand,
+                  )}
+                >
+                  <i className="ti ti-external-link" />
+                  Abrir na origem
+                </Link>
+              )}
+
+              {!selectedDemand
+                .is_pauta_card &&
+                !isProjectDemand(
+                  selectedDemand,
+                ) && (
+                  <>
+                    <button
+                      className={
+                        Boolean(
+                          selectedDemand
+                            .completed_at,
+                        )
+                          ? 'work-item-reopen-action'
+                          : 'work-item-complete-action'
+                      }
+                      type="button"
+                      onClick={() =>
+                        toggleDemandCompletion(
+                          selectedDemand,
+                        )
+                      }
+                      disabled={loading}
+                    >
+                      <i
+                        className={
+                          Boolean(
+                            selectedDemand
+                              .completed_at,
+                          )
+                            ? 'ti ti-refresh'
+                            : 'ti ti-circle-check'
+                        }
+                      />
+
+                      {Boolean(
+                        selectedDemand
+                          .completed_at,
+                      )
+                        ? 'Reabrir demanda'
+                        : 'Marcar como Concluído'}
+                    </button>
+
+                    <button
+                      className="bsec danger-button"
+                      type="button"
+                      onClick={() =>
+                        archive(
+                          selectedDemand.id,
+                        )
+                      }
+                      disabled={loading}
+                    >
+                      <i className="ti ti-archive" />
+                      Arquivar
+                    </button>
+                  </>
+                )}
+
+              {selectedDemand
+                .is_pauta_card && (
+                <span className="badge bmut">
+                  Gerenciada pela Pauta
+                </span>
+              )}
+
+              {isProjectDemand(
+                selectedDemand,
+              ) && (
+                <span className="badge bmut">
+                  Conclusão derivada pelas etapas
+                </span>
+              )}
+
+              <button
+                className="bsec"
+                type="button"
+                onClick={() =>
+                  setSelectedDemand(
+                    null,
+                  )
+                }
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

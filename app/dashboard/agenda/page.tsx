@@ -167,9 +167,18 @@ export default async function AgendaPage({
         ? String(searchParams.type)
         : 'reu_a',
     pautaId:
-      String(
-        searchParams.pauta || '',
-      ),
+      [
+        'legacy',
+        'not_applicable',
+      ].includes(
+        String(
+          searchParams.pauta || '',
+        ),
+      )
+        ? ''
+        : String(
+            searchParams.pauta || '',
+          ),
     returnUrl:
       safeReturnUrl,
     date:
@@ -314,13 +323,19 @@ export default async function AgendaPage({
   const pautas =
     pautasResult.data || []
 
-  const requestedPautaKey =
+  const requestedPautaKeyRaw =
     String(
       searchParams.pauta || '',
     )
 
+  const requestedPautaKey =
+    requestedPautaKeyRaw === 'legacy'
+      ? 'not_applicable'
+      : requestedPautaKeyRaw
+
   const activePautaKey =
-    requestedPautaKey === 'legacy' ||
+    requestedPautaKey ===
+      'not_applicable' ||
     requestedPautaKey === 'all'
       ? requestedPautaKey
       : pautas.some(

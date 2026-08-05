@@ -204,9 +204,9 @@ function eventType(
     EVENT_TYPES.find(
       ([id]) => id === type,
     ) || [
-      type || 'legacy',
-      'LEGADO',
-      'Agenda existente',
+      type || 'general',
+      'GERAL',
+      'Demanda geral',
       '#64748B',
       '#FFFFFF',
     ]
@@ -635,6 +635,33 @@ export default function AgendaView({
   const [pautaFilter, setPautaFilter] = useState(
     activePautaKey || 'all',
   )
+
+  useEffect(() => {
+    const url =
+      new URL(
+        window.location.href,
+      )
+
+    if (
+      url.searchParams.get(
+        'pauta',
+      ) !== 'legacy'
+    ) {
+      return
+    }
+
+    url.searchParams.set(
+      'pauta',
+      'not_applicable',
+    )
+
+    window.history.replaceState(
+      {},
+      '',
+      url.toString(),
+    )
+  }, [])
+
   const [showHoliday, setShowHoliday] = useState(true)
   const [showOpportunities, setShowOpportunities] = useState(true)
   const [showDeadlines, setShowDeadlines] = useState(true)
@@ -664,7 +691,8 @@ export default function AgendaView({
     setSelectedPautaId,
   ] = useState(
     activePautaKey !== 'all' &&
-    activePautaKey !== 'legacy'
+    activePautaKey !==
+      'not_applicable'
       ? activePautaKey
       : '',
   )
@@ -765,7 +793,8 @@ export default function AgendaView({
           (
             pautaFilter === 'all' ||
             (
-              pautaFilter === 'legacy'
+              pautaFilter ===
+                'not_applicable'
                 ? !event.pauta_id
                 : event.pauta_id ===
                   pautaFilter
@@ -807,7 +836,8 @@ export default function AgendaView({
       (pauta: any) =>
         pautaFilter === 'all' ||
         (
-          pautaFilter !== 'legacy' &&
+          pautaFilter !==
+            'not_applicable' &&
           pauta.id === pautaFilter
         ),
     )
@@ -873,7 +903,8 @@ export default function AgendaView({
               (
                 pautaFilter === 'all' ||
                 (
-                  pautaFilter === 'legacy'
+                  pautaFilter ===
+                    'not_applicable'
                     ? !deadline.pauta_id
                     : deadline.pauta_id === pautaFilter
                 )
@@ -971,7 +1002,8 @@ export default function AgendaView({
       options?.pautaId ||
       (
         pautaFilter !== 'all' &&
-        pautaFilter !== 'legacy'
+        pautaFilter !==
+          'not_applicable'
           ? pautaFilter
           : ''
       ),
@@ -2047,7 +2079,7 @@ export default function AgendaView({
       <Link
         key={milestone.id}
         href={
-          '/dashboard/quadro?board=' +
+          '/dashboard/pautas?board=' +
           milestone.board_id +
           '&pauta=' +
           milestone.pauta_id
@@ -2116,23 +2148,27 @@ export default function AgendaView({
     deadline: DemandDeadline,
   ) {
     const href =
+      deadline.pauta_id &&
       deadline.board_id
         ? (
-            '/dashboard/quadro?board=' +
+            '/dashboard/pautas?board=' +
             deadline.board_id +
+            '&pauta=' +
+            deadline.pauta_id +
             '&item=' +
-            deadline.work_item_id +
-            (
-              deadline.pauta_id
-                ? '&pauta=' +
-                  deadline.pauta_id
-                : ''
-            )
-          )
-        : (
-            '/dashboard/demandas#demanda-' +
             deadline.work_item_id
           )
+        : deadline.board_id
+          ? (
+              '/dashboard/quadro?board=' +
+              deadline.board_id +
+              '&item=' +
+              deadline.work_item_id
+            )
+          : (
+              '/dashboard/demandas#demanda-' +
+              deadline.work_item_id
+            )
 
     return (
       <Link
@@ -2271,8 +2307,8 @@ export default function AgendaView({
             ),
           )}
 
-          <option value="legacy">
-            Sem Pauta / Legado
+          <option value="not_applicable">
+            Não Aplicável
           </option>
         </select>
 
@@ -2322,14 +2358,14 @@ export default function AgendaView({
           <Link
             className="bsec"
             href={
-              '/dashboard/quadro?board=' +
+              '/dashboard/pautas?board=' +
               activePauta.board_id +
               '&pauta=' +
               activePauta.id
             }
           >
             <i className="ti ti-layout-kanban" />
-            Abrir no Quadro
+            Abrir Pauta
           </Link>
         </div>
       )}
@@ -2439,7 +2475,7 @@ export default function AgendaView({
                     key={milestone.id}
                     className="agenda-pauta-side-item"
                     href={
-                      '/dashboard/quadro?board=' +
+                      '/dashboard/pautas?board=' +
                       milestone.board_id +
                       '&pauta=' +
                       milestone.pauta_id
@@ -2493,23 +2529,27 @@ export default function AgendaView({
                   deadline,
                 ) => {
                   const href =
+                    deadline.pauta_id &&
                     deadline.board_id
                       ? (
-                          '/dashboard/quadro?board=' +
+                          '/dashboard/pautas?board=' +
                           deadline.board_id +
+                          '&pauta=' +
+                          deadline.pauta_id +
                           '&item=' +
-                          deadline.work_item_id +
-                          (
-                            deadline.pauta_id
-                              ? '&pauta=' +
-                                deadline.pauta_id
-                              : ''
-                          )
-                        )
-                      : (
-                          '/dashboard/demandas#demanda-' +
                           deadline.work_item_id
                         )
+                      : deadline.board_id
+                        ? (
+                            '/dashboard/quadro?board=' +
+                            deadline.board_id +
+                            '&item=' +
+                            deadline.work_item_id
+                          )
+                        : (
+                            '/dashboard/demandas#demanda-' +
+                            deadline.work_item_id
+                          )
 
                   return (
                     <Link
@@ -2960,7 +3000,7 @@ export default function AgendaView({
                       }}
                     >
                       <option value="">
-                        Sem Pauta / Legado
+                        Não Aplicável
                       </option>
 
                       {safePautas.map(

@@ -25,7 +25,7 @@ async function hasTotalAccess() {
 
 export default async function QuadroPage({ searchParams }: { searchParams: { board?: string; pauta?: string; item?: string } }) {
   noStore()
-  if (searchParams.pauta && searchParams.pauta !== 'legacy') {
+  if (searchParams.pauta) {
     const params = new URLSearchParams()
     if (searchParams.board) params.set('board',searchParams.board)
     if (searchParams.pauta) params.set('pauta',searchParams.pauta)
@@ -128,7 +128,7 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
     boards={boards}
     activeBoardId={activeBoardId}
     pautas={[]}
-    activePautaKey="legacy"
+    activePautaKey=""
     activePauta={null}
     initialItemId={String(searchParams.item || '')}
     columns={columnsResult.data || []}

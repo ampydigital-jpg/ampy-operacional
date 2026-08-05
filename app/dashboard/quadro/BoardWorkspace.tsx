@@ -385,7 +385,7 @@ export default function BoardWorkspace({
   boards = [],
   activeBoardId = '',
   pautas = [],
-  activePautaKey = 'legacy',
+  activePautaKey = '',
   activePauta = null,
   pautaManagement = null,
   showArchived = false,
@@ -442,6 +442,9 @@ export default function BoardWorkspace({
   >(null)
 
   const [editing, setEditing] =
+    useState<any | null>(null)
+
+  const [detailItem, setDetailItem] =
     useState<any | null>(null)
 
   const [
@@ -539,8 +542,10 @@ export default function BoardWorkspace({
   const readOnlyPautaView =
     activePautaKey === 'all'
 
-  const legacyPautaView =
-    activePautaKey === 'legacy'
+  const missingPautaView =
+    isPautaWorkspace &&
+    !activePauta &&
+    !readOnlyPautaView
 
   useEffect(() => {
     setPautaModalOpen(false)
@@ -588,8 +593,7 @@ export default function BoardWorkspace({
     useMemo(
       () =>
         isPautaWorkspace &&
-        activePauta &&
-        !legacyPautaView
+        activePauta
           ? clients.filter(
               (client: any) =>
                 pautaMemberClientIds.has(
@@ -601,7 +605,6 @@ export default function BoardWorkspace({
         activePauta,
         clients,
         isPautaWorkspace,
-        legacyPautaView,
         pautaMemberClientIds,
       ],
     )
@@ -800,7 +803,6 @@ export default function BoardWorkspace({
 
     if (
       isPautaWorkspace &&
-      !legacyPautaView &&
       !activePauta
     ) {
       setError(
@@ -829,7 +831,13 @@ export default function BoardWorkspace({
     setDemandModal('create')
   }
 
+  function openDemandDetail(item: any) {
+    setDetailItem(item)
+    setError('')
+  }
+
   function openEditDemand(item: any) {
+    setDetailItem(null)
     setEditing(item)
     setSelectedColumnId(
       item.board_column_id || '',
@@ -880,8 +888,7 @@ export default function BoardWorkspace({
     const creatingInsidePauta =
       demandModal === 'create' &&
       isPautaWorkspace &&
-      Boolean(activePauta) &&
-      !legacyPautaView
+      Boolean(activePauta)
 
     let result: any
 
@@ -925,8 +932,10 @@ export default function BoardWorkspace({
     window.location.reload()
   }
 
-  async function archiveDemand() {
-    if (!editing) return
+  async function archiveDemand(
+    item: any = editing,
+  ) {
+    if (!item) return
 
     const confirmed = confirm(
       'Arquivar esta demanda?',
@@ -939,7 +948,7 @@ export default function BoardWorkspace({
 
     const result =
       await deleteWorkItemAction(
-        editing.id,
+        item.id,
       )
 
     if ('error' in result) {
@@ -1643,23 +1652,19 @@ export default function BoardWorkspace({
                 ),
               )}
 
-              {showArchived &&
-                pautas.length === 0 && (
-                <option value="legacy">
-                  Nenhuma Pauta arquivada
+              {pautas.length === 0 && (
+                <option value="">
+                  {showArchived
+                    ? 'Nenhuma Pauta arquivada'
+                    : 'Nenhuma Pauta ativa'}
                 </option>
               )}
 
-              {!showArchived && (
-                <>
-                  <option value="legacy">
-                    Sem Pauta / Legado
-                  </option>
-
-                  <option value="all">
-                    Todas as Pautas
-                  </option>
-                </>
+              {!showArchived &&
+                pautas.length > 0 && (
+                <option value="all">
+                  Todas as Pautas
+                </option>
               )}
             </select>
           </div>
@@ -1916,20 +1921,6 @@ export default function BoardWorkspace({
               </div>
             )}
 
-            {isPautaWorkspace && legacyPautaView && (
-              <div className="board-pauta-summary legacy">
-                <span>
-                  <i className="ti ti-archive" />
-
-                  Sem Pauta / Legado
-                </span>
-
-                <small>
-                  Registros anteriores preservados fora da operação mensal.
-                </small>
-              </div>
-            )}
-
             {isPautaWorkspace && readOnlyPautaView && (
               <div className="board-pauta-summary readonly">
                 <span>
@@ -2037,6 +2028,28 @@ export default function BoardWorkspace({
           </div>
           <div className="empty-sub">
             Crie o primeiro Quadro para iniciar.
+          </div>
+        </div>
+      ) : missingPautaView ? (
+        <div className="empty">
+          <i
+            className={
+              showArchived
+                ? 'ti ti-archive-off'
+                : 'ti ti-calendar-off'
+            }
+          />
+
+          <div className="empty-title">
+            {showArchived
+              ? 'Nenhuma Pauta arquivada'
+              : 'Nenhuma Pauta ativa'}
+          </div>
+
+          <div className="empty-sub">
+            {showArchived
+              ? 'As Pautas arquivadas aparecerão aqui.'
+              : 'Abra uma Pauta para iniciar a operação mensal.'}
           </div>
         </div>
       ) : (
@@ -2159,8 +2172,7 @@ export default function BoardWorkspace({
                     </select>
 
                     {!isPautaWorkspace &&
-                      !readOnlyPautaView &&
-                      (legacyPautaView || activePautaEditable) && (
+                      !readOnlyPautaView && (
                       <button
                         className="board-a14-column-icon"
                         type="button"
@@ -2300,26 +2312,17 @@ export default function BoardWorkspace({
                                 setDragCardId(item.id)
                               }}
                               onDragEnd={() => setDragCardId(null)}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => openDemandDetail(item)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault()
+                                  openDemandDetail(item)
+                                }
+                              }}
                             >
                               <h3>{item.title}</h3>
-                              <div className="board-v9-simple-actions">
-                                {!readOnlyPautaView && (
-                                  <button
-                                    type="button"
-                                    className="work-item-complete-action board-v9-simple-complete"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      void markCardCompleted(
-                                        item,
-                                      )
-                                    }}
-                                    disabled={loading}
-                                  >
-                                    <i className="ti ti-circle-check" />
-                                    Marcar como Concluído
-                                  </button>
-                                )}
-                              </div>
                             </article>
                           )
                         }
@@ -2366,13 +2369,13 @@ export default function BoardWorkspace({
                                 null,
                               )
                             }
-                            onClick={() => {
-                              if (
-                                !readOnlyPautaView
-                              ) {
-                                openEditDemand(
-                                  item,
-                                )
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openDemandDetail(item)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                openDemandDetail(item)
                               }
                             }}
                           >
@@ -2434,32 +2437,24 @@ export default function BoardWorkspace({
                               )}
                             </div>
 
-                            <div className="board-pauta-card-context">
-                              {item.pauta ? (
-                                <>
-                                  <span className="board-pauta-card-badge">
-                                    <i className="ti ti-calendar-stats" />
+                            {item.pauta && (
+                              <div className="board-pauta-card-context">
+                                <span className="board-pauta-card-badge">
+                                  <i className="ti ti-calendar-stats" />
 
-                                    PAUTA ·{' '}
-                                    {formatPautaReference(
-                                      item.pauta.reference_month,
-                                    )}
-                                  </span>
-
-                                  {item.is_pauta_card && (
-                                    <span className="board-pauta-monthly-card">
-                                      Card mensal
-                                    </span>
+                                  PAUTA ·{' '}
+                                  {formatPautaReference(
+                                    item.pauta.reference_month,
                                   )}
-                                </>
-                              ) : (
-                                <span className="board-pauta-card-legacy">
-                                  <i className="ti ti-archive" />
-
-                                  SEM PAUTA
                                 </span>
-                              )}
-                            </div>
+
+                                {item.is_pauta_card && (
+                                  <span className="board-pauta-monthly-card">
+                                    Card mensal
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             <h3>
                               {item.title}
@@ -2563,41 +2558,6 @@ export default function BoardWorkspace({
                               </div>
                             </div>
 
-                            {!readOnlyPautaView && (
-                              <div className="board-v9-card-actions">
-                                <button
-                                  className="board-v9-edit-inline"
-                                  type="button"
-                                  title="Editar demanda"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    openEditDemand(
-                                      item,
-                                    )
-                                  }}
-                                >
-                                  <i className="ti ti-edit" />
-                                  Editar
-                                </button>
-
-                                <button
-                                  className="work-item-complete-action board-v9-complete-inline"
-                                  type="button"
-                                  title="Marcar como Concluído"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    void markCardCompleted(
-                                      item,
-                                    )
-                                  }}
-                                  disabled={loading}
-                                >
-                                  <i className="ti ti-circle-check" />
-                                  Marcar como Concluído
-                                </button>
-                              </div>
-                            )}
-
                           </article>
                         )
                       },
@@ -2624,6 +2584,103 @@ export default function BoardWorkspace({
               Adicionar coluna
             </button>
           )}
+        </div>
+      )}
+
+      {detailItem && (
+        <div className="modal-ov" onClick={() => setDetailItem(null)}>
+          <div
+            className="modal context-modal-wide work-item-detail-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-head">
+              <div>
+                <div className="modal-title">Detalhes da demanda</div>
+                <div className="modal-sub">
+                  As ações ficam disponíveis somente dentro do card aberto.
+                </div>
+              </div>
+              <button className="mclose" type="button" onClick={() => setDetailItem(null)}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            <div className="modal-body work-item-detail-body">
+              <div className="work-item-detail-title">
+                <span>{detailItem.client?.name || 'Interno Ampy'}</span>
+                <h2>{detailItem.title}</h2>
+              </div>
+
+              <div className="work-item-detail-grid">
+                <div><span>Pauta</span><strong>{detailItem.pauta?.name || 'Não vinculada'}</strong></div>
+                <div><span>Coluna</span><strong>{boardColumns.find((column: any) => column.id === detailItem.board_column_id)?.name || 'Sem coluna'}</strong></div>
+                <div><span>Início</span><strong>{formatDateFull(detailItem.internal_deadline)}</strong></div>
+                <div><span>Data final</span><strong>{formatDateFull(detailItem.final_deadline)}</strong></div>
+                <div><span>Prioridade</span><strong>{PRIORITY_LABEL[detailItem.priority] || 'Normal'}</strong></div>
+                <div><span>Responsável</span><strong>{detailItem.responsible?.display_name || detailItem.responsible?.full_name || 'Sem responsável'}</strong></div>
+              </div>
+
+              {(detailItem.notes || detailItem.description) && (
+                <div className="work-item-detail-notes">
+                  <span>Observações</span>
+                  <p>{detailItem.notes || detailItem.description}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-foot work-item-detail-actions">
+              {!readOnlyPautaView && !detailItem.is_pauta_card && (
+                <button
+                  className="bsec danger-button"
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    const item = detailItem
+                    setDetailItem(null)
+                    void archiveDemand(item)
+                  }}
+                >
+                  <i className="ti ti-archive" />
+                  Arquivar
+                </button>
+              )}
+
+              {!readOnlyPautaView && (
+                <button
+                  className="work-item-complete-action"
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    const item = detailItem
+                    setDetailItem(null)
+                    void markCardCompleted(item)
+                  }}
+                >
+                  <i className="ti ti-circle-check" />
+                  Marcar como Concluído
+                </button>
+              )}
+
+              {!readOnlyPautaView && (
+                <button
+                  className="bsec"
+                  type="button"
+                  onClick={() => {
+                    const item = detailItem
+                    setDetailItem(null)
+                    openEditDemand(item)
+                  }}
+                >
+                  <i className="ti ti-pencil" />
+                  Editar
+                </button>
+              )}
+
+              <button className="bsec" type="button" onClick={() => setDetailItem(null)}>
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2842,7 +2899,6 @@ export default function BoardWorkspace({
                         Boolean(
                           isPautaWorkspace &&
                           activePauta &&
-                          !legacyPautaView &&
                           demandModal === 'create',
                         )
                       }
@@ -2855,7 +2911,6 @@ export default function BoardWorkspace({
                       <option value="">
                         {isPautaWorkspace &&
                         activePauta &&
-                        !legacyPautaView &&
                         demandModal === 'create'
                           ? 'Selecione o serviço ativo'
                           : 'Sem serviço específico'}
@@ -3034,7 +3089,9 @@ export default function BoardWorkspace({
                   <button
                     className="bsec danger-button"
                     type="button"
-                    onClick={archiveDemand}
+                    onClick={() =>
+                      void archiveDemand()
+                    }
                     disabled={loading}
                   >
                     Arquivar

@@ -141,11 +141,17 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
   const pautas = pautasResult.data || []
   const requestedPauta = String(searchParams.pauta || '')
   const defaultPauta = pautas.find((pauta: any) => pauta.lifecycle_status === 'open') || pautas.find((pauta: any) => pauta.lifecycle_status === 'draft') || pautas[0] || null
-  const activePautaKey = requestedPauta === 'all' || requestedPauta === 'legacy'
-    ? requestedPauta
-    : pautas.some((pauta: any) => pauta.id === requestedPauta)
-      ? requestedPauta
-      : String(defaultPauta?.id || 'legacy')
+  const activePautaKey =
+    requestedPauta === 'all'
+      ? 'all'
+      : pautas.some(
+          (pauta: any) =>
+            pauta.id === requestedPauta,
+        )
+        ? requestedPauta
+        : String(
+            defaultPauta?.id || '',
+          )
   const activePauta = pautas.find((pauta: any) => pauta.id === activePautaKey) || null
 
   let pautaManagementResult: any = { data: null, error: null }
@@ -153,21 +159,56 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     pautaManagementResult = await supabase.rpc('get_pauta_management_snapshot',{p_pauta_id:activePauta.id})
   }
 
-  if (activeBoardId) {
-    let demandQuery = supabase.from('work_items')
-      .select('id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,pauta_id,is_pauta_card,pauta_card_id,completed_at,programming_covered_until')
-      .eq('board_id',activeBoardId)
-      .not('status','in','(archived,cancelled)')
+  if (
+    activeBoardId &&
+    activePautaKey
+  ) {
+    let demandQuery =
+      supabase
+        .from('work_items')
+        .select(
+          'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,pauta_id,is_pauta_card,pauta_card_id,completed_at,programming_covered_until',
+        )
+        .eq(
+          'board_id',
+          activeBoardId,
+        )
+        .not(
+          'status',
+          'in',
+          '(archived,cancelled)',
+        )
 
-    if (activePautaKey === 'legacy') {
-      demandQuery = demandQuery.is('pauta_id',null)
-    } else if (activePautaKey === 'all') {
-      demandQuery = demandQuery.eq('is_pauta_card',true)
+    if (
+      activePautaKey === 'all'
+    ) {
+      demandQuery =
+        demandQuery.eq(
+          'is_pauta_card',
+          true,
+        )
     } else {
-      demandQuery = demandQuery.eq('pauta_id',activePautaKey).eq('is_pauta_card',true)
+      demandQuery =
+        demandQuery
+          .eq(
+            'pauta_id',
+            activePautaKey,
+          )
+          .eq(
+            'is_pauta_card',
+            true,
+          )
     }
 
-    demandsResult = await demandQuery.order('created_at',{ascending:false}).limit(2000)
+    demandsResult =
+      await demandQuery
+        .order(
+          'created_at',
+          {
+            ascending: false,
+          },
+        )
+        .limit(2000)
   }
 
   const demandRows = demandsResult.data || []
