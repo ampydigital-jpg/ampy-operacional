@@ -109,6 +109,7 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
   let distributionColumnsResult: any = { data: [], error: null }
   let demandsResult: any = { data: [], error: null }
   let scheduleRequirementsResult: any = { data: [], error: null }
+  let assignmentsResult: any = { data: [], error: null }
 
   if (activeBoardId) {
     let pautaQuery = supabase
@@ -214,19 +215,45 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
   const demandRows = demandsResult.data || []
   const demandIds = demandRows.map((item: any) => item.id).filter(Boolean)
   if (demandIds.length) {
-    scheduleRequirementsResult = await supabase.from('work_item_schedule_requirements').select('id,work_item_id,requirement_type,status,calendar_event_id,calendar_type,scheduled_at,confirmed_at,completed_at,created_at,updated_at,calendar_event:calendar_events(id,type,starts_at,ends_at,confirmed,location,responsible_id)').in('work_item_id',demandIds)
+    const [requirementsResult, activeAssignmentsResult] = await Promise.all([
+      supabase.from('work_item_schedule_requirements').select('id,work_item_id,requirement_type,status,calendar_event_id,calendar_type,scheduled_at,confirmed_at,completed_at,created_at,updated_at,calendar_event:calendar_events(id,type,starts_at,ends_at,confirmed,location,responsible_id)').in('work_item_id',demandIds),
+      supabase.from('work_item_board_assignments').select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,position,assigned_at,completed_at,metadata').in('work_item_id',demandIds).eq('assignment_status','active').order('assigned_at'),
+    ])
+
+    scheduleRequirementsResult = requirementsResult
+    assignmentsResult = activeAssignmentsResult
   }
 
   const clientsById = mapById(clients)
   const profilesById = mapById(profiles)
   const servicesById = mapById(services)
   const pautasById = mapById(pautas)
+  const distributionBoardsById = mapById(distributionBoards)
+  const distributionColumnsById = mapById(distributionColumnsResult.data || [])
   const requirementsByItem = new Map<string, any[]>()
+  const assignmentsByItem = new Map<string, any[]>()
+
   for (const requirement of scheduleRequirementsResult.data || []) {
     const calendarEvent = Array.isArray(requirement.calendar_event) ? requirement.calendar_event[0] || null : requirement.calendar_event || null
     const current = requirementsByItem.get(requirement.work_item_id) || []
     current.push({...requirement,calendar_event:calendarEvent})
     requirementsByItem.set(requirement.work_item_id,current)
+  }
+
+  for (const assignment of assignmentsResult.data || []) {
+    const board = distributionBoardsById.get(assignment.board_id) || null
+    const boardColumn = distributionColumnsById.get(assignment.board_column_id) || null
+    const current = assignmentsByItem.get(assignment.work_item_id) || []
+
+    current.push({
+      ...assignment,
+      board,
+      board_column: boardColumn,
+      board_name: board?.name || 'Quadro',
+      board_column_name: boardColumn?.name || 'Sem coluna',
+    })
+
+    assignmentsByItem.set(assignment.work_item_id,current)
   }
 
   const demands = demandRows.map((item: any) => ({
@@ -235,6 +262,7 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     responsible: item.responsible_id ? profilesById.get(item.responsible_id) || null : null,
     pauta: item.pauta_id ? pautasById.get(item.pauta_id) || null : null,
     schedule_requirements: requirementsByItem.get(item.id) || [],
+    assignments: assignmentsByItem.get(item.id) || [],
   }))
 
   const clientServices = (clientServicesResult.data || []).map((item: any) => ({
@@ -250,6 +278,7 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     columnsResult.error ? `Colunas: ${columnsResult.error.message}` : null,
     distributionColumnsResult.error ? `Colunas de destino: ${distributionColumnsResult.error.message}` : null,
     demandsResult.error ? `Demandas: ${demandsResult.error.message}` : null,
+    assignmentsResult.error ? `Distribuições: ${assignmentsResult.error.message}` : null,
     scheduleRequirementsResult.error ? `Agenda operacional: ${scheduleRequirementsResult.error.message}` : null,
     clientsResult.error ? `Clientes: ${clientsResult.error.message}` : null,
     profilesResult.error ? `Responsáveis: ${profilesResult.error.message}` : null,

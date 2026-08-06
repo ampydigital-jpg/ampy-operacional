@@ -5381,7 +5381,7 @@ export async function removePautaDemandsBatchAction(
 
   const { supabase } = await getCurrentProfile()
   const { data, error } = await supabase.rpc(
-    'remove_pauta_demands_batch',
+    'remove_pauta_extra_demands_v92c',
     {
       p_pauta_id: id,
       p_work_item_ids: selected,

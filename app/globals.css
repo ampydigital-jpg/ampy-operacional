@@ -15056,3 +15056,70 @@ small {
     justify-content: center;
   }
 }
+
+/* =========================================================
+   AMPY-V9.2C-A2.2 — GERENCIAR PAUTA FUNCIONAL
+   ========================================================= */
+
+.pauta-v92c-confirm-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.pauta-v92c-confirm-panel > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.pauta-v92c-confirm-panel > div:first-child span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.pauta-v92c-confirm-actions,
+.pauta-v92c-section-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pauta-v92c-selection-note {
+  margin-top: 14px;
+}
+
+.pauta-v92c-demand-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pauta-v92c-kind {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pauta-v92c-kind[data-kind='extra'] {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+@media (max-width: 900px) {
+  .pauta-v92c-confirm-actions,
+  .pauta-v92c-section-foot {
+    justify-content: stretch;
+  }
+
+  .pauta-v92c-confirm-actions > button,
+  .pauta-v92c-section-foot > button {
+    width: 100%;
+  }
+}

@@ -3170,6 +3170,7 @@ export default function BoardWorkspace({
             setPautaManagementOpen(false)
           }
           snapshot={pautaManagement}
+          pautaCards={items}
           clients={clients}
           profiles={profiles}
           clientServices={clientServices}
