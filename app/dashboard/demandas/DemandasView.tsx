@@ -281,24 +281,44 @@ function demandOriginHref(
     ? item.assignments.filter((assignment: any) => assignment?.assignment_status !== 'removed')
     : []
 
-  if (assignments.length > 0) {
-    const assignment = assignments[0]
+  const pautaBoardId =
+    item?.pauta?.board_id ||
+    item?.board_id ||
+    ''
+
+  if (
+    item?.pauta_id &&
+    pautaBoardId
+  ) {
     return (
-      '/dashboard/quadro?board=' +
-      encodeRouteValue(assignment.board_id) +
+      '/dashboard/pautas?board=' +
+      encodeRouteValue(
+        pautaBoardId,
+      ) +
+      '&pauta=' +
+      encodeRouteValue(
+        item.pauta_id,
+      ) +
       '&item=' +
-      encodeRouteValue(item.id)
+      encodeRouteValue(
+        item.id,
+      )
     )
   }
 
-  if (item?.pauta_id && item?.board_id) {
+  if (assignments.length > 0) {
+    const assignment =
+      assignments[0]
+
     return (
-      '/dashboard/pautas?board=' +
-      encodeRouteValue(item.board_id) +
-      '&pauta=' +
-      encodeRouteValue(item.pauta_id) +
+      '/dashboard/quadro?board=' +
+      encodeRouteValue(
+        assignment.board_id,
+      ) +
       '&item=' +
-      encodeRouteValue(item.id)
+      encodeRouteValue(
+        item.id,
+      )
     )
   }
 
@@ -1465,8 +1485,7 @@ export default function DemandasView({
 
                       <td>
                         <div className="demandas-a23-origin-links">
-                          {item.pauta_id &&
-                            item.board_id && (
+                          {item.pauta_id && (
                             <div>
                               <Link
                                 className="demandas-a16-context-link"
@@ -1476,7 +1495,7 @@ export default function DemandasView({
                                 href={
                                   '/dashboard/pautas?board=' +
                                   encodeRouteValue(
-                                    item.board_id,
+                                    item.pauta?.board_id || item.board_id,
                                   ) +
                                   '&pauta=' +
                                   encodeRouteValue(
@@ -1559,7 +1578,8 @@ export default function DemandasView({
                             <span>Extra</span>
                           )}
 
-                          {!item.board_id &&
+                          {!item.pauta_id &&
+                            !item.board_id &&
                             !isProjectDemand(
                               item,
                             ) &&

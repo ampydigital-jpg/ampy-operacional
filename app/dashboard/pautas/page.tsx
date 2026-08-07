@@ -160,19 +160,27 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
     pautaManagementResult = await supabase.rpc('get_pauta_management_snapshot',{p_pauta_id:activePauta.id})
   }
 
+  const activePautaIds =
+    pautas
+      .map(
+        (pauta: any) =>
+          String(pauta.id || ''),
+      )
+      .filter(Boolean)
+
   if (
     activeBoardId &&
-    activePautaKey
+    activePautaKey &&
+    (
+      activePautaKey !== 'all' ||
+      activePautaIds.length > 0
+    )
   ) {
     let demandQuery =
       supabase
         .from('work_items')
         .select(
           'id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,pauta_id,is_pauta_card,pauta_card_id,completed_at,programming_covered_until',
-        )
-        .eq(
-          'board_id',
-          activeBoardId,
         )
         .not(
           'status',
@@ -184,10 +192,15 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
       activePautaKey === 'all'
     ) {
       demandQuery =
-        demandQuery.eq(
-          'is_pauta_card',
-          true,
-        )
+        demandQuery
+          .eq(
+            'is_pauta_card',
+            true,
+          )
+          .in(
+            'pauta_id',
+            activePautaIds,
+          )
     } else {
       demandQuery =
         demandQuery
