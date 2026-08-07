@@ -2264,47 +2264,6 @@ export default function BoardWorkspace({
                               'capture',
                           ) || null
 
-                        const simpleSectorCard =
-                          item.assignment_id &&
-                          item.assignment_metadata?.display_mode === 'simple'
-
-                        const assignmentCompleted =
-                          Boolean(
-                            item.assignment_completed_at,
-                          )
-
-                        if (simpleSectorCard) {
-                          return (
-                            <article
-                              key={item.id}
-                              className="board-v9-simple-card"
-                              id={'work-item-' + item.id}
-                              data-completed={assignmentCompleted ? 'true' : 'false'}
-                              draggable={!readOnlyPautaView}
-                              onDragStart={(event) => {
-                                if (readOnlyPautaView) {
-                                  event.preventDefault()
-                                  return
-                                }
-                                event.stopPropagation()
-                                setDragCardId(item.id)
-                              }}
-                              onDragEnd={() => setDragCardId(null)}
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => openDemandDetail(item)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault()
-                                  openDemandDetail(item)
-                                }
-                              }}
-                            >
-                              <h3>{item.title}</h3>
-                            </article>
-                          )
-                        }
-
                         return (
                           <article
                             key={item.id}

@@ -136,7 +136,7 @@ textarea.fi { resize: vertical; min-height: 80px; }
 .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* MODAL */
-.modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .modal { background: var(--s1); border: 0.5px solid var(--b2); border-radius: 14px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 .modal-head { padding: 18px 20px 14px; border-bottom: 0.5px solid var(--b1); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--s1); z-index: 1; }
 .modal-title { font-size: 14px; font-weight: 600; color: var(--w); letter-spacing: -0.2px; }
@@ -1811,7 +1811,7 @@ main,
 .ops-page,
 .clients-page {
   position: relative;
-  z-index: 3;
+  z-index: auto;
   background:
     radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.56), transparent 32%),
     radial-gradient(circle at 96% 12%, rgba(17, 18, 20, 0.035), transparent 28%),
