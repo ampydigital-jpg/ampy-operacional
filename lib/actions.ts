@@ -4902,6 +4902,19 @@ export async function createPautaDemandAction(
   const priority =
     value(formData, 'priority') || 'normal'
 
+  const title =
+    value(
+      formData,
+      'title',
+    )
+
+  if (!title) {
+    return {
+      error:
+        'Informe o título da demanda.',
+    }
+  }
+
   if (!pautaId) {
     return { error: 'Pauta inválida.' }
   }
@@ -4952,12 +4965,6 @@ export async function createPautaDemandAction(
         'Cliente não encontrado ou inativo.',
     }
   }
-
-  const title = boardPeriodTitle(
-    clientResult.data.name,
-    startDate,
-    finalDate,
-  )
 
   const { data, error } = await supabase.rpc(
     'create_pauta_demand',
@@ -5016,6 +5023,49 @@ export async function createPautaDemandAction(
 
   let warning = ''
 
+  const detailsResult =
+    await supabase
+      .from(
+        'work_items',
+      )
+      .update({
+        description:
+          nullable(
+            formData,
+            'description',
+          ),
+
+        briefing_link:
+          nullable(
+            formData,
+            'briefing_link',
+          ),
+
+        moodboard_link:
+          nullable(
+            formData,
+            'moodboard_link',
+          ),
+
+        reference_link:
+          nullable(
+            formData,
+            'reference_link',
+          ),
+      })
+      .eq(
+        'id',
+        workItemId,
+      )
+
+  if (
+    detailsResult.error
+  ) {
+    warning =
+      'A demanda foi criada, mas os detalhes complementares não puderam ser salvos: ' +
+      detailsResult.error.message
+  }
+
   if (cardTag) {
     const tagResult = await supabase
       .from('work_items')
@@ -5027,8 +5077,16 @@ export async function createPautaDemandAction(
 
     if (tagResult.error) {
       warning =
-        'A demanda foi criada, mas a tag não pôde ser salva: ' +
-        tagResult.error.message
+        [
+          warning,
+
+          'A tag não pôde ser salva: ' +
+            tagResult
+              .error
+              .message,
+        ]
+          .filter(Boolean)
+          .join(' ')
     }
   }
 
@@ -7000,6 +7058,19 @@ async function validateBoardPeriodDemand(
     value(formData, 'priority') ||
     'normal'
 
+  const title =
+    value(
+      formData,
+      'title',
+    )
+
+  if (!title) {
+    return {
+      error:
+        'Informe o título da demanda.',
+    } as const
+  }
+
   if (!boardId) {
     return {
       error:
@@ -7164,12 +7235,13 @@ async function validateBoardPeriodDemand(
 
   return {
     data: {
-      title: boardPeriodTitle(
-        clientResult.data.name,
-        startDate,
-        finalDate,
-      ),
-      description: null,
+      title,
+
+      description:
+        nullable(
+          formData,
+          'description',
+        ),
       type: 'Demanda do Quadro',
       status:
         [
@@ -7205,7 +7277,27 @@ async function validateBoardPeriodDemand(
           formData,
           'drive_link',
         ),
+
+      briefing_link:
+        nullable(
+          formData,
+          'briefing_link',
+        ),
+
+      moodboard_link:
+        nullable(
+          formData,
+          'moodboard_link',
+        ),
+
+      reference_link:
+        nullable(
+          formData,
+          'reference_link',
+        ),
+
       notes,
+
       blocked_reason: null,
     },
   } as const

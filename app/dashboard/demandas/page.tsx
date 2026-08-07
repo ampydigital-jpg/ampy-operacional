@@ -27,7 +27,7 @@ export default async function DemandasPage({ searchParams }: { searchParams: { n
     pautasResult,
     pautaCardsResult,
   ] = await Promise.all([
-    supabase.from('work_items').select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline,drive_link,notes,created_at,updated_at,closed_at,completed_at,completed_by,card_tag,card_tag_color').not('status','in','(archived,cancelled)').order('updated_at',{ascending:false}).limit(500),
+    supabase.from('work_items').select('id,title,description,type,origin,destino,status,priority,client_id,client_service_id,responsible_id,created_by,board_id,board_column_id,pauta_id,is_pauta_card,pauta_card_id,internal_deadline,final_deadline,drive_link,briefing_link,moodboard_link,reference_link,notes,created_at,updated_at,closed_at,completed_at,completed_by,card_tag,card_tag_color').not('status','in','(archived,cancelled)').order('updated_at',{ascending:false}).limit(500),
     supabase.from('work_item_board_assignments').select('id,work_item_id,board_id,board_column_id,operational_status,is_required,assignment_status,position,assigned_at,completed_at,completed_by,metadata').eq('assignment_status','active').order('assigned_at'),
     supabase.from('clients').select('id,name,segment,status').eq('status','active').order('name'),
     supabase.from('profiles').select('id,full_name,display_name,avatar_url,role,is_active').order('full_name'),

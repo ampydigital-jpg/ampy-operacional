@@ -681,18 +681,36 @@ export default function BoardWorkspace({
   ])
 
   const filtered = useMemo(() => {
+    const normalizeSearch =
+      (
+        value: unknown,
+      ) =>
+        String(
+          value || '',
+        )
+          .normalize(
+            'NFD',
+          )
+          .replace(
+            /[\u0300-\u036f]/g,
+            '',
+          )
+          .toLowerCase()
+
     const term =
-      query.trim().toLowerCase()
+      normalizeSearch(
+        query.trim(),
+      )
 
     return items.filter((item: any) => {
       const matchesSearch =
         !term ||
-        String(item.title || '')
-          .toLowerCase()
-          .includes(term) ||
-        String(item.client?.name || '')
-          .toLowerCase()
-          .includes(term)
+        normalizeSearch(
+          item.title,
+        ).includes(term) ||
+        normalizeSearch(
+          item.client?.name,
+        ).includes(term)
 
       return (
         matchesSearch &&
@@ -732,7 +750,10 @@ export default function BoardWorkspace({
       filtered.filter(
         (item: any) =>
           item.board_column_id ===
-            columnId,
+            columnId &&
+          !item
+            .assignment_completed_at &&
+          !item.completed_at,
       )
 
     const mode =
@@ -1026,7 +1047,7 @@ export default function BoardWorkspace({
     const confirmed =
       window.confirm(
         'Marcar este card como concluído?\n\n' +
-          'Ele permanecerá visível na coluna Concluído deste Quadro.',
+          'Ele sairá deste Quadro operacional e continuará rastreável em Demandas, histórico e dashboards.',
       )
 
     if (!confirmed) return
@@ -1772,7 +1793,7 @@ export default function BoardWorkspace({
 
         {canManage && !isPautaWorkspace && (
           <button
-            className="board-a14-icon"
+            className="bsec board-a14-new-board-button"
             type="button"
             title="Novo Quadro"
             onClick={() => {
@@ -1781,6 +1802,7 @@ export default function BoardWorkspace({
             }}
           >
             <i className="ti ti-plus" />
+            Novo Quadro
           </button>
         )}
 
@@ -2264,6 +2286,45 @@ export default function BoardWorkspace({
                               'capture',
                           ) || null
 
+                        const quickLinks = [
+                          {
+                            key: 'PLAN',
+                            label:
+                              'Planejamento',
+                            href:
+                              item.drive_link,
+                          },
+
+                          {
+                            key: 'BRIEF',
+                            label:
+                              'Briefing',
+                            href:
+                              item.briefing_link,
+                          },
+
+                          {
+                            key: 'MOOD',
+                            label:
+                              'Moodboard',
+                            href:
+                              item.moodboard_link,
+                          },
+
+                          {
+                            key: 'REF',
+                            label:
+                              'Referência',
+                            href:
+                              item.reference_link,
+                          },
+                        ].filter(
+                          (link) =>
+                            Boolean(
+                              link.href,
+                            ),
+                        )
+
                         return (
                           <article
                             key={item.id}
@@ -2344,32 +2405,47 @@ export default function BoardWorkspace({
                                 )}
                               </span>
 
-                              {item.drive_link ? (
-                                <a
-                                  className="board-a15-plan"
-                                  href={
-                                    item.drive_link
-                                  }
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="Abrir documento pai do planejamento"
-                                  onClick={(
-                                    event,
-                                  ) =>
-                                    event.stopPropagation()
-                                  }
-                                  onMouseDown={(
-                                    event,
-                                  ) =>
-                                    event.stopPropagation()
-                                  }
-                                >
-                                  PLAN
-                                  <i className="ti ti-external-link" />
-                                </a>
+                              {quickLinks.length >
+                              0 ? (
+                                <div className="board-v93-link-stack">
+                                  {quickLinks.map(
+                                    (link) => (
+                                      <a
+                                        key={
+                                          link.key
+                                        }
+                                        className="board-a15-plan"
+                                        href={
+                                          link.href
+                                        }
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title={
+                                          'Abrir ' +
+                                          link.label
+                                        }
+                                        onClick={(
+                                          event,
+                                        ) =>
+                                          event.stopPropagation()
+                                        }
+                                        onMouseDown={(
+                                          event,
+                                        ) =>
+                                          event.stopPropagation()
+                                        }
+                                      >
+                                        {
+                                          link.key
+                                        }
+                                        <i className="ti ti-external-link" />
+                                      </a>
+                                    ),
+                                  )}
+                                </div>
                               ) : (
                                 <span className="board-a15-plan missing">
-                                  SEM PLAN
+                                  SEM LINKS
                                 </span>
                               )}
                             </div>
@@ -2557,10 +2633,127 @@ export default function BoardWorkspace({
                 <div><span>Responsável</span><strong>{detailItem.responsible?.display_name || detailItem.responsible?.full_name || 'Sem responsável'}</strong></div>
               </div>
 
-              {(detailItem.notes || detailItem.description) && (
+              {detailItem.description && (
+                <div className="work-item-detail-notes work-item-detail-direction">
+                  <span>
+                    Direcionamento
+                  </span>
+
+                  <p>
+                    {
+                      detailItem
+                        .description
+                    }
+                  </p>
+                </div>
+              )}
+
+              {(detailItem.drive_link ||
+                detailItem.briefing_link ||
+                detailItem.moodboard_link ||
+                detailItem.reference_link) && (
+                <div className="work-item-detail-links">
+                  <span>
+                    Links e referências
+                  </span>
+
+                  <div className="work-item-detail-link-grid">
+                    {detailItem.drive_link && (
+                      <a
+                        href={
+                          detailItem
+                            .drive_link
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <strong>
+                          Planejamento
+                        </strong>
+
+                        <small>
+                          Abrir documento
+                        </small>
+
+                        <i className="ti ti-external-link" />
+                      </a>
+                    )}
+
+                    {detailItem.briefing_link && (
+                      <a
+                        href={
+                          detailItem
+                            .briefing_link
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <strong>
+                          Briefing
+                        </strong>
+
+                        <small>
+                          Abrir documento
+                        </small>
+
+                        <i className="ti ti-external-link" />
+                      </a>
+                    )}
+
+                    {detailItem.moodboard_link && (
+                      <a
+                        href={
+                          detailItem
+                            .moodboard_link
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <strong>
+                          Moodboard
+                        </strong>
+
+                        <small>
+                          Abrir referência
+                        </small>
+
+                        <i className="ti ti-external-link" />
+                      </a>
+                    )}
+
+                    {detailItem.reference_link && (
+                      <a
+                        href={
+                          detailItem
+                            .reference_link
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <strong>
+                          Referência
+                        </strong>
+
+                        <small>
+                          Abrir documento
+                        </small>
+
+                        <i className="ti ti-external-link" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {detailItem.notes && (
                 <div className="work-item-detail-notes">
-                  <span>Observações</span>
-                  <p>{detailItem.notes || detailItem.description}</p>
+                  <span>
+                    Observações
+                  </span>
+
+                  <p>
+                    {detailItem.notes}
+                  </p>
                 </div>
               )}
             </div>
@@ -2643,7 +2836,7 @@ export default function BoardWorkspace({
                 </div>
 
                 <div className="modal-sub">
-                  Cliente e período geram o título automaticamente.
+                  Título, direcionamento, links e execução da demanda.
                 </div>
               </div>
 
@@ -2668,18 +2861,39 @@ export default function BoardWorkspace({
 
 
               <div className="board-a23-title-tag-row">
-                <div className="board-a15-title-preview">
-                  <span>
-                    Título automático
-                  </span>
-                  <strong>
-                    {formatPeriodTitle(
-                      selectedClient?.name ||
-                        '',
-                      formStart,
-                      formEnd,
-                    )}
-                  </strong>
+                <div className="fg board-v93-title-field">
+                  <label className="fl">
+                    Título *
+                  </label>
+
+                  <input
+                    key={
+                      editing?.id ||
+                      [
+                        formClient,
+                        formStart,
+                        formEnd,
+                      ].join('-')
+                    }
+                    className="fi"
+                    name="title"
+                    required
+                    defaultValue={
+                      editing?.title ||
+                      formatPeriodTitle(
+                        selectedClient
+                          ?.name ||
+                          '',
+                        formStart,
+                        formEnd,
+                      )
+                    }
+                    placeholder="Ex.: Criativos campanha Primavera"
+                  />
+
+                  <small className="board-v93-field-help">
+                    O sistema sugere um título, mas ele pode ser editado.
+                  </small>
                 </div>
 
                 <div className="board-a23-tag-panel">
@@ -2981,33 +3195,108 @@ export default function BoardWorkspace({
 
                 <div className="fg">
                   <label className="fl">
-                    Link do Drive — PLAN
+                    Direcionamento
                   </label>
 
-                  <input
+                  <textarea
                     className="fi"
-                    type="url"
-                    name="drive_link"
-                    placeholder="Link do documento pai do planejamento"
+                    name="description"
+                    rows={5}
+                    placeholder="Explique o que precisa ser feito, o objetivo, o entregável e as informações obrigatórias."
                     defaultValue={
-                      editing?.drive_link ||
+                      editing
+                        ?.description ||
                       ''
                     }
                   />
                 </div>
 
+                <div className="board-v93-links-form">
+                  <div className="fg">
+                    <label className="fl">
+                      Planejamento
+                    </label>
+
+                    <input
+                      className="fi"
+                      type="url"
+                      name="drive_link"
+                      placeholder="Link do planejamento"
+                      defaultValue={
+                        editing
+                          ?.drive_link ||
+                        ''
+                      }
+                    />
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Briefing
+                    </label>
+
+                    <input
+                      className="fi"
+                      type="url"
+                      name="briefing_link"
+                      placeholder="Link do briefing"
+                      defaultValue={
+                        editing
+                          ?.briefing_link ||
+                        ''
+                      }
+                    />
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Moodboard
+                    </label>
+
+                    <input
+                      className="fi"
+                      type="url"
+                      name="moodboard_link"
+                      placeholder="Link do moodboard"
+                      defaultValue={
+                        editing
+                          ?.moodboard_link ||
+                        ''
+                      }
+                    />
+                  </div>
+
+                  <div className="fg">
+                    <label className="fl">
+                      Referência
+                    </label>
+
+                    <input
+                      className="fi"
+                      type="url"
+                      name="reference_link"
+                      placeholder="Documento ou material de referência"
+                      defaultValue={
+                        editing
+                          ?.reference_link ||
+                        ''
+                      }
+                    />
+                  </div>
+                </div>
+
                 <div className="fg">
                   <label className="fl">
-                    Observação
+                    Observações
                   </label>
 
                   <textarea
                     className="fi"
                     name="notes"
                     rows={4}
+                    placeholder="Complementos e cuidados para a execução."
                     defaultValue={
                       editing?.notes ||
-                      editing?.description ||
                       ''
                     }
                   />

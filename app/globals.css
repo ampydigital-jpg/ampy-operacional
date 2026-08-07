@@ -15123,3 +15123,125 @@ small {
     width: 100%;
   }
 }
+
+
+/* V9.3-A1 — CARD OPERACIONAL + QUADROS */
+
+.board-a14-new-board-button {
+  min-width: 118px;
+  justify-content: center;
+}
+
+.board-v93-link-stack {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.board-v93-link-stack .board-a15-plan {
+  min-width: 48px;
+  justify-content: space-between;
+  padding: 2px 6px;
+  line-height: 1.15;
+}
+
+.board-v93-title-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.board-v93-field-help {
+  display: block;
+  margin-top: 5px;
+  color: #7a8494;
+  font-size: 10px;
+}
+
+.board-v93-links-form {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 10px;
+}
+
+.work-item-detail-direction {
+  border-left:
+    3px solid #2563eb;
+}
+
+.work-item-detail-links {
+  margin-top: 16px;
+}
+
+.work-item-detail-links > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.work-item-detail-link-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 8px;
+}
+
+.work-item-detail-link-grid a {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 62px;
+  padding:
+    11px 36px
+    11px 12px;
+  border:
+    1px solid #dbe2ec;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.work-item-detail-link-grid a:hover {
+  border-color: #aeb9c8;
+  background: #f8fafc;
+}
+
+.work-item-detail-link-grid strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.work-item-detail-link-grid small {
+  color: #718096;
+  font-size: 10px;
+}
+
+.work-item-detail-link-grid i {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform:
+    translateY(-50%);
+  color: #64748b;
+  font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .board-v93-links-form,
+  .work-item-detail-link-grid {
+    grid-template-columns:
+      1fr;
+  }
+}

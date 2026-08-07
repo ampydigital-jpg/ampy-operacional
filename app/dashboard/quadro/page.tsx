@@ -12,15 +12,112 @@ function mapById(items: any[]) {
 }
 
 async function hasTotalAccess() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
-  const admin = createAdminClient()
-  const byProfile = await admin.from('team_members').select('access_type,is_active').eq('profile_id',user.id).maybeSingle()
-  if (byProfile.data?.is_active !== false && byProfile.data?.access_type === 'total') return true
-  if (!user.email) return false
-  const byEmail = await admin.from('team_members').select('access_type,is_active').ilike('email',user.email).maybeSingle()
-  return byEmail.data?.is_active !== false && byEmail.data?.access_type === 'total'
+  const supabase =
+    createClient()
+
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase
+      .auth
+      .getUser()
+
+  if (!user) {
+    return false
+  }
+
+  const admin =
+    createAdminClient()
+
+  const [
+    profileResult,
+    teamResult,
+  ] =
+    await Promise.all([
+      admin
+        .from('profiles')
+        .select(
+          'role,is_active',
+        )
+        .eq(
+          'id',
+          user.id,
+        )
+        .maybeSingle(),
+
+      admin
+        .from(
+          'team_members',
+        )
+        .select(
+          'access_type,is_active',
+        )
+        .eq(
+          'profile_id',
+          user.id,
+        )
+        .maybeSingle(),
+    ])
+
+  if (
+    profileResult
+      .data
+      ?.is_active !== false &&
+    [
+      'admin',
+      'director',
+    ].includes(
+      String(
+        profileResult
+          .data
+          ?.role || '',
+      ),
+    )
+  ) {
+    return true
+  }
+
+  if (
+    teamResult
+      .data
+      ?.is_active !== false &&
+    teamResult
+      .data
+      ?.access_type ===
+        'total'
+  ) {
+    return true
+  }
+
+  if (!user.email) {
+    return false
+  }
+
+  const byEmail =
+    await admin
+      .from(
+        'team_members',
+      )
+      .select(
+        'access_type,is_active',
+      )
+      .ilike(
+        'email',
+        user.email,
+      )
+      .maybeSingle()
+
+  return (
+    byEmail
+      .data
+      ?.is_active !== false &&
+    byEmail
+      .data
+      ?.access_type ===
+        'total'
+  )
 }
 
 export default async function QuadroPage({ searchParams }: { searchParams: { board?: string; pauta?: string; item?: string } }) {
@@ -63,7 +160,7 @@ export default async function QuadroPage({ searchParams }: { searchParams: { boa
   const assignmentRows = assignmentsResult.data || []
   const workItemIds = assignmentRows.map((assignment: any) => assignment.work_item_id).filter(Boolean)
   if (workItemIds.length) {
-    demandsResult = await supabase.from('work_items').select('id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,pauta_id,is_pauta_card,pauta_card_id,completed_at,programming_covered_until').in('id',workItemIds).not('status','in','(archived,cancelled)').limit(2000)
+    demandsResult = await supabase.from('work_items').select('id,title,description,type,status,priority,destino,board_id,board_column_id,client_id,client_service_id,responsible_id,internal_deadline,final_deadline,drive_link,briefing_link,moodboard_link,reference_link,notes,blocked_reason,created_at,updated_at,card_tag,card_tag_color,pauta_id,is_pauta_card,pauta_card_id,completed_at,programming_covered_until').in('id',workItemIds).not('status','in','(archived,cancelled)').limit(2000)
     scheduleRequirementsResult = await supabase.from('work_item_schedule_requirements').select('id,work_item_id,requirement_type,status,calendar_event_id,calendar_type,scheduled_at,confirmed_at,completed_at,created_at,updated_at,calendar_event:calendar_events(id,type,starts_at,ends_at,confirmed,location,responsible_id)').in('work_item_id',workItemIds)
   }
 
