@@ -5512,18 +5512,55 @@ export async function distributeExistingPautaDemandsAction(
   const pautaId = String(input?.pautaId || '').trim()
   const workItemIds = v8UniqueIds(input?.workItemIds, 200)
   const confirmation = String(input?.confirmation || '').trim()
-  const targets = (Array.isArray(input?.targets) ? input.targets : [])
-    .map((target) => ({
-      board_id: String(target?.boardId || '').trim(),
-      board_column_id: String(target?.boardColumnId || '').trim(),
-      is_required: target?.isRequired !== false,
-    }))
-    .filter((target) => target.board_id && target.board_column_id)
-    .slice(0, 30)
 
-  if (!pautaId || workItemIds.length === 0 || targets.length === 0) {
+  const rawTargets =
+    Array.isArray(input?.targets)
+      ? input.targets.slice(0, 30)
+      : []
+
+  const targets = rawTargets.map(
+    (target) => ({
+      board_id:
+        String(
+          target?.boardId || '',
+        ).trim(),
+      board_column_id:
+        String(
+          target?.boardColumnId || '',
+        ).trim(),
+      is_required:
+        target?.isRequired !== false,
+    }),
+  )
+
+  if (
+    !pautaId ||
+    workItemIds.length === 0
+  ) {
     return {
-      error: 'Selecione demandas e pelo menos um Quadro de destino.',
+      error:
+        'Selecione pelo menos uma demanda.',
+    }
+  }
+
+  if (targets.length === 0) {
+    return {
+      error:
+        'Selecione pelo menos um Quadro de destino.',
+    }
+  }
+
+  const incompleteTarget =
+    targets.find(
+      (target) =>
+        !target.board_id ||
+        !target.board_column_id,
+    )
+
+  if (incompleteTarget) {
+    return {
+      error:
+        'Selecione uma coluna para todos os Quadros marcados.',
     }
   }
 
@@ -5544,8 +5581,28 @@ export async function distributeExistingPautaDemandsAction(
 
   if (error) return { error: error.message }
 
+  const payload =
+    pautaRpcPayload(data)
+
+  if (
+    payload?.success !== true ||
+    Number(
+      payload
+        ?.assignments_processed ||
+      0,
+    ) <= 0
+  ) {
+    return {
+      error:
+        'Nenhuma distribuição foi processada. Verifique os Quadros e colunas selecionados.',
+    }
+  }
+
   revalidatePautaManagementPaths(pautaId)
-  return { success: true, data: pautaRpcPayload(data) }
+  return {
+    success: true,
+    data: payload,
+  }
 }
 
 export async function setWorkItemBoardAssignmentCompletionAction(

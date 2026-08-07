@@ -724,30 +724,15 @@ export default function BoardWorkspace({
         )
       : []
 
-  // V9.1 — CONCLUSÃO NO CARD E ARQUIVO DE PAUTA
+  // V9.2C-P0.1 — CONCLUÍDOS PERMANECEM VISÍVEIS NA COLUNA
   function cardsInColumn(
     columnId: string,
   ) {
     const list =
       filtered.filter(
-        (item: any) => {
-          const assignmentCompleted =
-            Boolean(
-              item.assignment_completed_at,
-            )
-
-          const demandCompleted =
-            Boolean(
-              item.completed_at,
-            )
-
-          return (
-            item.board_column_id ===
-              columnId &&
-            !assignmentCompleted &&
-            !demandCompleted
-          )
-        },
+        (item: any) =>
+          item.board_column_id ===
+            columnId,
       )
 
     const mode =
@@ -1041,7 +1026,7 @@ export default function BoardWorkspace({
     const confirmed =
       window.confirm(
         'Marcar este card como concluído?\n\n' +
-          'Ele sairá do Quadro e continuará disponível em Demandas > Concluídas.',
+          'Ele permanecerá visível na coluna Concluído deste Quadro.',
       )
 
     if (!confirmed) return
@@ -1072,14 +1057,7 @@ export default function BoardWorkspace({
       return
     }
 
-    setItems((current) =>
-      current.filter(
-        (currentItem: any) =>
-          currentItem.id !== item.id,
-      ),
-    )
-
-    setLoading(false)
+    window.location.reload()
   }
 
   async function changeActivePautaLifecycle() {

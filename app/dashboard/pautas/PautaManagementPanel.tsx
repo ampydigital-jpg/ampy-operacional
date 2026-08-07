@@ -327,6 +327,16 @@ export default function PautaManagementPanel({
     >
   >({})
 
+  const [
+    distributionError,
+    setDistributionError,
+  ] = useState('')
+
+  const [
+    distributionNotice,
+    setDistributionNotice,
+  ] = useState('')
+
   const editable = [
     'draft',
     'open',
@@ -346,6 +356,49 @@ export default function PautaManagementPanel({
     selectedDemandIds.length -
     selectedExtraDemandIds.length
 
+  const selectedDistributionTargets =
+    Object.entries(
+      existingTargets,
+    )
+
+  const incompleteDistributionTargets =
+    selectedDistributionTargets.filter(
+      ([boardId, config]) => {
+        const availableColumns =
+          list(
+            distributionColumns,
+          ).filter(
+            (column: any) =>
+              String(
+                column.board_id,
+              ) ===
+              String(boardId),
+          )
+
+        return (
+          !config.columnId ||
+          !availableColumns.some(
+            (column: any) =>
+              String(column.id) ===
+              String(
+                config.columnId,
+              ),
+          )
+        )
+      },
+    )
+
+  const distributionConfirmationValid =
+    distributionConfirmation.trim() ===
+    'DISTRIBUIR DEMANDAS'
+
+  const canSubmitDistribution =
+    selectedDemandIds.length > 0 &&
+    selectedDistributionTargets.length > 0 &&
+    incompleteDistributionTargets.length === 0 &&
+    distributionConfirmationValid &&
+    !loading
+
   if (!open || !pauta) {
     return null
   }
@@ -362,6 +415,14 @@ export default function PautaManagementPanel({
 
   function failAction(message: string) {
     setError(message)
+    setLoading(false)
+  }
+
+  function failDistribution(
+    message: string,
+  ) {
+    setDistributionError(message)
+    setDistributionNotice('')
     setLoading(false)
   }
 
@@ -498,23 +559,62 @@ export default function PautaManagementPanel({
   ) {
     event.preventDefault()
 
-    const targets =
-      Object.entries(
-        existingTargets,
+    setDistributionError('')
+    setDistributionNotice('')
+
+    if (
+      selectedDistributionTargets.length ===
+      0
+    ) {
+      return failDistribution(
+        'Selecione pelo menos um Quadro de destino.',
       )
-        .filter(
-          ([, config]) =>
+    }
+
+    if (
+      incompleteDistributionTargets.length >
+      0
+    ) {
+      const [boardId] =
+        incompleteDistributionTargets[0]
+
+      const board =
+        list(
+          distributionBoards,
+        ).find(
+          (item: any) =>
+            String(item.id) ===
+            String(boardId),
+        )
+
+      return failDistribution(
+        'Selecione a coluna do Quadro ' +
+          String(
+            board?.name ||
+            'selecionado',
+          ) +
+          '.',
+      )
+    }
+
+    if (
+      !distributionConfirmationValid
+    ) {
+      return failDistribution(
+        'Digite exatamente DISTRIBUIR DEMANDAS.',
+      )
+    }
+
+    const targets =
+      selectedDistributionTargets.map(
+        ([boardId, config]) => ({
+          boardId,
+          boardColumnId:
             config.columnId,
-        )
-        .map(
-          ([boardId, config]) => ({
-            boardId,
-            boardColumnId:
-              config.columnId,
-            isRequired:
-              config.required,
-          }),
-        )
+          isRequired:
+            config.required,
+        }),
+      )
 
     beginAction()
 
@@ -531,13 +631,39 @@ export default function PautaManagementPanel({
       )
 
     if ('error' in result) {
-      return failAction(
+      return failDistribution(
         result.error ||
         'Não foi possível enviar as demandas aos Quadros.',
       )
     }
 
-    reload()
+    const payload =
+      'data' in result &&
+      result.data &&
+      typeof result.data ===
+        'object'
+        ? result.data as
+            Record<string, unknown>
+        : {}
+
+    const processed =
+      Number(
+        payload
+          .assignments_processed ||
+        0,
+      )
+
+    setDistributionNotice(
+      processed +
+        ' associação(ões) processada(s) com sucesso.',
+    )
+    setDistributionError('')
+    setLoading(false)
+
+    window.setTimeout(
+      reload,
+      1200,
+    )
   }
 
   async function createDemands(
@@ -1516,12 +1642,18 @@ export default function PautaManagementPanel({
                           !selectedDemandIds.length ||
                           loading
                         }
-                        onClick={() =>
+                        onClick={() => {
+                          setDistributionError(
+                            '',
+                          )
+                          setDistributionNotice(
+                            '',
+                          )
                           setExistingDistributionOpen(
                             (current) =>
                               !current,
                           )
-                        }
+                        }}
                       >
                         Subir nos Quadros
                       </button>
@@ -1791,6 +1923,12 @@ export default function PautaManagementPanel({
                           setDistributionConfirmation(
                             '',
                           )
+                          setDistributionError(
+                            '',
+                          )
+                          setDistributionNotice(
+                            '',
+                          )
                         }}
                       >
                         <i className="ti ti-x" />
@@ -1802,6 +1940,24 @@ export default function PautaManagementPanel({
                         Cada demanda continuará única. O sistema criará apenas associações nos Quadros selecionados e evitará duplicações.
                       </span>
                     </div>
+
+                    {distributionError && (
+                      <div className="notice notice-err">
+                        <i className="ti ti-alert-circle" />
+                        <span>
+                          {distributionError}
+                        </span>
+                      </div>
+                    )}
+
+                    {distributionNotice && (
+                      <div className="notice notice-ok">
+                        <i className="ti ti-circle-check" />
+                        <span>
+                          {distributionNotice}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="pauta-v9-target-grid">
                       {list(
@@ -1862,13 +2018,7 @@ export default function PautaManagementPanel({
                                             board.id
                                           ] = {
                                             columnId:
-                                              String(
-                                                columns[
-                                                  0
-                                                ]
-                                                  ?.id ||
-                                                '',
-                                              ),
+                                              '',
                                             required:
                                               true,
                                           }
@@ -1921,6 +2071,10 @@ export default function PautaManagementPanel({
                                     }
                                     required
                                   >
+                                    <option value="">
+                                      Selecione a coluna
+                                    </option>
+
                                     {columns.map(
                                       (
                                         column: any,
@@ -1940,6 +2094,15 @@ export default function PautaManagementPanel({
                                       ),
                                     )}
                                   </select>
+
+                                  {!config.columnId && (
+                                    <div className="notice notice-warn">
+                                      <span>
+                                        Selecione a coluna do Quadro{' '}
+                                        {board.name}.
+                                      </span>
+                                    </div>
+                                  )}
 
                                   <label className="pauta-v8-required">
                                     <input
@@ -2005,10 +2168,7 @@ export default function PautaManagementPanel({
                     <button
                       className="bpri"
                       disabled={
-                        loading ||
-                        !Object.keys(
-                          existingTargets,
-                        ).length
+                        !canSubmitDistribution
                       }
                     >
                       Subir nos Quadros
