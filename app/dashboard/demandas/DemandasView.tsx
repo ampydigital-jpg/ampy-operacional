@@ -1797,6 +1797,123 @@ export default function DemandasView({
                 </div>
               </div>
 
+              {selectedDemand.description && (
+                <div className="work-item-detail-notes work-item-detail-direction demandas-v93-direction">
+                  <span>
+                    Direcionamento
+                  </span>
+
+                  <p>
+                    {
+                      selectedDemand
+                        .description
+                    }
+                  </p>
+                </div>
+              )}
+
+              {(selectedDemand.drive_link ||
+                selectedDemand.briefing_link ||
+                selectedDemand.moodboard_link ||
+                selectedDemand.reference_link) && (
+                <div className="work-item-detail-links demandas-v93-links">
+                  <span>
+                    Links e referências
+                  </span>
+
+                  <div className="work-item-detail-link-grid">
+                    {[
+                      {
+                        label:
+                          'Planejamento',
+
+                        href:
+                          selectedDemand
+                            .drive_link,
+                      },
+
+                      {
+                        label:
+                          'Briefing',
+
+                        href:
+                          selectedDemand
+                            .briefing_link,
+                      },
+
+                      {
+                        label:
+                          'Moodboard',
+
+                        href:
+                          selectedDemand
+                            .moodboard_link,
+                      },
+
+                      {
+                        label:
+                          'Referência',
+
+                        href:
+                          selectedDemand
+                            .reference_link,
+                      },
+                    ]
+                      .filter(
+                        (
+                          link,
+                        ) =>
+                          Boolean(
+                            link.href,
+                          ),
+                      )
+                      .map(
+                        (
+                          link,
+                        ) => (
+                          <a
+                            key={
+                              link.label
+                            }
+                            href={
+                              link.href
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <strong>
+                              {
+                                link.label
+                              }
+                            </strong>
+
+                            <small>
+                              Abrir documento
+                            </small>
+
+                            <i className="ti ti-external-link" />
+                          </a>
+                        ),
+                      )}
+                  </div>
+                </div>
+              )}
+
+              {selectedDemand.notes && (
+                <div className="work-item-detail-notes demandas-v93-notes">
+                  <span>
+                    Observações
+                  </span>
+
+                  <p>
+                    {
+                      selectedDemand
+                        .notes
+                    }
+                  </p>
+                </div>
+              )}
+
               <div className="demandas-v92-detail-status">
                 <span>Status operacional</span>
 

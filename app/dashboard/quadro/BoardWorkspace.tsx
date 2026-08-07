@@ -29,6 +29,7 @@ import {
   moveBoardCardAction,
   moveWorkItemBoardAssignmentAction,
   setWorkItemBoardAssignmentCompletionAction,
+  removeWorkItemBoardAssignmentAction,
   setWorkItemCompletionAction,
   reorderBoardColumnsAction,
   updateBoardAction,
@@ -1543,6 +1544,64 @@ export default function BoardWorkspace({
     window.location.reload()
   }
 
+  async function removeFromCurrentBoard(
+    item: any,
+  ) {
+    const assignmentId =
+      String(
+        item?.assignment_id ||
+        '',
+      ).trim()
+
+    if (!assignmentId) {
+      alert(
+        'Esta demanda não possui uma associação ativa removível neste Quadro.',
+      )
+
+      return
+    }
+
+    const confirmed =
+      window.confirm(
+        'Remover esta demanda deste Quadro?\n\n' +
+        'A demanda continuará existindo em Demandas, na Pauta e nos demais Quadros vinculados.',
+      )
+
+    if (!confirmed) {
+      return
+    }
+
+    const note =
+      window.prompt(
+        'Motivo da remoção (opcional):',
+        '',
+      ) || ''
+
+    setLoading(true)
+    setError('')
+
+    const result =
+      await removeWorkItemBoardAssignmentAction(
+        assignmentId,
+        note,
+      )
+
+    if ('error' in result) {
+      alert(
+        result.error ||
+          'Não foi possível remover a demanda deste Quadro.',
+      )
+
+      setLoading(false)
+
+      return
+    }
+
+    setDetailItem(null)
+
+    window.location.reload()
+  }
+
   function allowDrop(
     event: DragEvent<HTMLElement>,
   ) {
@@ -2325,6 +2384,57 @@ export default function BoardWorkspace({
                             ),
                         )
 
+                        const frontContext = [
+                          item.pauta
+                            ? {
+                                key:
+                                  'pauta',
+
+                                label:
+                                  'PAUTA · ' +
+                                  formatPautaReference(
+                                    item
+                                      .pauta
+                                      .reference_month,
+                                  ),
+
+                                href:
+                                  null,
+                              }
+                            : null,
+
+                          item.is_pauta_card
+                            ? {
+                                key:
+                                  'monthly',
+
+                                label:
+                                  'CARD MENSAL',
+
+                                href:
+                                  null,
+                              }
+                            : null,
+
+                          ...quickLinks.map(
+                            (link) => ({
+                              key:
+                                link.key,
+
+                              label:
+                                link.key,
+
+                              href:
+                                link.href,
+
+                              title:
+                                link.label,
+                            }),
+                          ),
+                        ].filter(
+                          Boolean,
+                        ) as any[]
+
                         return (
                           <article
                             key={item.id}
@@ -2377,52 +2487,36 @@ export default function BoardWorkspace({
                               }
                             }}
                           >
-                            <div className="board-a15-card-status">
-                              <span
-                                className={
-                                  'board-a15-priority ' +
-                                  (
-                                    item.priority ||
-                                    'normal'
-                                  )
-                                }
-                              >
-                                {PRIORITY_LABEL[
-                                  item.priority
-                                ] ||
-                                  'Normal'}
-                              </span>
-
-                              <span
-                                className={
-                                  'board-a15-final ' +
-                                  finalState
-                                }
-                              >
-                                FINAL{' '}
-                                {formatDateShort(
-                                  item.final_deadline,
-                                )}
-                              </span>
-
-                              {quickLinks.length >
+                            <div
+                              className="board-v93-front-grid"
+                              data-count={
+                                frontContext.length
+                              }
+                            >
+                              {frontContext.length >
                               0 ? (
-                                <div className="board-v93-link-stack">
-                                  {quickLinks.map(
-                                    (link) => (
+                                frontContext.map(
+                                  (
+                                    chip:
+                                      any,
+                                  ) =>
+                                    chip.href ? (
                                       <a
                                         key={
-                                          link.key
+                                          chip.key
                                         }
-                                        className="board-a15-plan"
+                                        className="board-v93-front-chip link"
                                         href={
-                                          link.href
+                                          chip.href
                                         }
                                         target="_blank"
                                         rel="noreferrer"
                                         title={
                                           'Abrir ' +
-                                          link.label
+                                          (
+                                            chip.title ||
+                                            chip.label
+                                          )
                                         }
                                         onClick={(
                                           event,
@@ -2436,38 +2530,33 @@ export default function BoardWorkspace({
                                         }
                                       >
                                         {
-                                          link.key
+                                          chip.label
                                         }
+
                                         <i className="ti ti-external-link" />
                                       </a>
+                                    ) : (
+                                      <span
+                                        key={
+                                          chip.key
+                                        }
+                                        className={
+                                          'board-v93-front-chip ' +
+                                          chip.key
+                                        }
+                                      >
+                                        {
+                                          chip.label
+                                        }
+                                      </span>
                                     ),
-                                  )}
-                                </div>
+                                )
                               ) : (
-                                <span className="board-a15-plan missing">
+                                <span className="board-v93-front-chip missing">
                                   SEM LINKS
                                 </span>
                               )}
                             </div>
-
-                            {item.pauta && (
-                              <div className="board-pauta-card-context">
-                                <span className="board-pauta-card-badge">
-                                  <i className="ti ti-calendar-stats" />
-
-                                  PAUTA ·{' '}
-                                  {formatPautaReference(
-                                    item.pauta.reference_month,
-                                  )}
-                                </span>
-
-                                {item.is_pauta_card && (
-                                  <span className="board-pauta-monthly-card">
-                                    Card mensal
-                                  </span>
-                                )}
-                              </div>
-                            )}
 
                             <h3>
                               {item.title}
@@ -2803,6 +2892,24 @@ export default function BoardWorkspace({
                 >
                   <i className="ti ti-pencil" />
                   Editar
+                </button>
+              )}
+
+              {!readOnlyPautaView &&
+                !isPautaWorkspace &&
+                detailItem.assignment_id && (
+                <button
+                  className="bsec danger-button"
+                  type="button"
+                  disabled={loading}
+                  onClick={() =>
+                    void removeFromCurrentBoard(
+                      detailItem,
+                    )
+                  }
+                >
+                  <i className="ti ti-unlink" />
+                  Remover deste Quadro
                 </button>
               )}
 
@@ -3201,7 +3308,7 @@ export default function BoardWorkspace({
                   <textarea
                     className="fi"
                     name="description"
-                    rows={5}
+                    rows={3}
                     placeholder="Explique o que precisa ser feito, o objetivo, o entregável e as informações obrigatórias."
                     defaultValue={
                       editing
@@ -3293,7 +3400,7 @@ export default function BoardWorkspace({
                   <textarea
                     className="fi"
                     name="notes"
-                    rows={4}
+                    rows={2}
                     placeholder="Complementos e cuidados para a execução."
                     defaultValue={
                       editing?.notes ||
@@ -3402,6 +3509,7 @@ export default function BoardWorkspace({
           clientServices={clientServices}
           distributionBoards={distributionBoards}
           distributionColumns={distributionColumns}
+          pautaColumns={boardColumns}
           canManage={canManage}
         />
       )}

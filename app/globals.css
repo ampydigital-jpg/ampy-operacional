@@ -15245,3 +15245,405 @@ small {
       1fr;
   }
 }
+
+
+/* V9.3-A2 — CONSOLIDAÇÃO OPERACIONAL */
+
+.board-v93-front-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 5px;
+  margin-bottom: 10px;
+  align-items: stretch;
+}
+
+.board-v93-front-chip {
+  min-width: 0;
+  min-height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #526174;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: .025em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.board-v93-front-chip.link {
+  border-color: #a9d7ff;
+  background: #f2f9ff;
+  color: #1463d8;
+}
+
+.board-v93-front-chip.pauta {
+  border-color: #d8c8ff;
+  background: #f7f2ff;
+  color: #6d35d7;
+}
+
+.board-v93-front-chip.monthly {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2157b6;
+}
+
+.board-v93-front-chip.missing {
+  grid-column: 1 / -1;
+  max-width: 92px;
+  justify-self: end;
+}
+
+.board-a15-card > h3 {
+  margin-top: 0;
+}
+
+.board-a15-card
+.board-a15-priority,
+.board-a15-card
+.board-a15-final {
+  display: none !important;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+.modal-body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+.fg {
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+.frow {
+  gap: 10px;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+.fi {
+  min-height: 38px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+textarea.fi {
+  min-height: 72px;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+.board-v93-links-form {
+  gap: 8px 10px;
+}
+
+.board-a15-page
+.modal.context-modal-wide
+form
+.modal-foot {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/*
+  Os blocos anteriores continuam no DOM
+  apenas para preservar confirmações,
+  formulários e ações já estáveis.
+*/
+.pauta-v93-legacy {
+  display: contents;
+}
+
+.pauta-v93-legacy >
+.pauta-v8-section-head,
+.pauta-v93-legacy >
+.pauta-v8-table,
+.pauta-v93-legacy >
+.pauta-v92c-section-foot,
+.pauta-v93-legacy >
+.pauta-v92c-selection-note {
+  display: none !important;
+}
+
+.pauta-v93-unified {
+  padding: 18px;
+}
+
+.pauta-v93-unified-head,
+.pauta-v93-available-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.pauta-v93-unified-head >
+div:first-child,
+.pauta-v93-available-head >
+div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pauta-v93-unified-head span,
+.pauta-v93-available-head span {
+  color: #718096;
+  font-size: 11px;
+}
+
+.pauta-v93-unified-head strong,
+.pauta-v93-available-head strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.pauta-v93-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pauta-v93-unified-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pauta-v93-client-row {
+  display: grid;
+  grid-template-columns:
+    minmax(
+      180px,
+      240px
+    )
+    minmax(
+      0,
+      1fr
+    );
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid #dce5f0;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.pauta-v93-client-select {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #1e2737;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pauta-v93-client-select input {
+  margin-top: 2px;
+}
+
+.pauta-v93-client-demands {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.pauta-v93-demand-line {
+  display: grid;
+  grid-template-columns:
+    minmax(
+      180px,
+      .8fr
+    )
+    minmax(
+      260px,
+      1.2fr
+    );
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.pauta-v93-demand-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pauta-v93-demand-copy strong {
+  overflow: hidden;
+  color: #172033;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pauta-v93-demand-copy span,
+.pauta-v93-no-demand {
+  color: #7b8797;
+  font-size: 9px;
+}
+
+.pauta-v93-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.pauta-v93-status-chips >
+span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 4px 8px;
+  border: 1px solid #cbd8e7;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #48586c;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pauta-v93-status-chips >
+span[data-tone="pauta"] {
+  border-color: #d9c8ff;
+  background: #f7f2ff;
+  color: #6b35d2;
+}
+
+.pauta-v93-status-chips >
+span[data-tone="active"] {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.pauta-v93-status-chips >
+span[data-tone="done"] {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.pauta-v93-status-chips >
+span[data-tone="pending"] {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #a16207;
+}
+
+.pauta-v93-status-chips >
+span[data-tone="more"] {
+  background: #eef2f7;
+  color: #536174;
+}
+
+.pauta-v93-available-block {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #dce5f0;
+}
+
+.pauta-v93-available-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 7px;
+  padding: 10px 12px;
+  border: 1px dashed #cbd8e7;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.pauta-v93-available-row >
+div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pauta-v93-available-row strong {
+  color: #202938;
+  font-size: 11px;
+}
+
+.pauta-v93-available-row span {
+  color: #7b8797;
+  font-size: 9px;
+}
+
+.demandas-v93-direction,
+.demandas-v93-links,
+.demandas-v93-notes {
+  margin-top: 12px;
+}
+
+@media (
+  max-width: 980px
+) {
+  .pauta-v93-client-row,
+  .pauta-v93-demand-line {
+    grid-template-columns:
+      1fr;
+  }
+
+  .pauta-v93-status-chips {
+    justify-content:
+      flex-start;
+  }
+
+  .pauta-v93-unified-head {
+    align-items:
+      flex-start;
+    flex-direction:
+      column;
+  }
+}
+
+@media (
+  max-width: 560px
+) {
+  .board-v93-front-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+  }
+}

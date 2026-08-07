@@ -1,7 +1,6 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import BoardWorkspace from './BoardWorkspace'
 
 export const dynamic = 'force-dynamic'
@@ -28,18 +27,15 @@ async function hasTotalAccess() {
     return false
   }
 
-  const admin =
-    createAdminClient()
-
   const [
     profileResult,
     teamResult,
   ] =
     await Promise.all([
-      admin
+      supabase
         .from('profiles')
         .select(
-          'role,is_active',
+          'id,role,is_active,email',
         )
         .eq(
           'id',
@@ -47,7 +43,7 @@ async function hasTotalAccess() {
         )
         .maybeSingle(),
 
-      admin
+      supabase
         .from(
           'team_members',
         )
@@ -61,18 +57,22 @@ async function hasTotalAccess() {
         .maybeSingle(),
     ])
 
+  const profile =
+    profileResult.data
+
+  const team =
+    teamResult.data
+
   if (
-    profileResult
-      .data
+    profile
       ?.is_active !== false &&
     [
       'admin',
       'director',
     ].includes(
       String(
-        profileResult
-          .data
-          ?.role || '',
+        profile?.role ||
+        '',
       ),
     )
   ) {
@@ -80,11 +80,9 @@ async function hasTotalAccess() {
   }
 
   if (
-    teamResult
-      .data
+    team
       ?.is_active !== false &&
-    teamResult
-      .data
+    team
       ?.access_type ===
         'total'
   ) {
@@ -96,7 +94,7 @@ async function hasTotalAccess() {
   }
 
   const byEmail =
-    await admin
+    await supabase
       .from(
         'team_members',
       )

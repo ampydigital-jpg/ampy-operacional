@@ -121,6 +121,7 @@ export default function PautaManagementPanel({
   clientServices = [],
   distributionBoards = [],
   distributionColumns = [],
+  pautaColumns = [],
   canManage = false,
 }: any) {
   const pauta = snapshot?.pauta || null
@@ -195,6 +196,212 @@ export default function PautaManagementPanel({
     pautaCards,
     extraDemands,
   ])
+
+  const demandsByClient =
+    useMemo(
+      () => {
+        const result =
+          new Map<
+            string,
+            any[]
+          >()
+
+        for (
+          const item
+          of operationalDemands
+        ) {
+          const id =
+            String(
+              item.client_id ||
+              item.client
+                ?.id ||
+              '',
+            )
+
+          if (!id) {
+            continue
+          }
+
+          const current =
+            result.get(
+              id,
+            ) || []
+
+          current.push(
+            item,
+          )
+
+          result.set(
+            id,
+            current,
+          )
+        }
+
+        return result
+      },
+      [
+        operationalDemands,
+      ],
+    )
+
+  const pautaColumnsById =
+    useMemo(
+      () =>
+        new Map(
+          list(
+            pautaColumns,
+          ).map(
+            (
+              column:
+                any,
+            ) => [
+              String(
+                column.id,
+              ),
+              column,
+            ],
+          ),
+        ),
+      [
+        pautaColumns,
+      ],
+    )
+
+  const unifiedClientRows =
+    useMemo(
+      () =>
+        activeMembers.map(
+          (
+            member:
+              any,
+          ) => {
+            const clientId =
+              String(
+                member.client
+                  ?.id ||
+                '',
+              )
+
+            return {
+              member,
+
+              client:
+                member.client,
+
+              clientId,
+
+              demands:
+                demandsByClient
+                  .get(
+                    clientId,
+                  ) || [],
+            }
+          },
+        ),
+      [
+        activeMembers,
+        demandsByClient,
+      ],
+    )
+
+  function demandLocationChips(
+    item: any,
+  ) {
+    const chips:
+      Array<{
+        key: string
+        label: string
+        tone?: string
+      }> = []
+
+    const pautaColumn =
+      item.board_column_id
+        ? pautaColumnsById.get(
+            String(
+              item.board_column_id,
+            ),
+          )
+        : null
+
+    if (pautaColumn) {
+      chips.push({
+        key:
+          'pauta-' +
+          item.id,
+
+        label:
+          'Pauta · ' +
+          String(
+            pautaColumn
+              ?.name ||
+            'Sem etapa',
+          ),
+
+        tone:
+          'pauta',
+      })
+    }
+
+    for (
+      const assignment
+      of list(
+        item.assignments,
+      )
+    ) {
+      chips.push({
+        key:
+          String(
+            assignment.id,
+          ),
+
+        label:
+          String(
+            assignment
+              .board_name ||
+            assignment
+              .board
+              ?.name ||
+            'Quadro',
+          ) +
+          ' · ' +
+          String(
+            assignment
+              .board_column_name ||
+            assignment
+              .board_column
+              ?.name ||
+            'Sem coluna',
+          ),
+
+        tone:
+          assignmentComplete(
+            assignment
+              .operational_status,
+          )
+            ? 'done'
+            : 'active',
+      })
+    }
+
+    if (
+      chips.length ===
+      0
+    ) {
+      chips.push({
+        key:
+          'pending-' +
+          item.id,
+
+        label:
+          'Ainda não distribuída',
+
+        tone:
+          'pending',
+      })
+    }
+
+    return chips
+  }
 
   const extraDemandIds = useMemo(
     () =>
@@ -790,6 +997,146 @@ export default function PautaManagementPanel({
     reload()
   }
 
+  function toggleUnifiedClient(
+    row: any,
+  ) {
+    const memberId =
+      String(
+        row.member
+          ?.member_id ||
+        '',
+      )
+
+    const demandIds =
+      list(
+        row.demands,
+      )
+        .map(
+          (
+            item:
+              any,
+          ) =>
+            String(
+              item.id ||
+              '',
+            ),
+        )
+        .filter(
+          Boolean,
+        )
+
+    const selected =
+      selectedMemberIds.includes(
+        memberId,
+      )
+
+    setSelectedMemberIds(
+      (
+        current,
+      ) =>
+        selected
+          ? current.filter(
+              (id) =>
+                id !==
+                memberId,
+            )
+          : Array.from(
+              new Set([
+                ...current,
+                memberId,
+              ]),
+            ),
+    )
+
+    setSelectedDemandIds(
+      (
+        current,
+      ) =>
+        selected
+          ? current.filter(
+              (id) =>
+                !demandIds.includes(
+                  id,
+                ),
+            )
+          : Array.from(
+              new Set([
+                ...current,
+                ...demandIds,
+              ]),
+            ),
+    )
+  }
+
+  function selectAllUnified() {
+    const allMemberIds =
+      unifiedClientRows
+        .map(
+          (
+            row:
+              any,
+          ) =>
+            String(
+              row.member
+                ?.member_id ||
+              '',
+            ),
+        )
+        .filter(
+          Boolean,
+        )
+
+    const allDemandIds =
+      unifiedClientRows
+        .flatMap(
+          (
+            row:
+              any,
+          ) =>
+            list(
+              row.demands,
+            ).map(
+              (
+                item:
+                  any,
+              ) =>
+                String(
+                  item.id ||
+                  '',
+                ),
+            ),
+        )
+        .filter(
+          Boolean,
+        )
+
+    const allSelected =
+      allMemberIds.length >
+        0 &&
+      allMemberIds.every(
+        (id) =>
+          selectedMemberIds.includes(
+            id,
+          ),
+      )
+
+    setSelectedMemberIds(
+      allSelected
+        ? []
+        : allMemberIds,
+    )
+
+    setSelectedDemandIds(
+      allSelected
+        ? []
+        : Array.from(
+            new Set(
+              allDemandIds,
+            ),
+          ),
+    )
+  }
+
   function toggleAll(
     current: string[],
     all: string[],
@@ -1207,7 +1554,332 @@ export default function PautaManagementPanel({
 
           {tab === 'clients' && (
             <div className="pauta-v8-clients-layout">
-              <section className="pauta-management-card">
+              <section className="pauta-management-card pauta-v93-unified">
+                <div className="pauta-v93-unified-head">
+                  <div>
+                    <span>
+                      Clientes e demandas
+                    </span>
+
+                    <strong>
+                      {
+                        activeMembers.length
+                      } cliente(s)
+                      {' · '}
+                      {
+                        operationalDemands.length
+                      } demanda(s)
+                    </strong>
+                  </div>
+
+                  {canManage &&
+                    editable && (
+                    <div className="pauta-v93-toolbar">
+                      <button
+                        className="bsec"
+                        type="button"
+                        onClick={
+                          selectAllUnified
+                        }
+                      >
+                        Selecionar todos
+                      </button>
+
+                      <button
+                        className="bsec danger-button"
+                        type="button"
+                        disabled={
+                          !selectedMemberIds.length ||
+                          loading
+                        }
+                        onClick={() =>
+                          setRemoveClientsOpen(
+                            true,
+                          )
+                        }
+                      >
+                        Remover da Pauta
+                      </button>
+
+                      <button
+                        className="bpri"
+                        type="button"
+                        onClick={() =>
+                          setDemandOpen(
+                            (
+                              current,
+                            ) =>
+                              !current,
+                          )
+                        }
+                      >
+                        Adicionar demanda
+                      </button>
+
+                      <button
+                        className="bsec"
+                        type="button"
+                        disabled={
+                          !selectedDemandIds.length ||
+                          loading
+                        }
+                        onClick={() => {
+                          setDistributionError(
+                            '',
+                          )
+
+                          setDistributionNotice(
+                            '',
+                          )
+
+                          setExistingDistributionOpen(
+                            true,
+                          )
+                        }}
+                      >
+                        Adicionar aos Quadros
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pauta-v93-unified-list">
+                  {unifiedClientRows.map(
+                    (
+                      row:
+                        any,
+                    ) => {
+                      const memberId =
+                        String(
+                          row.member
+                            ?.member_id ||
+                          '',
+                        )
+
+                      return (
+                        <article
+                          className="pauta-v93-client-row"
+                          key={
+                            row.clientId
+                          }
+                        >
+                          <label className="pauta-v93-client-select">
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedMemberIds.includes(
+                                  memberId,
+                                )
+                              }
+                              onChange={() =>
+                                toggleUnifiedClient(
+                                  row,
+                                )
+                              }
+                            />
+
+                            <span>
+                              {
+                                row.client
+                                  ?.name ||
+                                'Cliente'
+                              }
+                            </span>
+                          </label>
+
+                          <div className="pauta-v93-client-demands">
+                            {list(
+                              row.demands,
+                            ).map(
+                              (
+                                item:
+                                  any,
+                              ) => {
+                                const chips =
+                                  demandLocationChips(
+                                    item,
+                                  )
+
+                                return (
+                                  <div
+                                    className="pauta-v93-demand-line"
+                                    key={
+                                      item.id
+                                    }
+                                  >
+                                    <div className="pauta-v93-demand-copy">
+                                      <strong>
+                                        {
+                                          item.title
+                                        }
+                                      </strong>
+
+                                      <span>
+                                        {
+                                          item.demand_kind ===
+                                          'main'
+                                            ? 'Card mensal'
+                                            : 'Demanda adicional'
+                                        }
+                                      </span>
+                                    </div>
+
+                                    <div className="pauta-v93-status-chips">
+                                      {chips
+                                        .slice(
+                                          0,
+                                          3,
+                                        )
+                                        .map(
+                                          (
+                                            chip,
+                                          ) => (
+                                            <span
+                                              key={
+                                                chip.key
+                                              }
+                                              data-tone={
+                                                chip.tone
+                                              }
+                                            >
+                                              {
+                                                chip.label
+                                              }
+                                            </span>
+                                          ),
+                                        )}
+
+                                      {chips.length >
+                                        3 && (
+                                        <span data-tone="more">
+                                          +
+                                          {
+                                            chips.length -
+                                            3
+                                          }
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              },
+                            )}
+
+                            {!list(
+                              row.demands,
+                            ).length && (
+                              <span className="pauta-v93-no-demand">
+                                Sem demanda ativa vinculada.
+                              </span>
+                            )}
+                          </div>
+                        </article>
+                      )
+                    },
+                  )}
+
+                  {eligibleClients.length >
+                    0 && (
+                    <div className="pauta-v93-available-block">
+                      <div className="pauta-v93-available-head">
+                        <div>
+                          <span>
+                            Disponíveis para adicionar
+                          </span>
+
+                          <strong>
+                            {
+                              eligibleClients.length
+                            } cliente(s)
+                          </strong>
+                        </div>
+
+                        {canManage &&
+                          editable &&
+                          selectedNewClientIds.length >
+                            0 && (
+                          <button
+                            className="bpri"
+                            type="button"
+                            onClick={() =>
+                              setAddClientsOpen(
+                                true,
+                              )
+                            }
+                          >
+                            Adicionar à Pauta
+                          </button>
+                        )}
+                      </div>
+
+                      {eligibleClients.map(
+                        (
+                          client:
+                            any,
+                        ) => (
+                          <label
+                            className="pauta-v93-available-row"
+                            key={
+                              client.id
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedNewClientIds.includes(
+                                  String(
+                                    client.id,
+                                  ),
+                                )
+                              }
+                              onChange={() =>
+                                setSelectedNewClientIds(
+                                  (
+                                    current,
+                                  ) =>
+                                    current.includes(
+                                      String(
+                                        client.id,
+                                      ),
+                                    )
+                                      ? current.filter(
+                                          (
+                                            id,
+                                          ) =>
+                                            id !==
+                                            String(
+                                              client.id,
+                                            ),
+                                        )
+                                      : [
+                                          ...current,
+                                          String(
+                                            client.id,
+                                          ),
+                                        ],
+                                )
+                              }
+                            />
+
+                            <div>
+                              <strong>
+                                {
+                                  client.name
+                                }
+                              </strong>
+
+                              <span>
+                                Ainda não participa desta Pauta
+                              </span>
+                            </div>
+                          </label>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+              <section className="pauta-management-card pauta-v93-legacy pauta-v93-legacy-clients">
                 <div className="pauta-v8-section-head">
                   <div>
                     <span>Clientes</span>
@@ -1402,7 +2074,7 @@ export default function PautaManagementPanel({
 
               {canManage &&
                 editable && (
-                <section className="pauta-management-card">
+                <section className="pauta-management-card pauta-v93-legacy pauta-v93-legacy-complete">
                   <div className="pauta-v8-section-head">
                     <div>
                       <span>
@@ -1583,7 +2255,7 @@ export default function PautaManagementPanel({
                 </section>
               )}
 
-              <section className="pauta-management-card">
+              <section className="pauta-management-card pauta-v93-legacy pauta-v93-legacy-demands">
                 <div className="pauta-v8-section-head">
                   <div>
                     <span>

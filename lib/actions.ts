@@ -5663,6 +5663,65 @@ export async function distributeExistingPautaDemandsAction(
   }
 }
 
+export async function removeWorkItemBoardAssignmentAction(
+  assignmentId: string,
+  note = '',
+) {
+  const id =
+    String(
+      assignmentId ||
+      '',
+    ).trim()
+
+  if (!id) {
+    return {
+      error:
+        'Distribuição inválida.',
+    }
+  }
+
+  const {
+    supabase,
+  } =
+    await getCurrentProfile()
+
+  const {
+    data,
+    error,
+  } =
+    await supabase.rpc(
+      'remove_work_item_board_assignment',
+      {
+        p_assignment_id:
+          id,
+
+        p_note:
+          String(
+            note || '',
+          ).trim() ||
+          null,
+      },
+    )
+
+  if (error) {
+    return {
+      error:
+        error.message,
+    }
+  }
+
+  revalidateOperationalPaths()
+
+  return {
+    success: true,
+    data:
+      pautaRpcPayload(
+        data,
+      ),
+  }
+}
+
+
 export async function setWorkItemBoardAssignmentCompletionAction(
   assignmentId: string,
   completed: boolean,
