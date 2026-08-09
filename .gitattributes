@@ -1,0 +1,5 @@
+supabase/v10/**/*.sql text eol=lf
+supabase/v10/**/*.json text eol=lf
+docs/v10/**/*.md text eol=lf
+package-lock.json text eol=lf
+scripts/v10/*.ps1 text eol=crlf
