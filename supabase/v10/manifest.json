@@ -30,7 +30,7 @@
                     "migration_path":  "supabase/v10/migrations",
                     "naming":  "NNNN_nome.sql",
                     "current_migrations":  [
-
+                                               "0001_fix_remove_completed_board_assignment.sql"
                                            ]
                 },
     "release_strategy":  [
