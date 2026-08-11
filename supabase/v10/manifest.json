@@ -1,6 +1,6 @@
-{
+﻿{
     "version":  "V10",
-    "state":  "foundation",
+    "state":  "v10.0-security",
     "development_branch":  "stabilization/v10-canonical",
     "foundation_parent_sha":  "6e847d2e77521d5c713f64e2f6281513da44bc97",
     "production_main_baseline_sha":  "9e082b0c8c86b131c790ae25cb43f2ef022be5e9",
@@ -30,7 +30,8 @@
                     "migration_path":  "supabase/v10/migrations",
                     "naming":  "NNNN_nome.sql",
                     "current_migrations":  [
-                                               "0001_fix_remove_completed_board_assignment.sql"
+                                               "0001_fix_remove_completed_board_assignment.sql",
+                                               "0002_security_baseline_core.sql"
                                            ]
                 },
     "release_strategy":  [
