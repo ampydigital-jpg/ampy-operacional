@@ -667,6 +667,23 @@ export default function AgendaView({
   const [showDeadlines, setShowDeadlines] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [
+    actionDialog,
+    setActionDialog,
+  ] = useState<{
+    kind:
+      | 'completion'
+      | 'delete'
+      | null
+    targetCompleted: boolean
+    message: string
+    note: string
+  }>({
+    kind: null,
+    targetCompleted: false,
+    message: '',
+    note: '',
+  })
   const suppressEventClickRef = useRef(false)
   const initialAgendaOpenHandled =
     useRef(false)
@@ -1239,8 +1256,23 @@ export default function AgendaView({
     setLoading(false)
     finishAgendaFlow()
   }
-  async function remove() {
-    if (!editing) {
+  function closeActionDialog() {
+    if (loading) {
+      return
+    }
+
+    setActionDialog({
+      kind: null,
+      targetCompleted: false,
+      message: '',
+      note: '',
+    })
+
+    setError('')
+  }
+
+  function requestDelete() {
+    if (!editing || loading) {
       return
     }
 
@@ -1250,9 +1282,27 @@ export default function AgendaView({
         ? 'Excluir esta agenda e todas as próximas da série?'
         : 'Excluir esta agenda?'
 
-    if (!confirm(message)) {
+    setError('')
+
+    setActionDialog({
+      kind: 'delete',
+      targetCompleted: false,
+      message,
+      note: '',
+    })
+  }
+
+  async function confirmDelete() {
+    if (
+      !editing ||
+      loading ||
+      actionDialog.kind !== 'delete'
+    ) {
       return
     }
+
+    setLoading(true)
+    setError('')
 
     const result =
       await deleteCalendarEventAction(
@@ -1263,12 +1313,21 @@ export default function AgendaView({
     if ('error' in result) {
       setError(
         result.error ||
-        'Erro inesperado.',
+          'Erro ao excluir agenda.',
       )
 
+      setLoading(false)
       return
     }
 
+    setActionDialog({
+      kind: null,
+      targetCompleted: false,
+      message: '',
+      note: '',
+    })
+
+    setLoading(false)
     finishAgendaFlow()
   }
 
@@ -1306,40 +1365,71 @@ export default function AgendaView({
     finishAgendaFlow()
   }
 
-  // V9 — CONCLUSÃO DE AGENDA
-  async function toggleCompletion() {
-    if (!editing) return
+  // V10.0-H1 — CONCLUSÃO SEM DIALOGO NATIVO
+  function requestCompletionToggle() {
+    if (!editing || loading) {
+      return
+    }
 
-    const completed = editing.completion_status === 'completed'
-    const confirmed = window.confirm(
-      completed
-        ? 'Reabrir esta agenda?'
-        : 'Marcar esta agenda como concluída?',
-    )
+    const targetCompleted =
+      editing.completion_status !==
+      'completed'
 
-    if (!confirmed) return
+    setError('')
 
-    const note = window.prompt(
-      completed
-        ? 'Observação da reabertura (opcional):'
-        : 'Observação da conclusão (opcional):',
-      editing.completion_note || '',
-    ) || ''
+    setActionDialog({
+      kind: 'completion',
+      targetCompleted,
+      message: targetCompleted
+        ? 'Marcar esta agenda como concluída?'
+        : 'Reabrir esta agenda?',
+      note: targetCompleted
+        ? String(
+            editing.completion_note ||
+              '',
+          ).trim()
+        : '',
+    })
+  }
+
+  async function confirmCompletionToggle() {
+    if (
+      !editing ||
+      loading ||
+      actionDialog.kind !==
+        'completion'
+    ) {
+      return
+    }
 
     setLoading(true)
     setError('')
 
-    const result = await setCalendarEventCompletionAction(
-      editing.id,
-      !completed,
-      note,
-    )
+    const result =
+      await setCalendarEventCompletionAction(
+        editing.id,
+        actionDialog.targetCompleted,
+        actionDialog.targetCompleted
+          ? actionDialog.note.trim()
+          : '',
+      )
 
     if ('error' in result) {
-      setError(result.error || 'Não foi possível alterar a conclusão da agenda.')
+      setError(
+        result.error ||
+          'Não foi possível alterar a conclusão da agenda.',
+      )
+
       setLoading(false)
       return
     }
+
+    setActionDialog({
+      kind: null,
+      targetCompleted: false,
+      message: '',
+      note: '',
+    })
 
     setLoading(false)
     finishAgendaFlow()
@@ -3505,7 +3595,7 @@ export default function AgendaView({
                         ? 'bsec agenda-v9-reopen-button'
                         : 'bpri agenda-v9-complete-button'
                     }
-                    onClick={toggleCompletion}
+                    onClick={requestCompletionToggle}
                     disabled={loading}
                   >
                     <i className={
@@ -3549,7 +3639,7 @@ export default function AgendaView({
                   <button
                     type="button"
                     className="bsec danger-button"
-                    onClick={remove}
+                    onClick={requestDelete}
                   >
                     Excluir
                   </button>
@@ -3578,5 +3668,150 @@ export default function AgendaView({
               </div>
             </form>
     </div></div>}
+
+    {actionDialog.kind && editing && (
+      <div
+        className="modal-ov"
+        onClick={closeActionDialog}
+      >
+        <div
+          className="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="agenda-action-dialog-title"
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+        >
+          <div className="modal-head">
+            <div>
+              <h2
+                id="agenda-action-dialog-title"
+              >
+                {actionDialog.kind ===
+                'delete'
+                  ? 'Excluir agenda'
+                  : actionDialog
+                        .targetCompleted
+                    ? 'Concluir agenda'
+                    : 'Reabrir agenda'}
+              </h2>
+
+              <p>
+                {actionDialog.message}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={closeActionDialog}
+              disabled={loading}
+              aria-label="Fechar confirmação"
+            >
+              <i className="ti ti-x" />
+            </button>
+          </div>
+
+          <div className="modal-body">
+            {actionDialog.kind ===
+              'completion' &&
+              actionDialog
+                .targetCompleted && (
+                <div className="fg">
+                  <label
+                    className="fl"
+                    htmlFor="agenda-completion-note"
+                  >
+                    Observação da conclusão
+                    (opcional)
+                  </label>
+
+                  <textarea
+                    id="agenda-completion-note"
+                    className="fi"
+                    rows={4}
+                    value={
+                      actionDialog.note
+                    }
+                    onChange={(event) =>
+                      setActionDialog(
+                        (current) => ({
+                          ...current,
+                          note:
+                            event.target
+                              .value,
+                        }),
+                      )
+                    }
+                    placeholder="Registre uma observação, se necessário."
+                  />
+                </div>
+              )}
+
+            {actionDialog.kind ===
+              'delete' && (
+              <div className="notice notice-err">
+                <i className="ti ti-alert-triangle" />
+
+                <span>
+                  Esta ação remove a agenda
+                  selecionada. Confirme apenas
+                  se deseja continuar.
+                </span>
+              </div>
+            )}
+
+            {error && (
+              <div className="notice notice-err">
+                <i className="ti ti-alert-circle" />
+
+                <span>
+                  {error}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="modal-foot">
+            <button
+              type="button"
+              className="bsec"
+              onClick={closeActionDialog}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              className={
+                actionDialog.kind ===
+                'delete'
+                  ? 'bsec danger-button'
+                  : 'bpri'
+              }
+              onClick={
+                actionDialog.kind ===
+                'delete'
+                  ? confirmDelete
+                  : confirmCompletionToggle
+              }
+              disabled={loading}
+            >
+              {loading
+                ? 'Processando...'
+                : actionDialog.kind ===
+                    'delete'
+                  ? 'Excluir agenda'
+                  : actionDialog
+                        .targetCompleted
+                    ? 'Concluir agenda'
+                    : 'Reabrir agenda'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 }
