@@ -2498,7 +2498,7 @@ export default function AgendaView({
                 </div>
               </div>
             })}
-          </div> : <div className="timeline-wrap">
+          </div> : <div className={`timeline-wrap ${period === '7' ? 'is-seven-days' : ''}`}>
             <div className="timeline-head" style={{ gridTemplateColumns: `72px repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))` }}><div className="timeline-corner">Horário</div>{rangeDays.map((day) => <div className="timeline-day-head" key={ymd(day)}><b>{dayNames[day.getDay()]}</b><span>{day.getDate()}</span></div>)}</div>
             <div
               className="timeline-all-day-grid"
