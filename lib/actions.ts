@@ -8909,6 +8909,7 @@ async function getProjectStepStatusDefinition(
 async function syncProjectStatusFromSteps(
   supabase: any,
   projectId: string,
+  actorId: string,
 ) {
   const [
     stepsResult,
@@ -9058,8 +9059,13 @@ async function syncProjectStatusFromSteps(
       'in_progress'
   }
 
-  const closed =
+  const completed =
     nextStatus === 'done'
+
+  const completedAt =
+    completed
+      ? new Date().toISOString()
+      : null
 
   const { error } =
     await supabase
@@ -9068,9 +9074,14 @@ async function syncProjectStatusFromSteps(
         status: nextStatus,
 
         closed_at:
-          closed
-            ? new Date()
-                .toISOString()
+          completedAt,
+
+        completed_at:
+          completedAt,
+
+        completed_by:
+          completed
+            ? actorId
             : null,
       })
       .eq('id', projectId)
@@ -9385,6 +9396,7 @@ export async function updateProjectStepStatusDefinitionAction(
     await syncProjectStatusFromSteps(
       supabase,
       projectId,
+      user.id,
     )
 
   if ('error' in syncResult) {
@@ -9773,6 +9785,7 @@ export async function deleteProjectStepStatusDefinitionAction(
     await syncProjectStatusFromSteps(
       supabase,
       projectId,
+      user.id,
     )
 
   if ('error' in syncResult) {
@@ -9962,6 +9975,7 @@ export async function createProjectStepDynamicAction(
     await syncProjectStatusFromSteps(
       supabase,
       projectId,
+      user.id,
     )
 
   if ('error' in syncResult) {
@@ -10127,6 +10141,7 @@ export async function updateProjectStepDynamicAction(
     await syncProjectStatusFromSteps(
       supabase,
       projectId,
+      user.id,
     )
 
   if ('error' in syncResult) {
@@ -10234,6 +10249,7 @@ export async function updateProjectStepStatusDynamicAction(
     await syncProjectStatusFromSteps(
       supabase,
       projectId,
+      user.id,
     )
 
   if ('error' in syncResult) {
@@ -10369,6 +10385,7 @@ export async function deleteProjectStepDynamicAction(
     await syncProjectStatusFromSteps(
       supabase,
       projectId,
+      user.id,
     )
 
   if ('error' in syncResult) {

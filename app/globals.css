@@ -15647,3 +15647,64 @@ div {
       );
   }
 }
+
+/* V10.0-H1.3.3-AGENDA-7D-DIA-INTEIRO */
+
+.ops-page .timeline-wrap.is-seven-days {
+  height: clamp(620px, calc(100dvh - 120px), 760px) !important;
+  max-height: calc(100dvh - 80px) !important;
+}
+
+.ops-page .timeline-all-day-grid {
+  display: grid;
+  min-width: 840px;
+  position: sticky;
+  top: 48px;
+  z-index: 4;
+  background: #FFFFFF;
+  border-bottom: 1px solid #D8E0EA;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, .04);
+}
+
+.ops-page .timeline-all-day-corner {
+  min-height: 64px;
+  padding: 8px 9px;
+  border-right: 1px solid #D8E0EA;
+  background: #F8FAFC;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+.ops-page .timeline-all-day-cell {
+  min-width: 170px;
+  min-height: 64px;
+  max-height: 112px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px;
+  border-right: 1px solid #E4E7EC;
+  background: #FFFFFF;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  scrollbar-width: thin;
+}
+
+.ops-page .timeline-all-day-cell .agenda-pauta-milestone,
+.ops-page .timeline-all-day-cell .agenda-demand-deadline,
+.ops-page .timeline-all-day-cell .range-ref,
+.ops-page .timeline-all-day-cell .calendar-event {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.ops-page .timeline-all-day-empty {
+  color: #D0D5DD;
+  font-size: 10px;
+  padding: 4px 2px;
+}

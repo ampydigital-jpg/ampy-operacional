@@ -2500,6 +2500,76 @@ export default function AgendaView({
             })}
           </div> : <div className="timeline-wrap">
             <div className="timeline-head" style={{ gridTemplateColumns: `72px repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))` }}><div className="timeline-corner">Horário</div>{rangeDays.map((day) => <div className="timeline-day-head" key={ymd(day)}><b>{dayNames[day.getDay()]}</b><span>{day.getDate()}</span></div>)}</div>
+            <div
+              className="timeline-all-day-grid"
+              style={{
+                gridTemplateColumns:
+                  `72px repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))`,
+              }}
+            >
+              <div className="timeline-all-day-corner">
+                Dia inteiro
+              </div>
+
+              {rangeDays.map((day) => {
+                const key = ymd(day)
+                const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
+                const allDayEvents = dayEvents.filter((event: any) => event.all_day)
+                const dayRefs = refsVisible.filter((ref) => ref.date === key)
+                const dayMilestones = visiblePautaMilestones.filter((milestone) => milestone.date === key)
+                const dayDeadlines = visibleDemandDeadlines.filter((deadline) => deadline.date === key)
+
+                return (
+                  <div
+                    className="timeline-all-day-cell"
+                    key={'all-day-' + key}
+                  >
+                    {dayMilestones.map((milestone) =>
+                      renderPautaMilestone(
+                        milestone,
+                        true,
+                      ),
+                    )}
+
+                    {dayDeadlines.map((deadline) =>
+                      renderDemandDeadline(
+                        deadline,
+                      ),
+                    )}
+
+                    {dayRefs.map((ref) => (
+                      <span
+                        key={ref.id}
+                        className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}
+                        title={`${ref.title} · ${ref.sourceLabel}`}
+                      >
+                        {ref.kind === 'opportunity'
+                          ? '✦'
+                          : '●'}{' '}
+                        {ref.title}
+                      </span>
+                    ))}
+
+                    {allDayEvents.map((event: any) =>
+                      renderEventButton(
+                        event,
+                        true,
+                      ),
+                    )}
+
+                    {dayMilestones.length === 0 &&
+                      dayDeadlines.length === 0 &&
+                      dayRefs.length === 0 &&
+                      allDayEvents.length === 0 && (
+                        <span className="timeline-all-day-empty">
+                          —
+                        </span>
+                      )}
+                  </div>
+                )
+              })}
+            </div>
+
             <div className="timeline-body" style={{ height: `${(endHour - startHour) * hourHeight}px` }}>
               <div className="timeline-hours">{hours.map((hour) => <div className="timeline-hour" key={hour} style={{ height: `${hourHeight}px` }}>{String(hour).padStart(2,'0')}:00</div>)}</div>
               <div className="timeline-days" style={{ gridTemplateColumns: `repeat(${rangeDays.length}, minmax(${period === 'day' ? '560px' : '190px'}, 1fr))` }}>
@@ -2507,11 +2577,7 @@ export default function AgendaView({
                   const key = ymd(day)
                   const dayEvents = filteredEvents.filter((event: any) => isDate(event.starts_at, key))
                   const timedEvents = dayEvents.filter((event: any) => !event.all_day)
-                  const allDayEvents = dayEvents.filter((event: any) => event.all_day)
                   const timedLayout = layoutTimedEvents(timedEvents)
-                  const dayRefs = refsVisible.filter((ref) => ref.date === key)
-                  const dayMilestones = visiblePautaMilestones.filter((milestone) => milestone.date === key)
-                  const dayDeadlines = visibleDemandDeadlines.filter((deadline) => deadline.date === key)
                   return <div
                     className="timeline-day"
                     data-date={key}
@@ -2529,12 +2595,7 @@ export default function AgendaView({
                       }
                     }}
                   >
-                    <div className="timeline-all-day">
-                      {dayMilestones.map((milestone) => renderPautaMilestone(milestone, true))}
-                      {dayDeadlines.map((deadline) => renderDemandDeadline(deadline))}
-                      {dayRefs.map((ref) => <span key={ref.id} className={`range-ref ${ref.kind === 'opportunity' ? 'opportunity' : 'holiday'}`}>{ref.kind === 'opportunity' ? '✦' : '●'} {ref.title}</span>)}
-                      {allDayEvents.map((event: any) => renderEventButton(event, true))}
-                    </div>
+
                     {hours.map((hour) => <button type="button" className="timeline-slot" key={`${key}-${hour}`} style={{ height: `${hourHeight}px` }} onClick={() => openCreate(key, `${String(hour).padStart(2,'0')}:00`)} aria-label={`Criar agenda em ${key} às ${hour}h`} />)}
                     {timedEvents.map((event: any) =>
                       renderEventButton(

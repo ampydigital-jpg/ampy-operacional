@@ -2047,16 +2047,6 @@ export default function BoardWorkspace({
                 </button>
                 )}
 
-                {!isPautaWorkspace && (
-                  <button
-                    className="bsec"
-                    type="button"
-                    onClick={createColumn}
-                  >
-                    <i className="ti ti-column-insert-right" />
-                    Nova coluna
-                  </button>
-                )}
               </>
             )}
           </div>

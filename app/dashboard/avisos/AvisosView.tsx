@@ -555,7 +555,37 @@ export default function AvisosView({
   const alerts = useMemo(() => {
     const visibleCanonical = (canonicalAlerts || []).filter((alert: any) => !alert.hidden)
 
-    const sorted = [...visibleCanonical].sort((a: any, b: any) => {
+    const generatedVisible = (generatedAlerts || []).filter((generatedAlert: any) => {
+      const matchingRaw = (rows || []).find((row: any) =>
+        sameAvisoIdentity(
+          row,
+          generatedAlert,
+        ),
+      )
+
+      if (
+        matchingRaw &&
+        isClosedCanonicalAviso(
+          matchingRaw,
+        )
+      ) {
+        return false
+      }
+
+      const alreadyCanonical = visibleCanonical.some((canonicalAlert: any) =>
+        sameAvisoIdentity(
+          canonicalAlert,
+          generatedAlert,
+        ),
+      )
+
+      return !alreadyCanonical
+    })
+
+    const sorted = [
+      ...visibleCanonical,
+      ...generatedVisible,
+    ].sort((a: any, b: any) => {
       const pa = a.priority === 'urgent' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1
       const pb = b.priority === 'urgent' ? 4 : b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1
 
@@ -580,7 +610,11 @@ export default function AvisosView({
 
       return true
     })
-  }, [canonicalAlerts])
+  }, [
+    canonicalAlerts,
+    generatedAlerts,
+    rows,
+  ])
 
   const counts = useMemo(() => {
     const active = alerts.filter((alert: any) => !['archived', 'deleted', 'done'].includes(alert.status))
