@@ -32,7 +32,7 @@ export default async function ConfiguracoesPage() {
         <div className="settings-grid">
           <ConfigCard title="Organização" rows={[['Nome', 'Ampy Digital'], ['Sistema', APP_NAME], ['Clientes', String(totalClients ?? 0)], ['Usuários ativos', String(totalUsers ?? 0)]]} />
           <ConfigCard title="Meu perfil" rows={[['Nome', profile?.full_name || '—'], ['Email', profile?.email || '—'], ['Perfil', profile?.role || '—']]} />
-          <ConfigCard title="Integrações" rows={[['Google Drive', 'Links ativos'], ['Agenda', 'Interna'], ['WhatsApp', 'Fase futura'], ['Meta Ads', 'Fase futura'], ['Google Ads', 'Fase futura']]} badge />
+          <ConfigCard title="Integrações" rows={[['Google Drive', 'Links ativos'], ['Agenda', 'Interna'], ['WhatsApp', 'Alfredo no backend'], ['Meta Ads', 'Sincronização no backend'], ['Google Ads', 'Fase futura']]} badge />
         </div>
         <section className="settings-card archived-clients-card">
           <div className="sh"><div><div className="stitle">Arquivo de clientes</div><div className="ssub">Clientes arquivados ou inativos ficam fora da operação por padrão.</div></div><span className="badge bmut">{archivedClients?.length || 0}</span></div>
