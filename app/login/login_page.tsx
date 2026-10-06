@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { APP_NAME } from '@/lib/brand'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -28,7 +29,7 @@ export default function LoginPage() {
       <div style={{ width:'100%', maxWidth:'360px', background:'#101010', border:'0.5px solid #1C1C1C', borderRadius:'14px', padding:'32px' }}>
         <div style={{ marginBottom:'28px' }}>
           <div style={{ width:'36px', height:'36px', borderRadius:'9px', background:'#1C1C1C', border:'0.5px solid #2A2A2A', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:600, color:'#666', marginBottom:'16px' }}>E</div>
-          <div style={{ fontSize:'18px', fontWeight:600, color:'#FFF', letterSpacing:'-0.3px' }}>Eyxo</div>
+          <div style={{ fontSize:'18px', fontWeight:600, color:'#FFF', letterSpacing:'-0.3px' }}>{APP_NAME}</div>
           <div style={{ fontSize:'11px', color:'#333', marginTop:'3px' }}>Central operacional da Ampy Digital</div>
         </div>
         <form onSubmit={handleLogin}>

@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { APP_NAME, APP_DESCRIPTION } from '@/lib/brand'
 
 export const metadata: Metadata = {
-  title: 'Eyxo | Ampy Digital',
-  description: 'Eyxo, central operacional da Ampy Digital',
+  title: `${APP_NAME} | Ampy Digital`,
+  description: APP_DESCRIPTION,
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Eyxo' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: APP_NAME },
 }
 
 export const viewport: Viewport = {

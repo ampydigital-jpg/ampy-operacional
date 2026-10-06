@@ -125,3 +125,10 @@ Nenhum push/merge na main, nenhuma mudança de banco/dados/políticas, nenhuma m
 de variável/configuração da Vercel. Arquivos SQL são propostas ou histórico explicitamente
 classificado. Dados `[V10 TEST]` e `[QA CLAUDE]` serão somente inventariados. Preview
 compartilha a configuração existente: testes nunca enviam formulários de escrita em produção.
+
+## Identidade concluída
+
+Nome centralizado em `lib/brand.ts`; `NEXT_PUBLIC_APP_NAME` não é usado nem necessário.
+A variável antiga existente na Vercel não foi alterada. Ícones 192/512 e favicon
+gerados com a letra E. Ampy nas atribuições, nomes de equipe, relatórios da agência,
+clientes internos e autores de aprovação identifica a agência e foi preservado.

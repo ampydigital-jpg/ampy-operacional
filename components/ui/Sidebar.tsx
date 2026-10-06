@@ -3,6 +3,7 @@
 // AMPY-V17-A22 — EQUIPE, ACESSOS E SENHAS
 
 import Link from 'next/link'
+import { APP_NAME } from '@/lib/brand'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AvisosMenuBadge from './AvisosMenuBadge'
@@ -79,7 +80,7 @@ export default function Sidebar({ profile }: { profile: any }) {
     <aside className="sb">
       <div className="sb-brand">
         <div className="brand-logo-shell">
-          <span aria-label="Eyxo, central operacional da Ampy Digital" style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-1px', color: '#FFF', lineHeight: 1 }}>Eyxo</span>
+          <span aria-label="Eyxo, central operacional da Ampy Digital" style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-1px', color: '#FFF', lineHeight: 1 }}>{APP_NAME}</span>
         </div>
       </div>
 
