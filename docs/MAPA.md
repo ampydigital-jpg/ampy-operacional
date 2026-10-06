@@ -155,3 +155,9 @@ clientes internos e autores de aprovação identifica a agência e foi preservad
 
 Migrations 0001 a 0005 continuam pendentes de aprovação e teste isolado.
 O histórico de 67 versões e os snapshots **não** são uma fila para rodar em produção.
+
+O checksum do manifest anterior não conferia com o dump versionado, inclusive na
+stabilization de origem. O blob da baseline de agosto foi confirmado idêntico ao
+commit base. Manifest agora registra o hash UTF-8/LF do arquivo versionado; o hash
+antigo fica em historical_manifest_sha256. A checagem PowerShell normaliza somente
+fim de linha. A lista forward inclui 0001–0005; nenhuma migration foi executada.

@@ -75,11 +75,12 @@ $BaselinePath = Join-Path `
     $Repo `
     $Manifest.baseline.repo_path
 
-$BaselineHash = (
-    Get-FileHash `
-        -LiteralPath $BaselinePath `
-        -Algorithm SHA256
-).Hash
+# O dump versionado deve ter o mesmo checksum em Windows e Linux.
+$BaselineText = [System.IO.File]::ReadAllText($BaselinePath).Replace("`r`n", "`n")
+$BaselineBytes = [System.Text.Encoding]::UTF8.GetBytes($BaselineText)
+$BaselineHasher = [System.Security.Cryptography.SHA256]::Create()
+$BaselineHash = [System.BitConverter]::ToString($BaselineHasher.ComputeHash($BaselineBytes)).Replace("-", "")
+$BaselineHasher.Dispose()
 
 if ($BaselineHash -ne $Manifest.baseline.sha256) {
     throw "FAIL Ã¢â‚¬â€ hash do baseline divergiu."

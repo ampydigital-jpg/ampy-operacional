@@ -1,45 +1,51 @@
-﻿{
-    "version":  "V10",
-    "state":  "v10.0-security",
-    "development_branch":  "stabilization/v10-canonical",
-    "foundation_parent_sha":  "6e847d2e77521d5c713f64e2f6281513da44bc97",
-    "production_main_baseline_sha":  "9e082b0c8c86b131c790ae25cb43f2ef022be5e9",
-    "production_supabase_ref":  "epzrrsaibqdcaafkvwmm",
-    "baseline":  {
-                     "source":  "current-production-public-schema",
-                     "captured_at":  "2026-08-09T15:35:27-03:00",
-                     "repo_path":  "supabase/v10/baseline/public-schema.sql",
-                     "sha256":  "881ACC07824996768122B5075C8ABC670FC3985E70CCC21EDFA6CA7973E3BA37",
-                     "fingerprint":  {
-                                         "public_tables":  36,
-                                         "public_functions":  61,
-                                         "public_triggers":  26,
-                                         "public_policies":  85,
-                                         "storage_buckets":  3,
-                                         "storage_policies":  12,
-                                         "auth_custom_triggers":  1
-                                     }
-                 },
-    "legacy":  {
-                   "migration_path":  "supabase/migrations",
-                   "migration_sql_count":  38,
-                   "replay_allowed":  false,
-                   "frozen":  true
-               },
-    "forward":  {
-                    "migration_path":  "supabase/v10/migrations",
-                    "naming":  "NNNN_nome.sql",
-                    "current_migrations":  [
-                                               "0001_fix_remove_completed_board_assignment.sql",
-                                               "0002_security_baseline_core.sql"
-                                           ]
-                },
-    "release_strategy":  [
-                             "EXPAND",
-                             "VALIDATE_LOCAL",
-                             "PREPARE_PRODUCTION_DB",
-                             "DEPLOY_MAIN",
-                             "VALIDATE_PRODUCTION",
-                             "CONTRACT_LATER"
-                         ]
+{
+  "version": "V10",
+  "state": "eyxo-organization-proposals-not-applied",
+  "development_branch": "eyxo/organizacao",
+  "foundation_parent_sha": "6e847d2e77521d5c713f64e2f6281513da44bc97",
+  "production_main_baseline_sha": "9e082b0c8c86b131c790ae25cb43f2ef022be5e9",
+  "production_supabase_ref": "epzrrsaibqdcaafkvwmm",
+  "baseline": {
+    "source": "current-production-public-schema",
+    "captured_at": "2026-08-09T15:35:27-03:00",
+    "repo_path": "supabase/v10/baseline/public-schema.sql",
+    "sha256": "EDD5B57B9C0AF6FCC01CAE8987C138C416249CE37BCBD67771E1D6AB86346479",
+    "fingerprint": {
+      "public_tables": 36,
+      "public_functions": 61,
+      "public_triggers": 26,
+      "public_policies": 85,
+      "storage_buckets": 3,
+      "storage_policies": 12,
+      "auth_custom_triggers": 1
+    },
+    "historical_manifest_sha256": "881ACC07824996768122B5075C8ABC670FC3985E70CCC21EDFA6CA7973E3BA37",
+    "hash_encoding": "UTF-8 without BOM; LF line endings"
+  },
+  "legacy": {
+    "migration_path": "supabase/migrations",
+    "migration_sql_count": 38,
+    "replay_allowed": false,
+    "frozen": true
+  },
+  "forward": {
+    "migration_path": "supabase/v10/migrations",
+    "naming": "NNNN_nome.sql",
+    "current_migrations": [
+      "0001_fix_remove_completed_board_assignment.sql",
+      "0002_security_baseline_core.sql",
+      "0003_profiles_privileges.sql",
+      "0004_internal_rpc_privileges.sql",
+      "0005_operation_policy_scopes.sql"
+    ]
+  },
+  "release_strategy": [
+    "EXPAND",
+    "VALIDATE_LOCAL",
+    "PREPARE_PRODUCTION_DB",
+    "DEPLOY_MAIN",
+    "VALIDATE_PRODUCTION",
+    "CONTRACT_LATER"
+  ],
+  "organization_parent_sha": "5ce9ed53bba89fea7f772fc4b3575f393a87335e"
 }
