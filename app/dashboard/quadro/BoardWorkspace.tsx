@@ -751,10 +751,7 @@ export default function BoardWorkspace({
       filtered.filter(
         (item: any) =>
           item.board_column_id ===
-            columnId &&
-          !item
-            .assignment_completed_at &&
-          !item.completed_at,
+            columnId,
       )
 
     const mode =
