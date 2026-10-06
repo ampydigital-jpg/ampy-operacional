@@ -136,3 +136,43 @@ Ainda é necessária execução das migrations em Supabase isolado com matriz
 anon/operacional/gestão/total/inativo e testes de RPC direta e de triggers.
 Não houve Docker/PostgreSQL local disponível nesta sessão; análise sintática e
 testes de código não substituem essa validação.
+
+## Cadastro público desligado em 06/10 às 12h
+
+Willian informou que desligou **Allow new users to sign up** em 06/10/2026 às
+12h, horário de São Paulo. Alteração feita pelo usuário, não por esta execução;
+a configuração ativa não foi consultada novamente nesta conferência.
+
+A tela `app/dashboard/equipe/EquipeView.tsx` chama `createTeamMemberAction` de
+`lib/team-access-actions.ts`. A action usa `auth.admin.createUser` no servidor,
+com senha temporária e `email_confirm: true`. O SDK envia POST `/admin/users`,
+não `/signup`. O mesmo caminho administrativo já existe na main `47b0c264`.
+Na branch, a action exige sessão/perfil/equipe ativos e Acesso Total, cria os
+registros de perfil/equipe com o acesso escolhido e exige troca de senha.
+Não envia convite por e-mail nesse fluxo.
+
+A action separada `inviteMemberAction`, em `lib/actions.ts`, usa
+`auth.admin.inviteUserByEmail` e exige Acesso Total na branch. Ela não é chamada
+pela tela atual de equipe. O cliente administrativo usa a service role somente
+no servidor. Nenhuma chamada `auth.signUp` foi encontrada em app/lib.
+
+Conclusão por inspeção do código e do Auth: desligar o cadastro público não
+bloqueia a criação administrativa em uso nem os convites da API admin. O
+handler `adminUserCreate` não aplica `DisableSignup`; os convites são previstos
+para o modo sem cadastro público. Isso não certifica SMTP, redirect de convite
+ou funcionamento ponta a ponta da instância. Não criamos usuários nem enviamos
+convites de teste, respeitando a restrição de escrita no banco.
+
+O bloqueio de signup reduz a entrada pública, mas não corrige autoelevação de
+usuários existentes em profiles nem RPCs internas expostas. As migrations
+continuam necessárias; `handle_new_user` continua disparando também na criação
+administrativa. A migration 0003 mantém o cadastro seguro e a action em uso
+aplica o acesso escolhido explicitamente depois da criação do Auth.
+
+Fontes verificadas:
+- https://supabase.com/docs/reference/javascript/auth-admin-createuser
+- https://github.com/supabase/auth/blob/master/internal/api/admin.go
+- https://supabase.github.io/auth/ (DISABLE_SIGNUP e convites)
+
+Vercel: exclusivamente deploy de preview, nunca produção. Nenhum deploy foi
+solicitado neste acréscimo; bloqueio do preview anterior continua pendente.
