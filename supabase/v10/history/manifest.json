@@ -1,0 +1,780 @@
+[
+  {
+    "version": "20260804134337",
+    "name": "v8_a2_corrige_bloqueios_pauta",
+    "file": "20260804134337_v8_a2_corrige_bloqueios_pauta.sql",
+    "source_sha256": "a918221117584cac0a4c4677d5dae2e60c56536c5bb2711d0cc6916a752440f8",
+    "omitted_statements": [
+      {
+        "sha256": "8513c770cc1d1bc83bc332040dbe171eb74c0b350c55374047b355ccbd77702f",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260804150259",
+    "name": "v8_b_multiquadro_consolidado",
+    "file": "20260804150259_v8_b_multiquadro_consolidado.sql",
+    "source_sha256": "b0513257730a425084d20e296acb7bd7b58c150b68c2aebe224e88ed97fb4c57",
+    "omitted_statements": [
+      {
+        "sha256": "12566330bc60f1ac49d4d31531f537209b1f0a5cb88b5a4a31a00a2e40e79d91",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260804171331",
+    "name": "v9_operacao_completa",
+    "file": "20260804171331_v9_operacao_completa.sql",
+    "source_sha256": "b56e37c743cd8acddea62ba5ea0fb60fec4a56f87b8ac12c56ceb1ba8350e4d7",
+    "omitted_statements": [
+      {
+        "sha256": "e343cfe9e323533e668b6c654646145df72acb094df49140706d51f0aa8c99ce",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260804190804",
+    "name": "v9_1_4_movimento_nao_conclui",
+    "file": "20260804190804_v9_1_4_movimento_nao_conclui.sql",
+    "source_sha256": "1c9d7ce8520a5e876bd586cc2bac02234b769523212cda8df90c6664609d4169",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260804191843",
+    "name": "v9_1_4_pauta_conclusao_explicita",
+    "file": "20260804191843_v9_1_4_pauta_conclusao_explicita.sql",
+    "source_sha256": "e9447d489083f84b02dc225ce43fcb22f01d0d2ece77916018e640cae61d72d4",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260804202742",
+    "name": "v9_1_4_r2_criacao_em_coluna_final_nao_conclui",
+    "file": "20260804202742_v9_1_4_r2_criacao_em_coluna_final_nao_conclui.sql",
+    "source_sha256": "91ca6dc21fd18945e990022be80edb2bbf7ce5d31d19978e3046152dcadeee51",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260805194825",
+    "name": "v9_2_remove_legacy_pauta",
+    "file": "20260805194825_v9_2_remove_legacy_pauta.sql",
+    "source_sha256": "0190aad41557e5381b56ec6f0ea685e280d43b3ae34df044b7901fa7aaf0562f",
+    "omitted_statements": [
+      {
+        "sha256": "8bbf9ca0459c70159370c6ce6d7903ef5ac52d3d6a46be221895efc4f7088a4c",
+        "kind": "update"
+      },
+      {
+        "sha256": "a7ad98dcc7d8fb5414dad453dfbd315c070ea05f435877727712acb72bcc5426",
+        "kind": "update"
+      },
+      {
+        "sha256": "b856dffae4a1638c130f74705ead55c48860c4a886c4501ab6e75d7ce8ea5fd7",
+        "kind": "insert"
+      },
+      {
+        "sha256": "a9aac8924f282286f6c243ba2cdcac03cec419fadf0a08d17a96ed221b40b42d",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260805194908",
+    "name": "v9_2_reconcile_explicit_completion",
+    "file": "20260805194908_v9_2_reconcile_explicit_completion.sql",
+    "source_sha256": "5d3c6ac724029956bb45a10bab682f28744698758241b54e3340c9e3b61f7c23",
+    "omitted_statements": [
+      {
+        "sha256": "80dc8bd4b54eaa8049c47346a83dbdbadb8d81ed68cd85910d59bf415b2fc236",
+        "kind": "do"
+      },
+      {
+        "sha256": "22156f953d49c719d5b983ad6b8cfb0c11a88771ac9b9fd6ed61223ed8a3370e",
+        "kind": "update"
+      },
+      {
+        "sha256": "3dde6b5a64ee563ea4d39b9f6bf5db7d20ac67c9e65b989147786dbd18947631",
+        "kind": "insert"
+      },
+      {
+        "sha256": "74c64bb8bdb9bb1475158909aee01d3f7ae793027b7e905e1912bbeedb651cef",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260807002417",
+    "name": "v9_2c_p0_2_target_validation",
+    "file": "20260807002417_v9_2c_p0_2_target_validation.sql",
+    "source_sha256": "ed5c58e2beb0115ba37b2ec0498673a8c17c74bd78c61ea909441763111eb8da",
+    "omitted_statements": [
+      {
+        "sha256": "cb5e3c1cb4cf296355611ced1e1068db4270a6d68b729a34aeae6e8822aff81e",
+        "kind": "do"
+      },
+      {
+        "sha256": "f94cf13514f24334e4507ae91cb05dbcf7a149bed659063685125f6da6148101",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260807125324",
+    "name": "v9_2c_a2_4a_preserve_pauta_context",
+    "file": "20260807125324_v9_2c_a2_4a_preserve_pauta_context.sql",
+    "source_sha256": "1bbee7bd1685d1d3a3b5a02fce01ae9bc8891c35296fd5bfc9895450ccc41414",
+    "omitted_statements": [
+      {
+        "sha256": "62c3d6d623810d77de8ebd302180f1a86b8005fb5334b1d1e7c02d07646b1839",
+        "kind": "do"
+      },
+      {
+        "sha256": "0b94e879d1df6ce8cfc8e88fdcb63352111b16a6cfa1116410abb908df54afa8",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260807182933",
+    "name": "v9_3_a1_card_operacional_links",
+    "file": "20260807182933_v9_3_a1_card_operacional_links.sql",
+    "source_sha256": "f40fd594b8970df6ad453ac79c028a41e71a9f6223bb19829a69111a093f234c",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260807201211",
+    "name": "v9_3_a2_remove_board_assignment",
+    "file": "20260807201211_v9_3_a2_remove_board_assignment.sql",
+    "source_sha256": "67e62ed2ef2ea61274d2d1f62885ffa6ee2aec638e378c0fc118ea45283d253b",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260923235152",
+    "name": "create_meta_ads_reporting_hub",
+    "file": "20260923235152_create_meta_ads_reporting_hub.sql",
+    "source_sha256": "d675b7389726c380c58e8f4096cf070bc2415e97fe10fb8e85b5d6b569cc0db4",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260924173300",
+    "name": "meta_ads_sync_v2",
+    "file": "20260924173300_meta_ads_sync_v2.sql",
+    "source_sha256": "77d38c98310055dddc80021d083c47d6bd0fa4ae8045d4a01732275eec7d5871",
+    "omitted_statements": [
+      {
+        "sha256": "24b00b79f0616d8b06ecb9bbcc5b70de56b9be76a4eed560e0f2049e87843bed",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20260924200350",
+    "name": "meta_account_financials",
+    "file": "20260924200350_meta_account_financials.sql",
+    "source_sha256": "859d85258a8f3f017e5d7f314385b3c35e141476e423a7474492e08be713ed55",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260924200603",
+    "name": "meta_account_financial_forecast_v2",
+    "file": "20260924200603_meta_account_financial_forecast_v2.sql",
+    "source_sha256": "fc2499f7681f83199f03243697eff48bf5cead215ad73afeab3de46e6ab88531",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260925183109",
+    "name": "traffic_weekly_report",
+    "file": "20260925183109_traffic_weekly_report.sql",
+    "source_sha256": "7c19f0fe99fc26eb04a5e11cbc83ff869c55b2b0a0135cd9cb1b6345fb39dffd",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260925183151",
+    "name": "traffic_weekly_report_link_ctr_budget",
+    "file": "20260925183151_traffic_weekly_report_link_ctr_budget.sql",
+    "source_sha256": "3dc3d853e1554f6c54c44ba3076b5764527bbbae7110b62adcaa6bf26bbf4a27",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260925191045",
+    "name": "traffic_report_delivery_tables",
+    "file": "20260925191045_traffic_report_delivery_tables.sql",
+    "source_sha256": "7258dc7cf3007b0901772556067af25f96c692246afb6a250479f1e8846b9e4b",
+    "omitted_statements": [
+      {
+        "sha256": "f62c39344b4f2d102b92b1159ffda86b680783465719b99b7875a75e0fe9296c",
+        "kind": "insert"
+      }
+    ]
+  },
+  {
+    "version": "20260925192734",
+    "name": "traffic_client_report_rpc",
+    "file": "20260925192734_traffic_client_report_rpc.sql",
+    "source_sha256": "aad0d765d9453852a75454c4a831fcbdd55e0013ff08b3840eb546caa376a4ef",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260925212113",
+    "name": "traffic_prev_period_quinzena",
+    "file": "20260925212113_traffic_prev_period_quinzena.sql",
+    "source_sha256": "9c44ccfcd6ce87ecaf9f1ec2ab419f70d063eda06fdc1c80da4f57183dabe704",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260930205937",
+    "name": "comercial_agente_sdr",
+    "file": "20260930205937_comercial_agente_sdr.sql",
+    "source_sha256": "daa831dbfbe76fff07e3bb297eda01cf4a8397efaa61b0fba0606960dc4cf2c0",
+    "omitted_statements": [
+      {
+        "sha256": "9615482b9c613e12682cd6814a51228e276355f6f0511236aac062b4b2065b4b",
+        "kind": "insert"
+      }
+    ]
+  },
+  {
+    "version": "20260930205950",
+    "name": "comercial_horarios_fix",
+    "file": "20260930205950_comercial_horarios_fix.sql",
+    "source_sha256": "8a76f844b3018ad3207bd0a098acc53d8372ad8f94fededf4c3c0683dd9ae66c",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260930212856",
+    "name": "comercial_salvar_lead_reclassifica",
+    "file": "20260930212856_comercial_salvar_lead_reclassifica.sql",
+    "source_sha256": "ce8f64bf5756fd3452f1aa6ae7cf2b5cfc334e3371cf9f405ecbcd0a2bd9c747",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260930213050",
+    "name": "comercial_salvar_lead_null_fix",
+    "file": "20260930213050_comercial_salvar_lead_null_fix.sql",
+    "source_sha256": "482f56325805b2f61c2c5a634cdda9dd421bfcbc3a37bcebd7598f2b8f28c5e6",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260930213514",
+    "name": "comercial_agendador_para_todos",
+    "file": "20260930213514_comercial_agendador_para_todos.sql",
+    "source_sha256": "39d4580ee3238a22ea2993a3f1e5559ac792962e24718bfb00e7a620b1c2b79b",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260930213600",
+    "name": "comercial_horarios_google_ocupados",
+    "file": "20260930213600_comercial_horarios_google_ocupados.sql",
+    "source_sha256": "79bd9aab93c3a03318779628da94133b36a3f5b381f287a27e9a5f4bdc13e86c",
+    "omitted_statements": []
+  },
+  {
+    "version": "20260930221705",
+    "name": "comercial_colaboradores",
+    "file": "20260930221705_comercial_colaboradores.sql",
+    "source_sha256": "a826429f60981e8e1ac62b6037da89d6bd2400dce6e4c3329d1af9170fca300d",
+    "omitted_statements": [
+      {
+        "sha256": "7e67c561a587b52d2462ac1b16de8f43da77676c156dbd96cf587b92eff43c3e",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261002131521",
+    "name": "comercial_lead_scoring",
+    "file": "20261002131521_comercial_lead_scoring.sql",
+    "source_sha256": "9e30dac1cef9a9f27dd40feebad298d2db2d96d9c9d3f52cfbc57267d05c3c38",
+    "omitted_statements": [
+      {
+        "sha256": "25103b3ef696bd701a9e78d5a8e3a074a3c2b38669b2271eb72b56f986906239",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261002165231",
+    "name": "comercial_mensagens_whatsapp",
+    "file": "20261002165231_comercial_mensagens_whatsapp.sql",
+    "source_sha256": "37719dba0ca5f72350e3a20b6fd28b7b9cc0385f1034862cb4602702e54aafa1",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261002200539",
+    "name": "comercial_salvar_lead_origem_primeiro_toque",
+    "file": "20261002200539_comercial_salvar_lead_origem_primeiro_toque.sql",
+    "source_sha256": "bb2ecd384be5bf69bb2171d6e4b1569b0d254b4ea8dfe079f4921fd2ebd921e9",
+    "omitted_statements": [
+      {
+        "sha256": "c1029eb098f169a77baf88962f8c84267f5542e14c418a15dcecd4e4792d3789",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261002204834",
+    "name": "comercial_filtro_r1",
+    "file": "20261002204834_comercial_filtro_r1.sql",
+    "source_sha256": "80ef33001ec843319e080bf9520f6376ef209b83b162f5ab89536c45cef87899",
+    "omitted_statements": [
+      {
+        "sha256": "23e500628cf267f302d4183468604c29fc58b92489ed0f44109b479ec4d321ba",
+        "kind": "insert"
+      }
+    ]
+  },
+  {
+    "version": "20261002204854",
+    "name": "comercial_avaliar_fix_array",
+    "file": "20261002204854_comercial_avaliar_fix_array.sql",
+    "source_sha256": "4d48448fb25499fcd24167ef32ca9139e51aa9f28f3ba31f26abd78223b164ed",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261002205035",
+    "name": "comercial_prompt_alfredo",
+    "file": "20261002205035_comercial_prompt_alfredo.sql",
+    "source_sha256": "020d3e543637ba8720ea6cea7a0f4ad7f979f00d9ff8a41fda6b644687ce1466",
+    "omitted_statements": [
+      {
+        "sha256": "db451edc16584e908b975a34e85479b617c7d5f1ff63c53abe9b697aa79a1f02",
+        "kind": "insert"
+      }
+    ]
+  },
+  {
+    "version": "20261002205518",
+    "name": "comercial_prompt_ajuste_chute_e_horario",
+    "file": "20261002205518_comercial_prompt_ajuste_chute_e_horario.sql",
+    "source_sha256": "ff2c3e3482db2eb527449ad44fd259fd68f4bc558145fe8df928487689794548",
+    "omitted_statements": [
+      {
+        "sha256": "8591d084057dea424809b93a2142b3aab064fb98ace706c5638ea2d30ebe1ab9",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261002214356",
+    "name": "comercial_formulario_site_morno",
+    "file": "20261002214356_comercial_formulario_site_morno.sql",
+    "source_sha256": "588615d8bfa42977ee51168260d28cb02fedeb07f17c70508254c49f0039f225",
+    "omitted_statements": [
+      {
+        "sha256": "809ac57db1add9057e538f592c8726fec82914402daeed9fc713c24f38cfb7bf",
+        "kind": "insert"
+      },
+      {
+        "sha256": "5d590b3a7806bf2277869d4c48be8502faf11ce36e94958f9bca73a4228f99a4",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261002214834",
+    "name": "comercial_prompt_site_formulario",
+    "file": "20261002214834_comercial_prompt_site_formulario.sql",
+    "source_sha256": "b50329c8b43c5f8dec6b2ba48b297b2aa578ef716b91f119973a5b1fb7f4e85c",
+    "omitted_statements": [
+      {
+        "sha256": "b50329c8b43c5f8dec6b2ba48b297b2aa578ef716b91f119973a5b1fb7f4e85c",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261002215011",
+    "name": "comercial_prompt_formulario_na_hora",
+    "file": "20261002215011_comercial_prompt_formulario_na_hora.sql",
+    "source_sha256": "f623db10b4d3f4ec74243eabd284602a3b785755e794ac02d0e680f983f413c0",
+    "omitted_statements": [
+      {
+        "sha256": "f623db10b4d3f4ec74243eabd284602a3b785755e794ac02d0e680f983f413c0",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261002215115",
+    "name": "comercial_prompt_formulario_apresentacao",
+    "file": "20261002215115_comercial_prompt_formulario_apresentacao.sql",
+    "source_sha256": "b6af37c9976ef8e625a923244d43531013a3854126ed08e3893ba761334528aa",
+    "omitted_statements": [
+      {
+        "sha256": "b6af37c9976ef8e625a923244d43531013a3854126ed08e3893ba761334528aa",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261002215132",
+    "name": "comercial_formulario_dor_pontuacao",
+    "file": "20261002215132_comercial_formulario_dor_pontuacao.sql",
+    "source_sha256": "505cc943b6e3c8812d2cb4388edede3e9b54deae225b237a9b5d584e9be4a305",
+    "omitted_statements": [
+      {
+        "sha256": "e09c978887b0cb9fc3e6d7c19ab3deb1dc264b6eff65d73ee1f1969701723f3b",
+        "kind": "do"
+      },
+      {
+        "sha256": "92796a3ed172044626c0619b0d70fcd64b94a695adafb3825b6cfb7c4edbb3d2",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261003234325",
+    "name": "comercial_prompt_falha_agenda",
+    "file": "20261003234325_comercial_prompt_falha_agenda.sql",
+    "source_sha256": "3901188098761b8672ac7ebed10e08f55e4a14a6d28a030d592a9b559d15f9ec",
+    "omitted_statements": [
+      {
+        "sha256": "3901188098761b8672ac7ebed10e08f55e4a14a6d28a030d592a9b559d15f9ec",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261003234808",
+    "name": "comercial_prompt_falha_agenda_sem_confirmar",
+    "file": "20261003234808_comercial_prompt_falha_agenda_sem_confirmar.sql",
+    "source_sha256": "2960933eea98c781b39b364193b2f417611b85c0281fa61de6126e16a53fd40c",
+    "omitted_statements": [
+      {
+        "sha256": "2960933eea98c781b39b364193b2f417611b85c0281fa61de6126e16a53fd40c",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261004044812",
+    "name": "comercial_revisao_permissoes",
+    "file": "20261004044812_comercial_revisao_permissoes.sql",
+    "source_sha256": "934907ac454daaa5f681d10eeaa28ea8614e341c3481863f3203ade391b7f242",
+    "omitted_statements": [
+      {
+        "sha256": "934907ac454daaa5f681d10eeaa28ea8614e341c3481863f3203ade391b7f242",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261004194222",
+    "name": "app_fechar_acesso_anonimo_funcoes",
+    "file": "20261004194222_app_fechar_acesso_anonimo_funcoes.sql",
+    "source_sha256": "e8c57e130a61a51c0d52002042011af5ad6389ebfb5e36f793be39a4dc28e007",
+    "omitted_statements": [
+      {
+        "sha256": "e8c57e130a61a51c0d52002042011af5ad6389ebfb5e36f793be39a4dc28e007",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261004194317",
+    "name": "ampy_organizacao_comentarios_e_cadastro_agentes",
+    "file": "20261004194317_ampy_organizacao_comentarios_e_cadastro_agentes.sql",
+    "source_sha256": "1dbd9bb1eef8d1a7e72944dae1cd4222beb0ea71bb0b67e20301f9f9023d3989",
+    "omitted_statements": [
+      {
+        "sha256": "556630dfbf75e7065409f02e6b6ff862f41fb70bcdd3c4f75aa89804611e998a",
+        "kind": "do"
+      },
+      {
+        "sha256": "48e5e2a562fbf2bedfdf30fcf52c9cff0dc425ccec7892d99cef393207921633",
+        "kind": "insert"
+      }
+    ]
+  },
+  {
+    "version": "20261005003008",
+    "name": "comercial_prompt_email_e_assunto_r1",
+    "file": "20261005003008_comercial_prompt_email_e_assunto_r1.sql",
+    "source_sha256": "734cb4b04aa20beb32b8fc8a90e9c3c2b748c6336d211e0f1f85eb7dbf88b3a4",
+    "omitted_statements": [
+      {
+        "sha256": "666a3abfcbdbe04854e31860249236e42f555c8e29af6979d43bc5c542479561",
+        "kind": "update"
+      },
+      {
+        "sha256": "f5c1f79cf532208abe6daefc4bcb2576667573ee69d9ac81aad505b9fbf58832",
+        "kind": "select"
+      }
+    ]
+  },
+  {
+    "version": "20261005003838",
+    "name": "comercial_avaliar_exige_prazo",
+    "file": "20261005003838_comercial_avaliar_exige_prazo.sql",
+    "source_sha256": "fd34e6eb31e7dfe9beb1df634dea1cf80c60ce4cc13ac23fb7e9fdc1c116f39d",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261005003848",
+    "name": "comercial_prompt_morno_sem_prazo",
+    "file": "20261005003848_comercial_prompt_morno_sem_prazo.sql",
+    "source_sha256": "1c44618d842db8d60dee0a0ede83a1ac66f3844cc81b2f02c5f817ab618d0731",
+    "omitted_statements": [
+      {
+        "sha256": "eadef032ce88cfb9258f92ed2e24ee85c73f4a3b4885931e1c4e733ccce5188c",
+        "kind": "update"
+      },
+      {
+        "sha256": "ac72ca640aae626da63de93a5d52e30557382fa38bf24c93ab93ab310da1d119",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005004122",
+    "name": "comercial_prompt_assunto_equipe",
+    "file": "20261005004122_comercial_prompt_assunto_equipe.sql",
+    "source_sha256": "48089a9e0d65d65c1e535bfb9d0f6052ea76635260109e4d7a045187af5e6ef3",
+    "omitted_statements": [
+      {
+        "sha256": "48089a9e0d65d65c1e535bfb9d0f6052ea76635260109e4d7a045187af5e6ef3",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005004255",
+    "name": "comercial_lembretes_reuniao",
+    "file": "20261005004255_comercial_lembretes_reuniao.sql",
+    "source_sha256": "61a025d627ac40d43d5e2314f5b33641da67b5e76a28429287e0191a8ee5d8e8",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261005030612",
+    "name": "traffic_weekly_report_no_spend_com_conta",
+    "file": "20261005030612_traffic_weekly_report_no_spend_com_conta.sql",
+    "source_sha256": "9cf589080d16c88f374aee08234e3210a6245fb476d402506b758f1651d17c0e",
+    "omitted_statements": [
+      {
+        "sha256": "426412a1772f6688037c1a9f2143e77d84aace9fd71b32f9ea1a55880da18d54",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261005194957",
+    "name": "comercial_arquivar_teste_morno",
+    "file": "20261005194957_comercial_arquivar_teste_morno.sql",
+    "source_sha256": "0c04045ec3beebf5c751c8b4fc53208745e20984759e0954c437a488b3ba7ea4",
+    "omitted_statements": [
+      {
+        "sha256": "1c027b330b264790872ef265d8378da5210bfe6bdfc7b4c5c1e71368b0feb30d",
+        "kind": "update"
+      },
+      {
+        "sha256": "bbd1761d57c885f28e5377604d68e5e35bb7e69ab6b962817dd2ac55df97bf55",
+        "kind": "update"
+      },
+      {
+        "sha256": "68f4933e736baa4c2bd807e1e1fe3664c7af2473e29ca17e8ab408ba77a8f373",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005195141",
+    "name": "comercial_prompt_encerramento_com_instagram",
+    "file": "20261005195141_comercial_prompt_encerramento_com_instagram.sql",
+    "source_sha256": "e84fb33bda8985677d3aecaa1124d98d5ee7d4f8afcd23cf76e31bb586e6f513",
+    "omitted_statements": [
+      {
+        "sha256": "e84fb33bda8985677d3aecaa1124d98d5ee7d4f8afcd23cf76e31bb586e6f513",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261005195146",
+    "name": "comercial_arquivar_teste_fora_1",
+    "file": "20261005195146_comercial_arquivar_teste_fora_1.sql",
+    "source_sha256": "5bd34a1a2e56fa1349e55e9c30c9de574db366e3c0eba93ab11ade898a1a8c82",
+    "omitted_statements": [
+      {
+        "sha256": "36f3992db0041694a3a69e92f0a4e55a00f90aafa65add6c23caf935de128b56",
+        "kind": "update"
+      },
+      {
+        "sha256": "88fe8a93375796b07e028a2a3fa7bf73c10ebc36e4a0ef4c73a2f6bb2150ce53",
+        "kind": "update"
+      },
+      {
+        "sha256": "b1115be8000adf47d22599dcd977456dfed10c9bbf0cab72b2b7def5771669c3",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005195233",
+    "name": "comercial_arquivar_teste_fora_2",
+    "file": "20261005195233_comercial_arquivar_teste_fora_2.sql",
+    "source_sha256": "3d134d3ab6385f67ed2930d5a3b4734c20801db058c2161f55bea8161a1dd52c",
+    "omitted_statements": [
+      {
+        "sha256": "e8ffcef415b9236f4220d52c5ad4ff99d2c5c40910aa43999fe575641e11f430",
+        "kind": "update"
+      },
+      {
+        "sha256": "6bd08cb6765f72b98407ea05187f3da51114687cc24f7f3f7dae1fdfd71d0d31",
+        "kind": "update"
+      },
+      {
+        "sha256": "d167ef1946201d1fc71f743e436360f1e0f1414ebb7bd13ffe2e4543b930e493",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005205708",
+    "name": "comercial_prompt_audio_transcrito",
+    "file": "20261005205708_comercial_prompt_audio_transcrito.sql",
+    "source_sha256": "e47a165602e6f73d51750d139f3ea0b34c1f1d9a17f979b1dcd3111fc4618731",
+    "omitted_statements": [
+      {
+        "sha256": "e47a165602e6f73d51750d139f3ea0b34c1f1d9a17f979b1dcd3111fc4618731",
+        "kind": "do"
+      }
+    ]
+  },
+  {
+    "version": "20261005210056",
+    "name": "comercial_resumo_semana",
+    "file": "20261005210056_comercial_resumo_semana.sql",
+    "source_sha256": "2dd068aa244e5a9058ba3bad7ab19bb28add3da73d627cea4c3ad3c69c416f37",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261005212643",
+    "name": "comercial_arquiva_teste_audio",
+    "file": "20261005212643_comercial_arquiva_teste_audio.sql",
+    "source_sha256": "1a4b0a6cd2fdb7948aef117f684ea5561b403c8de2b25cafb03ab5fe52f50a7c",
+    "omitted_statements": [
+      {
+        "sha256": "b8f7d4249aec0dd43b437c266fab893793387d2ba47122d0685ca92f8b921b75",
+        "kind": "update"
+      },
+      {
+        "sha256": "61103997e88133552d4a2beb32c3f6f7da7ee98143bd5c2daebb10a986d1dbf2",
+        "kind": "update"
+      },
+      {
+        "sha256": "091f4a8c926d02c64621c07fdcb388ed9e7fc759dae3a98ef0f2c2616172baee",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005212802",
+    "name": "ampy_agentes_alfredo_audio_resumo",
+    "file": "20261005212802_ampy_agentes_alfredo_audio_resumo.sql",
+    "source_sha256": "b446fe03139fefc939bcdf8e270cb1e040183ecd801d02de8095940c9ce1a3cc",
+    "omitted_statements": [
+      {
+        "sha256": "6d7c8ad07c9d06ed64c567305d038fcb0b3803d386ddd196fdba17b65a1f17d6",
+        "kind": "update"
+      },
+      {
+        "sha256": "86d3d692abc35b81d46503f2275553cf12d09c96e07ca013174223f8606410d6",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005212808",
+    "name": "ampy_agentes_relatorios_sob_demanda",
+    "file": "20261005212808_ampy_agentes_relatorios_sob_demanda.sql",
+    "source_sha256": "3f8db090076563281367c4c80b39195427703082c1a017c85f3d64190469724b",
+    "omitted_statements": [
+      {
+        "sha256": "3f8db090076563281367c4c80b39195427703082c1a017c85f3d64190469724b",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261005223338",
+    "name": "comercial_arquiva_teste_audio2",
+    "file": "20261005223338_comercial_arquiva_teste_audio2.sql",
+    "source_sha256": "b9b368d505a0d378a0005e3e8e131792c43765be530b03f841bb5596e4a4204e",
+    "omitted_statements": [
+      {
+        "sha256": "a1fdd3a45c25ddcf88095441f2f9cd8d31856070cbc21e49b6560e54d4096c03",
+        "kind": "update"
+      },
+      {
+        "sha256": "09342ea38d513b45a371d213ec17be636020d9b6228ec729922e6b0738728730",
+        "kind": "update"
+      },
+      {
+        "sha256": "52b44b0ab564da5253511bf22dfb6afb4df26ea1a4d44b4af22d956cdccfbe70",
+        "kind": "update"
+      }
+    ]
+  },
+  {
+    "version": "20261006125819",
+    "name": "traffic_alertas",
+    "file": "20261006125819_traffic_alertas.sql",
+    "source_sha256": "86579bcc63f02be9e3f01ba1cdebd8cf30ce956c783ee3de384a700e8307385d",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261006125909",
+    "name": "traffic_alertas_v2",
+    "file": "20261006125909_traffic_alertas_v2.sql",
+    "source_sha256": "13ed67ba3f63538ed4821e2365d718034d1353ac5e8070dc5b165cd4506b494c",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261006125929",
+    "name": "trafego_gestor_base",
+    "file": "20261006125929_trafego_gestor_base.sql",
+    "source_sha256": "02c18b4dcd2100f52d690ba06e05debec2e287b5ca77d8d80498aaf15e6014f9",
+    "omitted_statements": [
+      {
+        "sha256": "99763aac7a46b258c3ec0cf130b23453324a2f06eecab9b449f2ee1855e38b77",
+        "kind": "insert"
+      },
+      {
+        "sha256": "2115cbfd90a71ce40845f016fe2d7065f3050d3db3af0f1a14b7e21a987926a9",
+        "kind": "insert"
+      }
+    ]
+  },
+  {
+    "version": "20261006130720",
+    "name": "traffic_prev_period_mes",
+    "file": "20261006130720_traffic_prev_period_mes.sql",
+    "source_sha256": "2d0fcdd4f63e2e2170f0dce30c5ae66b5872778886408c7e4f539f33f5c0b341",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261006131910",
+    "name": "traffic_sugestoes",
+    "file": "20261006131910_traffic_sugestoes.sql",
+    "source_sha256": "6b63cc856189debc3f13f9003e46ef3f22359b5124bed5129e6e6d7d6e8855e2",
+    "omitted_statements": []
+  },
+  {
+    "version": "20261006132334",
+    "name": "ampy_agentes_trafego_automacoes",
+    "file": "20261006132334_ampy_agentes_trafego_automacoes.sql",
+    "source_sha256": "d7f727d6b205ca830e0d648cca5371fff219bd5297f4a6f3d8f11425e69dea18",
+    "omitted_statements": [
+      {
+        "sha256": "2b41c7839b951300dd52be45edc56b05d28bc2b05cc090d2cf833210297e1a10",
+        "kind": "update"
+      },
+      {
+        "sha256": "aeaf50294e46dbb1a06e547a77f714ba5af56b1b309ee8626892778879db7a81",
+        "kind": "insert"
+      }
+    ]
+  }
+]
