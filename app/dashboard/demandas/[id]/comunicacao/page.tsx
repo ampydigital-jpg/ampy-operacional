@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: {
-    workItemId: string
+    id: string
   }
 }
 
@@ -234,7 +234,7 @@ async function resolveDemandMessageAction(workItemId: string, formData: FormData
 }
 
 export default async function DemandaComunicacaoPage({ params }: PageProps) {
-  const workItemId = params.workItemId
+  const workItemId = params.id
   const supabase = createAdminClient()
 
   const [workItemResult, teamResult, messagesResult] = await Promise.all([
