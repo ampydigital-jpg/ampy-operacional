@@ -13,7 +13,7 @@ $Repo = Split-Path `
 $V10Root = Join-Path $env:LOCALAPPDATA "AmpyDigital\V10"
 $ContainerName = "supabase_db_supabase-local"
 $ProductionRef = "epzrrsaibqdcaafkvwmm"
-$BranchExpected = "stabilization/v10-canonical"
+$BranchesExpected = @("stabilization/v10-canonical", "eyxo/organizacao")
 
 Set-Location -LiteralPath $Repo
 
@@ -27,7 +27,7 @@ $Branch = (
     Out-String
 ).Trim()
 
-if ($Branch -ne $BranchExpected) {
+if ($Branch -notin $BranchesExpected) {
     throw "FAIL Ã¢â‚¬â€ branch incorreta: $Branch"
 }
 
