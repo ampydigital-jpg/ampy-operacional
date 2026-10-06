@@ -14,6 +14,8 @@ revoke execute on function public.sync_cycle_schedule_requirement_from_calendar_
 revoke execute on function public.guard_active_pauta_work_item_requires_pauta() from public, anon, authenticated;
 revoke execute on function public.v8_assignment_after_change() from public, anon, authenticated;
 revoke execute on function public.v8_sync_assignment_from_work_item() from public, anon, authenticated;
+-- Criada pela migration 0002, tambem nao deve ser uma superficie de cliente.
+revoke execute on function extensions.v10_rls_auto_enable() from public, anon, authenticated;
 
 -- App usa estas tres, mas o estado atual so checa sessao ativa, sem escopo.
 
@@ -770,4 +772,3 @@ end;
 $function$;
 
 commit;
-

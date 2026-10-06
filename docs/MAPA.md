@@ -35,9 +35,9 @@ obtido, portanto não atribuímos a causa a um comando específico. Configuraç�
 | `/dashboard/mes` | Visão mensal da operação. |
 | `/dashboard/clientes` | Cadastro, contratos, identidade, serviços e ciclos dos clientes. |
 | `/dashboard/demandas` | Lista canônica; criação contextual por pauta/quadro/avulsa. |
-| `/dashboard/demandas/[id]` | Detalhe da demanda: no início havia `view.tsx`, sem `page.tsx`. Links existentes exigem corrigir a rota. |
+| `/dashboard/demandas/[id]` | Detalhe da demanda restaurado com page.tsx e consulta de sessão/RLS. |
 | `/dashboard/demandas/comunicacao` | Lista de contextos de comunicação de demandas. |
-| `/dashboard/demandas/[workItemId]/comunicacao` | Mensagens e menções vinculadas a uma demanda. Unificar nome do segmento dinâmico na correção. |
+| `/dashboard/demandas/[id]/comunicacao` | Mensagens e menções da demanda; segmento dinâmico unificado. |
 | `/dashboard/pautas` | Pautas mensais, clientes participantes, metas, distribuição e conclusão explícita. |
 | `/dashboard/quadro` | Quadros, colunas, distribuições multiquadro e progresso operacional. |
 | `/dashboard/kanban` | Visão alternativa antiga do quadro; manter compatibilidade enquanto houver referências. |
@@ -92,7 +92,7 @@ não garante autorização correta. Nenhum registro foi exportado como seed.
 - Meta Ads: discovery/sync/períodos/criativos; métricas e relatórios no Supabase. Não somar tipos de resultado diferentes.
 - n8n: orquestração externa de tráfego/comercial. Não consultamos nem alteramos a configuração do n8n.
 - Alfredo: agente comercial, lembretes e resumo; formulário Tally, WhatsApp, agenda Google/Meet no backend. Interface Eyxo não expõe todos esses recursos.
-- Edge Functions: `meta-discover-ad-accounts`, `meta-sync`, `meta-period-sync`, `traffic-weekly`, `comercial-agente`, `comercial-lembretes`, `comercial-resumo` e possíveis funções novas a conferir. Funções sem JWT possuem checagens próprias de segredo; não invocadas nesta tarefa.
+- Edge Functions: `meta-discover-ad-accounts`, `meta-sync`, `meta-period-sync`, `traffic-weekly`, `comercial-agente`, `comercial-lembretes`, `comercial-resumo`, `trafego-gestor`, `trafego-apoio` e `traffic-alerts`. As dez foram copiadas para supabase/functions, sem deploy. Funções sem JWT possuem checagens próprias de segredo; não invocadas nesta tarefa.
 - `appampy.dev` tem camada Cloudflare Access observada na auditoria. Login e dados reais não foram usados nos testes desta tarefa.
 
 ## Diferenças entre código e banco
@@ -104,7 +104,7 @@ SQL histórico já aplicado não pode ser confundido com migrations pendentes.
 Migrations que continham limpeza de dados de teste não serão executadas nem convertidas
 em limpeza automática. Referências e exclusões de dados/segredos devem constar no inventário.
 
-A main não tinha lockfile. A V10 já tem `package-lock.json`, ainda com Next 14.1.0.
+A main não tinha lockfile. A V10 já tinha `package-lock.json`; a branch agora fixa Next/eslint-config-next 14.2.35.
 A V10 contém 0001 (remoção de distribuição concluída) e 0002 (segurança de base),
 ainda exigindo avaliação de compatibilidade com as mudanças posteriores do banco.
 
@@ -123,7 +123,7 @@ ainda exigindo avaliação de compatibilidade com as mudanças posteriores do ba
 
 Nenhum push/merge na main, nenhuma mudança de banco/dados/políticas, nenhuma mudança
 de variável/configuração da Vercel. Arquivos SQL são propostas ou histórico explicitamente
-classificado. Dados `[V10 TEST]` e `[QA CLAUDE]` serão somente inventariados. Preview
+classificado. Nenhum dado foi apagado. Não há limpeza de dados de teste pendente. Preview
 compartilha a configuração existente: testes nunca enviam formulários de escrita em produção.
 
 ## Identidade concluída
@@ -132,3 +132,26 @@ Nome centralizado em `lib/brand.ts`; `NEXT_PUBLIC_APP_NAME` não é usado nem ne
 A variável antiga existente na Vercel não foi alterada. Ícones 192/512 e favicon
 gerados com a letra E. Ampy nas atribuições, nomes de equipe, relatórios da agência,
 clientes internos e autores de aprovação identifica a agência e foi preservado.
+
+## Resultado das etapas 3 e 4
+
+- 67 registros de supabase_migrations.schema_migrations versionados em supabase/v10/history.
+  São histórico aplicado, com comandos de dados/DO omitidos e hashes no manifest.
+- Baseline de catálogo atual em supabase/v10/baseline/schema-20261006.sql:
+  59 tabelas (36 operação + 23 integrações), 90 funções e 85 policies atuais.
+  Inclui tabelas anteriores a 04/08; sem dados nem credenciais. Snapshot documental,
+  separado das migrations futuras. Baseline de agosto preservada.
+- Agenda: priorização do prazo final já presente na stabilization, com início como
+  fallback somente se não houver final. Nenhuma inversão para início foi encontrada.
+- Quadro: removido filtro de completed_at/assignment_completed_at que escondia cards.
+- Comunicação: avisos active/read, sem completed_at/archived_at/deleted_at, filtrados
+  antes do limite. Resolvidos não ocupam as 40 opções do formulário.
+- Dashboards: coorte de prazo final compartilhada para o denominador; exclui cards
+  mensais de referência/cancelados/arquivados. O painel diário duplicava demandas
+  entre prazo/urgência/atraso; agora usa IDs únicos. Gráfico geral inclui todos os
+  status da população em vez de cortar categorias e exibir outro total no centro.
+- Autorização administrativa e inventário de RPCs: docs/SEGURANCA.md.
+- Remoções e login: docs/LIMPEZA.md. Não foram removidas rotas ainda referenciadas.
+
+Migrations 0001 a 0005 continuam pendentes de aprovação e teste isolado.
+O histórico de 67 versões e os snapshots **não** são uma fila para rodar em produção.
