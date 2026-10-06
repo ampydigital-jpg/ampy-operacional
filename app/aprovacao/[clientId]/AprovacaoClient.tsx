@@ -168,7 +168,7 @@ export default function AprovacaoClient({ client, posts: initialPosts, clientId 
         })}
 
         <div style={{ textAlign: 'center', padding: '24px', color: '#333', fontSize: '11px', marginTop: '8px' }}>
-          Powered by <strong style={{ color: '#555' }}>Ampy Digital</strong>
+          Powered by <strong style={{ color: '#555' }}>Eyxo</strong>
         </div>
       </div>
     </div>
