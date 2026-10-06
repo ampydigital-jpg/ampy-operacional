@@ -9,7 +9,7 @@ Identificações técnicas permanecem `ampy-operacional`.
 | --- | --- |
 | `main` | `47b0c264`: código de agosto `9e082b0` com a identificação Eyxo. Produção `dpl_227V6FAEERPFddNLk7rVr2KmSH1Y`. |
 | `stabilization/v10-canonical` | `5ce9ed53`: melhorias da agenda, modais, quadro e projetos; baseline local V10, testes, lockfile e migrations 0001/0002. Não mesclada na main. |
-| `eyxo/organizacao` | Criada de `5ce9ed53`, com cherry-pick de `47b0c264` em `d0aa8c6`. Destino exclusivo de organização e preview. |
+| `eyxo/organizacao` | Criada de `5ce9ed53`, com as alterações de `47b0c264` no commit `e9580b1`. Destino exclusivo de organização e preview. |
 | Supabase | `epzrrsaibqdcaafkvwmm`, produção compartilhada por operação, tráfego e comercial. Recebeu alterações de setembro/outubro fora do repositório. Consultas apenas nesta tarefa. |
 
 ### Deploys cancelados da V10
