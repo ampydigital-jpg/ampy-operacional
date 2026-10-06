@@ -293,7 +293,10 @@ export default async function ComunicacaoPage() {
     actor.session
       .from('avisos')
       .select('id,title,status,priority')
-      .neq('status', 'deleted')
+      .in('status', ['active', 'read'])
+      .is('completed_at', null)
+      .is('archived_at', null)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(40),
 

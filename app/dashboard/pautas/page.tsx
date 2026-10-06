@@ -156,7 +156,7 @@ export default async function PautasPage({ searchParams }: { searchParams: { boa
   const activePauta = pautas.find((pauta: any) => pauta.id === activePautaKey) || null
 
   let pautaManagementResult: any = { data: null, error: null }
-  if (activePauta?.id) {
+  if (activePauta?.id && canManage) {
     pautaManagementResult = await supabase.rpc('get_pauta_management_snapshot',{p_pauta_id:activePauta.id})
   }
 
