@@ -1,3 +1,4 @@
+import { isOperationalDemand, deliverySummary } from '@/lib/operation-rules'
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from '../DashboardCharts'
@@ -37,14 +38,11 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
   const endKey = ymd(end)
 
   const source = await loadOperationData(supabase, { eventStartKey: startKey, eventEndKey: endKey })
-  const demands = source.demands.filter((item: any) =>
-    !item.is_pauta_card && !['archived', 'cancelled'].includes(String(item.status)),
-  )
+  const demands = source.demands.filter(isOperationalDemand)
   const events = source.events
   const open = demands.filter(isOpen)
-  const weekDemands = demands.filter((item: any) => demandTouchesRange(item, startKey, endKey))
+  const { planned: weekDemands, done: weekDone, percent: deliveryPct } = deliverySummary(demands, startKey, endKey)
   const weekOpen = weekDemands.filter(isOpen)
-  const weekDone = weekDemands.filter(isDone)
   const late = open.filter((item: any) => isLate(item, todayKey))
   const priority = weekOpen.filter((item: any) => ['urgent', 'high'].includes(String(item.priority)))
   const weekWorkIds = new Set(weekDemands.map((item: any) => item.id))
@@ -73,7 +71,6 @@ export default async function SemanaPage({ searchParams }: { searchParams?: { st
   const statusData = countBy(weekDemands, (item: any) => statusName(item.status))
   const responsibleData = countBy(weekOpen, (item: any) => item.responsible?.display_name || item.responsible?.full_name || 'Sem responsável').slice(0, 8)
   const sectorData = countBy(weekAssignments, (assignment: any) => assignment.board?.name || 'Quadro sem nome').slice(0, 8)
-  const deliveryPct = weekDemands.length ? Math.round((weekDone.length / weekDemands.length) * 100) : 0
   const weekQueue = [...weekOpen].sort((a: any, b: any) => {
     const dateCompare = String(getDemandDate(a) || '9999').localeCompare(String(getDemandDate(b) || '9999'))
     if (dateCompare !== 0) return dateCompare

@@ -1,3 +1,4 @@
+import { isOperationalDemand, deliverySummary } from '@/lib/operation-rules'
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from './DashboardCharts'
@@ -48,9 +49,7 @@ export default async function DashboardPage() {
     eventEndKey: next30Key,
   })
 
-  const demands = source.demands.filter((item: any) =>
-    !item.is_pauta_card && !['archived', 'cancelled'].includes(String(item.status)),
-  )
+  const demands = source.demands.filter(isOperationalDemand)
   const events = source.events
   const assignments = source.assignments
   const open = demands.filter(isOpen)
@@ -63,11 +62,7 @@ export default async function DashboardPage() {
   const completedEvents = events.filter(isEventDone)
   const completedAssignments = assignments.filter(assignmentIsDone)
 
-  const monthDemands = demands.filter((item: any) => demandTouchesRange(item, monthStartKey, monthEndKey))
-  const monthDone = monthDemands.filter(isDone)
-  const deliveryPct = monthDemands.length
-    ? Math.round((monthDone.length / monthDemands.length) * 100)
-    : 0
+  const { planned: monthDemands, done: monthDone, percent: deliveryPct } = deliverySummary(demands, monthStartKey, monthEndKey)
   const weekDemands = open.filter((item: any) => demandTouchesRange(item, weekStartKey, weekEndKey))
   const dayDemands = open.filter((item: any) => item.final_deadline === todayKey)
   const todayEvents = events.filter((event: any) => String(event.starts_at || '').slice(0, 10) === todayKey)
@@ -90,7 +85,7 @@ export default async function DashboardPage() {
     assignments,
     (assignment: any) => assignment.board?.name || 'Quadro sem nome',
   ).slice(0, 8)
-  const statusData = countBy(demands, (item: any) => statusName(item.status)).slice(0, 7)
+  const statusData = countBy(demands, (item: any) => statusName(item.status))
   const weekQueue = [...late, ...weekDemands]
     .filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index)
     .sort((a: any, b: any) => String(getDemandDate(a) || '').localeCompare(String(getDemandDate(b) || '')))

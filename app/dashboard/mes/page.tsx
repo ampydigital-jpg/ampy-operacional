@@ -1,3 +1,4 @@
+import { isOperationalDemand, deliverySummary } from '@/lib/operation-rules'
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import DashboardCharts from '../DashboardCharts'
@@ -39,17 +40,13 @@ export default async function MesPage({ searchParams }: { searchParams?: { month
   const endKey = ymd(end)
 
   const source = await loadOperationData(supabase, { eventStartKey: startKey, eventEndKey: endKey })
-  const demands = source.demands.filter((item: any) =>
-    !item.is_pauta_card && !['archived', 'cancelled'].includes(String(item.status)),
-  )
+  const demands = source.demands.filter(isOperationalDemand)
   const events = source.events
-  const monthDemands = demands.filter((item: any) => demandTouchesRange(item, startKey, endKey))
+  const { planned: monthDemands, done: monthDone, percent: deliveryPct } = deliverySummary(demands, startKey, endKey)
   const monthOpen = monthDemands.filter(isOpen)
-  const monthDone = monthDemands.filter(isDone)
   const late = demands.filter((item: any) => isLate(item, todayKey))
   const pending = monthDemands.filter((item: any) => ['not_started', 'waiting', 'awaiting_approval', 'scheduled'].includes(String(item.status)))
   const priority = monthOpen.filter((item: any) => ['urgent', 'high'].includes(String(item.priority)))
-  const deliveryPct = monthDemands.length ? Math.round((monthDone.length / monthDemands.length) * 100) : 0
   const monthWorkIds = new Set(monthDemands.map((item: any) => item.id))
   const monthAssignments = source.assignments.filter((assignment: any) => monthWorkIds.has(assignment.work_item_id))
   const assignmentsCompletedInMonth = source.assignments.filter((assignment: any) => {

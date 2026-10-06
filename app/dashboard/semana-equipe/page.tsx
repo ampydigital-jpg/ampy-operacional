@@ -1,3 +1,4 @@
+import { isOperationalDemand } from '@/lib/operation-rules'
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { dateKeyInAmpyTimezone } from '@/lib/date'
@@ -26,7 +27,7 @@ export default async function SemanaEquipePage() {
   const source = await loadOperationData(supabase, { eventStartKey: startKey, eventEndKey: endKey })
   const profiles = source.profiles.filter((profile: any) => profile.is_active !== false)
   const demands = source.demands.filter((item: any) =>
-    !item.is_pauta_card && isOpen(item) && item.final_deadline >= startKey && item.final_deadline < endKey,
+    isOperationalDemand(item) && isOpen(item) && item.final_deadline >= startKey && item.final_deadline < endKey,
   )
   const events = source.events
   const days = Array.from({ length: 7 }, (_, index) => addDays(start, index))
