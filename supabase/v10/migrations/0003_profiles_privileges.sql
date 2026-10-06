@@ -2,6 +2,26 @@
 -- Aplicar apos 0001/0002; roles administrativas passam a ser escritas pelo servidor.
 begin;
 
+-- O trigger atual cria todos como admin ativo. Cadastro nunca concede acesso.
+-- createTeamMemberAction define papel/ativacao posteriormente com service role.
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public, pg_temp
+as $function$
+begin
+  insert into public.profiles (
+    id, full_name, email, role, avatar_initials, avatar_color, avatar_bg,
+    is_active, created_at, updated_at
+  ) values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    new.email, 'collaborator',
+    upper(left(split_part(new.email, '@', 1), 2)),
+    '#CC8800', '#1A1200', false, now(), now()
+  ) on conflict (id) do nothing;
+  return new;
+end;
+$function$;
+
 revoke all privileges on table public.profiles from anon, public;
 revoke insert, update, delete on table public.profiles from authenticated;
 -- PostgreSQL preserva grants por coluna quando o grant da tabela e revogado.

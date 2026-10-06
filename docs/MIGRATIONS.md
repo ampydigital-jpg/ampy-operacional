@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | 1 | 0001_fix_remove_completed_board_assignment.sql | Correção existente da V10: retirar distribuição já concluída. |
 | 2 | 0002_security_baseline_core.sql | Segurança existente da V10: perfil ativo, DML estrutural, escopo operacional e profile. |
-| 3 | 0003_profiles_privileges.sql | Revogar anon/PUBLIC, impedir alteração direta de role/email/is_active, exigir vínculo ativo para Acesso Total. |
+| 3 | 0003_profiles_privileges.sql | Revogar anon/PUBLIC, impedir alteração direta de role/email/is_active, exigir vínculo ativo para Acesso Total e cadastrar novos perfis como colaborador inativo. |
 | 4 | 0004_internal_rpc_privileges.sql | Fechar EXECUTE dos helpers/triggers e autorizar três RPCs de pauta. |
 | 5 | 0005_operation_policy_scopes.sql | Guard ativo/escopo da operação; comunicação escrita pelo servidor; integrações permanecem fechadas. |
 

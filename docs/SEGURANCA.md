@@ -27,6 +27,11 @@ Administração de pessoas continua pelo servidor, validando o vínculo da equip
 validação em ambiente isolado e aplicação das migrations. Preview de código não
 corrige RLS nem RPC do banco compartilhado.**
 
+Outra causa confirmada: o trigger handle_new_user insere literalmente role='admin'
+e is_active=true para qualquer novo usuário de Auth. A migration 0003 substitui
+esse padrão por collaborator e is_active=false. Nenhum perfil existente é
+alterado; a liberação fica no fluxo administrativo autorizado de equipe.
+
 ## RPCs usadas pelo app
 
 23 nomes literais encontrados em app/lib. Todas são SECURITY DEFINER. As
