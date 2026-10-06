@@ -79,7 +79,7 @@ export default function Sidebar({ profile }: { profile: any }) {
     <aside className="sb">
       <div className="sb-brand">
         <div className="brand-logo-shell">
-          <img className="brand-logo" src="/brand/ampy-arrow-white.png" alt="Ampy Digital" />
+          <span aria-label="Eyxo, central operacional da Ampy Digital" style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-1px', color: '#FFF', lineHeight: 1 }}>Eyxo</span>
         </div>
       </div>
 

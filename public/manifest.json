@@ -1,7 +1,7 @@
 {
-  "name": "Ampy Digital — Gerenciador",
-  "short_name": "Ampy",
-  "description": "Central operacional da Ampy Digital",
+  "name": "Eyxo | Ampy Digital",
+  "short_name": "Eyxo",
+  "description": "Eyxo, central operacional da Ampy Digital",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0C0C0C",
