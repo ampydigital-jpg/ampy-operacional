@@ -1,11 +1,11 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireTotalActor } from '@/lib/server-access'
 import EquipeView from './EquipeView'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function EquipePage() {
-  const adminSupabase = createAdminClient()
+  const { admin: adminSupabase } = await requireTotalActor()
 
   const [
     membersResult,

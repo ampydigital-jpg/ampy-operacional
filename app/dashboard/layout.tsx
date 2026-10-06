@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { requireActiveActor } from '@/lib/server-access'
 import Sidebar from '@/components/ui/Sidebar'
 import Toaster from '@/components/ui/Toaster'
 
 
 // AMPY-V17-A22 — EQUIPE, ACESSOS E SENHAS
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  try { await requireActiveActor() } catch { redirect('/login') }
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

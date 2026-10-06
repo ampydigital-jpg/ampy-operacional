@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireTotalActor } from '@/lib/server-access'
 import { getCurrentProfile, isAdmin, isManager, forbidden } from '@/lib/permissions'
 import type { DemandProcess, WorkItemStatus } from '@/types'
 import { ampyLocalDateTimeToIso } from '@/lib/date'
@@ -3086,13 +3087,12 @@ export async function deleteCalendarEventAction(
 
 
 export async function inviteMemberAction(formData: FormData) {
-  const { profile } = await getCurrentProfile()
-  if (!profile || !isAdmin(profile.role)) return forbidden('Somente Administração ou Direção podem criar acessos.')
+  const actor = await requireTotalActor()
   const email = value(formData, 'email')
   const fullName = value(formData, 'full_name')
   if (!email || !fullName) return { error: 'Nome e e-mail são obrigatórios.' }
   try {
-    const admin = createAdminClient()
+    const admin = actor.admin
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: { full_name: fullName },
@@ -3107,8 +3107,7 @@ export async function inviteMemberAction(formData: FormData) {
 }
 
 export async function updateMemberAccessAction(formData: FormData) {
-  const { supabase, profile } = await getCurrentProfile()
-  if (!profile || !isAdmin(profile.role)) return forbidden('Somente Administração ou Direção podem alterar acessos.')
+  const { admin: supabase } = await requireTotalActor()
   const id = value(formData, 'id')
   if (!id) return { error: 'Membro inválido.' }
   const { error } = await supabase.from('profiles').update({
@@ -3561,12 +3560,12 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
 
   const { data: board, error: boardError } = await supabase
     .from('feed_boards')
-    .select('id,title,status,share_token,client_id')
+    .select('id,title,status,share_token,client_id,published_at')
     .eq('share_token', token)
     .single()
 
   if (boardError || !board) return { error: 'Documento de aprovação não encontrado.' }
-  if (board.status === 'archived') return { error: 'Este documento está arquivado.' }
+  if (!board.published_at || board.status === 'archived') return { error: 'Este documento não está disponível para aprovação.' }
 
   const itemPayload: any = {
     approval_status: decision,

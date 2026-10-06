@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireActiveActor, requireContextAccess, requireMessageResolution } from '@/lib/server-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,45 +70,17 @@ const areaLabel = (area: string) => {
   return map[area] || area
 }
 
-async function getCurrentTeamAuthor(adminSupabase: ReturnType<typeof createAdminClient>) {
-  const authSupabase = createClient()
-  const {
-    data: { user },
-  } = await authSupabase.auth.getUser()
-
-  let teamMember: { id: string; email: string; profile_id: string | null } | null = null
-
-  if (user?.id) {
-    const { data } = await adminSupabase
-      .from('team_members')
-      .select('id,email,profile_id')
-      .eq('profile_id', user.id)
-      .maybeSingle()
-
-    teamMember = data
-  }
-
-  if (!teamMember && user?.email) {
-    const { data } = await adminSupabase
-      .from('team_members')
-      .select('id,email,profile_id')
-      .eq('email', user.email)
-      .maybeSingle()
-
-    teamMember = data
-  }
-
-  return {
-    profileId: user?.id || teamMember?.profile_id || null,
-    teamMemberId: teamMember?.id || null,
-    email: teamMember?.email || user?.email || 'ampydigital@gmail.com',
-  }
+async function getCurrentTeamAuthor(_adminSupabase: ReturnType<typeof createAdminClient>) {
+  const { user, member } = await requireActiveActor()
+  return { profileId: user.id, teamMemberId: member.id, email: user.email! }
 }
 
 async function createDemandMessageAction(workItemId: string, formData: FormData) {
   'use server'
 
-  const supabase = createAdminClient()
+  const actor = await requireActiveActor()
+  const supabase = actor.admin
+  await requireContextAccess(actor, 'work_items', workItemId)
 
   const body = String(formData.get('body') || '').trim()
   const driveUrl = emptyToNull(formData.get('drive_url'))
@@ -214,10 +187,13 @@ async function createDemandMessageAction(workItemId: string, formData: FormData)
 async function resolveDemandMessageAction(workItemId: string, formData: FormData) {
   'use server'
 
-  const supabase = createAdminClient()
+  const actor = await requireActiveActor()
+  const supabase = actor.admin
+  await requireContextAccess(actor, 'work_items', workItemId)
   const messageId = emptyToNull(formData.get('message_id'))
 
   if (!messageId) return
+  await requireMessageResolution(actor, messageId, workItemId)
 
   await supabase
     .from('internal_messages')
@@ -235,10 +211,12 @@ async function resolveDemandMessageAction(workItemId: string, formData: FormData
 
 export default async function DemandaComunicacaoPage({ params }: PageProps) {
   const workItemId = params.id
-  const supabase = createAdminClient()
+  const actor = await requireActiveActor()
+  const supabase = actor.admin
+  await requireContextAccess(actor, 'work_items', workItemId)
 
   const [workItemResult, teamResult, messagesResult] = await Promise.all([
-    supabase
+    actor.session
       .from('work_items')
       .select('id,title,status,client_id')
       .eq('id', workItemId)
@@ -250,7 +228,7 @@ export default async function DemandaComunicacaoPage({ params }: PageProps) {
       .eq('is_active', true)
       .order('display_order', { ascending: true }),
 
-    supabase
+    actor.session
       .from('internal_messages')
       .select('id,body,drive_url,attachment_title,created_by_email,created_by_team_member_id,is_resolved,created_at')
       .eq('work_item_id', workItemId)

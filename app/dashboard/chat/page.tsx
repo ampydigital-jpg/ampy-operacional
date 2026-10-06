@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireActiveActor, requireContextAccess, requireMessageResolution } from '@/lib/server-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -106,45 +107,16 @@ const areaLabel = (area: string) => {
   return map[area] || area
 }
 
-async function getCurrentTeamAuthor(adminSupabase: ReturnType<typeof createAdminClient>) {
-  const authSupabase = createClient()
-  const {
-    data: { user },
-  } = await authSupabase.auth.getUser()
-
-  let teamMember: { id: string; email: string; profile_id: string | null } | null = null
-
-  if (user?.id) {
-    const { data } = await adminSupabase
-      .from('team_members')
-      .select('id,email,profile_id')
-      .eq('profile_id', user.id)
-      .maybeSingle()
-
-    teamMember = data
-  }
-
-  if (!teamMember && user?.email) {
-    const { data } = await adminSupabase
-      .from('team_members')
-      .select('id,email,profile_id')
-      .eq('email', user.email)
-      .maybeSingle()
-
-    teamMember = data
-  }
-
-  return {
-    profileId: user?.id || teamMember?.profile_id || null,
-    teamMemberId: teamMember?.id || null,
-    email: teamMember?.email || user?.email || 'ampydigital@gmail.com',
-  }
+async function getCurrentTeamAuthor(_adminSupabase: ReturnType<typeof createAdminClient>) {
+  const { user, member } = await requireActiveActor()
+  return { profileId: user.id, teamMemberId: member.id, email: user.email! }
 }
 
 async function createInternalMessageAction(formData: FormData) {
   'use server'
 
-  const supabase = createAdminClient()
+  const actor = await requireActiveActor()
+  const supabase = actor.admin
 
   const body = String(formData.get('body') || '').trim()
   const contextType = String(formData.get('context_type') || 'general').trim() || 'general'
@@ -160,6 +132,12 @@ async function createInternalMessageAction(formData: FormData) {
   const driveUrl = emptyToNull(formData.get('drive_url'))
   const attachmentTitle = emptyToNull(formData.get('attachment_title'))
   const mentionedTeamMemberId = emptyToNull(formData.get('mentioned_team_member_id'))
+
+  if (!['general', 'client', 'demand', 'approval', 'alert', 'drive'].includes(contextType)) throw new Error('Contexto inválido.')
+  for (const [table, id] of [['clients', clientId], ['work_items', workItemId], ['feed_boards', feedBoardId], ['avisos', avisoId]] as const) {
+    if (id) await requireContextAccess(actor, table, id)
+  }
+  if ((contextType === 'client' && !clientId) || (contextType === 'demand' && !workItemId) || (contextType === 'approval' && !feedBoardId) || (contextType === 'alert' && !avisoId)) throw new Error('Informe o contexto da mensagem.')
 
   const contextId =
     contextType === 'client'
@@ -258,10 +236,12 @@ async function createInternalMessageAction(formData: FormData) {
 async function resolveInternalMessageAction(formData: FormData) {
   'use server'
 
-  const supabase = createAdminClient()
+  const actor = await requireActiveActor()
+  const supabase = actor.admin
   const messageId = emptyToNull(formData.get('message_id'))
 
   if (!messageId) return
+  await requireMessageResolution(actor, messageId)
 
   await supabase
     .from('internal_messages')
@@ -275,7 +255,8 @@ async function resolveInternalMessageAction(formData: FormData) {
 }
 
 export default async function ComunicacaoPage() {
-  const supabase = createAdminClient()
+  const actor = await requireActiveActor()
+  const supabase = actor.admin
 
   const [
     teamResult,
@@ -291,32 +272,32 @@ export default async function ComunicacaoPage() {
       .eq('is_active', true)
       .order('display_order', { ascending: true }),
 
-    supabase
+    actor.session
       .from('clients')
       .select('id,name,status')
       .order('name', { ascending: true })
       .limit(80),
 
-    supabase
+    actor.session
       .from('work_items')
       .select('id,title,status,client_id')
       .order('created_at', { ascending: false })
       .limit(60),
 
-    supabase
+    actor.session
       .from('feed_boards')
       .select('id,title,status,client_id')
       .order('updated_at', { ascending: false })
       .limit(40),
 
-    supabase
+    actor.session
       .from('avisos')
       .select('id,title,status,priority')
       .neq('status', 'deleted')
       .order('created_at', { ascending: false })
       .limit(40),
 
-    supabase
+    actor.session
       .from('internal_messages')
       .select('id,body,context_type,client_id,work_item_id,feed_board_id,aviso_id,drive_url,attachment_title,created_by_email,created_by_team_member_id,is_resolved,created_at')
       .order('created_at', { ascending: false })

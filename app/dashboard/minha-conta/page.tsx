@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireActiveActor } from '@/lib/server-access'
 import MinhaContaView from './MinhaContaView'
 
 export const dynamic = 'force-dynamic'
@@ -17,7 +17,7 @@ export default async function MinhaContaPage() {
     redirect('/login')
   }
 
-  const adminSupabase = createAdminClient()
+  const { admin: adminSupabase } = await requireActiveActor()
 
   const [
     profileResult,

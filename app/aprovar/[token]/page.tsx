@@ -1,4 +1,4 @@
-﻿import { unstable_noStore as noStore } from 'next/cache'
+import { unstable_noStore as noStore } from 'next/cache'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import PublicApprovalView from './PublicApprovalView'
@@ -18,7 +18,7 @@ export default async function PublicApprovalPage({ params }: { params: { token: 
     .eq('share_token', token)
     .single()
 
-  if (boardResult.error || !boardResult.data) notFound()
+  if (boardResult.error || !boardResult.data || !boardResult.data.published_at || boardResult.data.status === 'archived') notFound()
 
   const [clientResult, itemsResult, eventsResult] = await Promise.all([
     supabase

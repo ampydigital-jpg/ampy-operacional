@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireActiveActor, requireTotalActor } from '@/lib/server-access'
 
 const TOTAL_ACCESS = 'total'
 const OPERATIONAL_ACCESS = 'operacional'
@@ -190,50 +191,12 @@ function roleForAccess(accessType: string) {
 }
 
 async function getTotalAccessActor() {
-  const authSupabase = createClient()
-  const {
-    data: { user },
-  } = await authSupabase.auth.getUser()
-
-  if (!user) {
-    return {
-      error: 'Sessão inválida.',
-    } as const
+  try {
+    const { user, member: actor, admin: adminSupabase } = await requireTotalActor()
+    return { user, actor, adminSupabase } as const
+  } catch {
+    return { error: 'Sessão inválida ou sem Acesso Total.' } as const
   }
-
-  const adminSupabase = createAdminClient()
-
-  let { data: actor } = await adminSupabase
-    .from('team_members')
-    .select('id,profile_id,email,full_name,access_type,is_active')
-    .eq('profile_id', user.id)
-    .maybeSingle()
-
-  if (!actor && user.email) {
-    const fallback = await adminSupabase
-      .from('team_members')
-      .select('id,profile_id,email,full_name,access_type,is_active')
-      .eq('email', user.email)
-      .maybeSingle()
-
-    actor = fallback.data
-  }
-
-  if (
-    !actor ||
-    actor.access_type !== TOTAL_ACCESS ||
-    actor.is_active !== true
-  ) {
-    return {
-      error: 'Somente usuários com Acesso Total podem administrar a equipe.',
-    } as const
-  }
-
-  return {
-    user,
-    actor,
-    adminSupabase,
-  } as const
 }
 
 async function registerAudit(
@@ -836,7 +799,8 @@ export async function resetTeamMemberPasswordAction(
 export async function updateOwnIdentityAction(
   formData: FormData,
 ) {
-  const supabase = createClient()
+  const activeActor = await requireActiveActor()
+  const supabase = activeActor.session
 
   const {
     data: { user },
@@ -867,7 +831,7 @@ export async function updateOwnIdentityAction(
     return { error: avatarError }
   }
 
-  const adminSupabase = createAdminClient()
+  const adminSupabase = activeActor.admin
 
   const [profileResult, memberResult] = await Promise.all([
     adminSupabase
@@ -1004,7 +968,8 @@ export async function updateOwnIdentityAction(
 export async function changeOwnPasswordAction(
   formData: FormData,
 ) {
-  const supabase = createClient()
+  const activeActor = await requireActiveActor()
+  const supabase = activeActor.session
 
   const {
     data: { user },
@@ -1069,7 +1034,7 @@ export async function changeOwnPasswordAction(
     }
   }
 
-  const adminSupabase = createAdminClient()
+  const adminSupabase = activeActor.admin
   const now = new Date().toISOString()
 
   await adminSupabase

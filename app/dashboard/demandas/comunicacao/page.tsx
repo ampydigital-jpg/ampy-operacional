@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireActiveActor } from '@/lib/server-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +39,7 @@ const statusLabel = (status: string | null) => {
 }
 
 export default async function DemandasComunicacaoPage() {
-  const supabase = createAdminClient()
+  const { session: supabase } = await requireActiveActor()
 
   const [workItemsResult, clientsResult, messagesResult] = await Promise.all([
     supabase
