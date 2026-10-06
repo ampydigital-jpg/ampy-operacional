@@ -3163,18 +3163,19 @@ async function addFeedBoardEventInternal(
   itemId: string | null,
   eventType: string,
   message: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
+  clientActor?: { name: string },
 ) {
   try {
-    const { data: auth } = await supabase.auth.getUser()
+    const auth = clientActor ? null : (await supabase.auth.getUser()).data
     const { data } = await supabase
       .from('feed_board_events')
       .insert({
         board_id: boardId,
         item_id: itemId,
-        actor_type: 'internal',
-        actor_id: auth.user?.id || null,
-        actor_name: 'Ampy Digital',
+        actor_type: clientActor ? 'client' : 'internal',
+        actor_id: clientActor ? null : auth?.user?.id || null,
+        actor_name: clientActor?.name || 'Ampy Digital',
         event_type: eventType,
         message,
         metadata,
@@ -3620,7 +3621,8 @@ export async function submitFeedBoardClientDecisionAction(token: string, itemId:
     decision === 'approved'
       ? `${actorName} aprovou o item "${updatedItem.title || 'Capa'}".`
       : `${actorName} solicitou ajuste no item "${updatedItem.title || 'Capa'}"${feedback ? `: ${feedback}` : ''}.`,
-    { feedback }
+    { feedback },
+    { name: actorName }
   )
 
   if (decision === 'changes_requested') {
