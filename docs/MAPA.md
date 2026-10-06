@@ -55,7 +55,7 @@ obtido, portanto não atribuímos a causa a um comando específico. Configuraç�
 | `/dashboard/feed-preview/[boardId]` | Edição da grade, arquivos, status, legenda e programação. |
 | `/dashboard/clientes/feed-preview` | Entrada alternativa de aprovação por cliente. |
 | `/aprovacao/[clientId]` | Aprovação antiga baseada em `feed_posts`. |
-| `/api/aprovacao` | Atualização do feed antigo; atualmente sem sessão/status explícitos. |
+| `/api/aprovacao` | Atualização do feed antigo; sessão ativa, permissão do cliente e status permitidos verificados. |
 | `/aprovar/[token]` | Aprovação pública por token do documento; exceção intencional ao login, limitada ao token. |
 | `/dashboard/trafego` | Página informativa; ainda não lê indicadores Meta. Integração do backend já existe. |
 | `/dashboard/social` | Página informativa; não é um calendário editorial integrado. |
